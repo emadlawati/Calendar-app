@@ -14,6 +14,8 @@ export interface CalendarEvent {
   createdBy: User;
   status: EventStatus;
   archived: boolean;
+  googleEventId?: string | null;
+  creatorGoogleEventId?: string | null;
   createdAt: string;
   updatedAt: string;
   // Frontend-only computed fields for react-big-calendar

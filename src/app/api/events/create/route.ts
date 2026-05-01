@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import prisma from '@/lib/prisma';
 import resend from '@/lib/resend';
+import { createCalendarEvent } from '@/lib/google-calendar';
 
 export async function POST(request: Request) {
   try {
@@ -21,6 +22,26 @@ export async function POST(request: Request) {
       }
     });
 
+    // Sync to the creator's Google Calendar immediately
+    const dateStr = new Date(date).toISOString().split('T')[0];
+    const creatorGoogleEventId = await createCalendarEvent(createdBy, {
+      title,
+      date: dateStr,
+      time,
+      endTime: endTime || null,
+      notes: notes || null,
+    });
+
+    if (creatorGoogleEventId) {
+      // Store the creator's Google Calendar event ID
+      await prisma.calendarEvent.update({
+        where: { id: newEvent.id },
+        data: { creatorGoogleEventId },
+      });
+      newEvent.creatorGoogleEventId = creatorGoogleEventId;
+      console.log(`Google Calendar event created for creator ${createdBy}: ${creatorGoogleEventId}`);
+    }
+
     // Determine the recipient and sender emails
     const isWife = createdBy === "Wife";
     const partnerEmail = isWife ? process.env.HUSBAND_EMAIL : process.env.WIFE_EMAIL;
@@ -33,7 +54,7 @@ export async function POST(request: Request) {
     if (partnerEmail && process.env.RESEND_API_KEY !== "re_...") {
       try {
         await resend.emails.send({
-          from: 'Calendar 🐾 <onboarding@resend.dev>', // You should update this to your verified domain later
+          from: 'Calendar 🐾 <noreply@yaminami.uk>',
           to: partnerEmail,
           subject: `🐾 New Date Invitation: ${title}!`,
           html: `
@@ -48,7 +69,7 @@ export async function POST(request: Request) {
               </div>
 
               <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <a href="${baseUrl}/api/events/action?id=${newEvent.id}&action=accept" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
+                <a href="${baseUrl}/api/events/action?id=${newEvent.id}&action=accept&user=${partnerName}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
                   Meow Accept 🧶
                 </a>
                 <a href="${adjustUrl}" style="background-color: #d7ccc8; color: #ffffff; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block; margin-left: 10px;">

@@ -83,11 +83,18 @@ export default function Home() {
 
   useEffect(() => {
     fetchEvents();
-    // Check if we just came from an email acceptance
+    // Check for URL query params (email accept, google connect, etc.)
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('accepted') === 'true') {
       setToastMessage("Meow! The plan has been accepted! 🧶");
       // Clean up the URL
+      window.history.replaceState({}, '', '/');
+    } else if (urlParams.get('google') === 'connected') {
+      const googleUser = urlParams.get('user') || '';
+      setToastMessage(`🐾 Google Calendar connected for ${googleUser}!`);
+      window.history.replaceState({}, '', '/');
+    } else if (urlParams.get('google') === 'error') {
+      setToastMessage("😿 Could not connect Google Calendar. Please try again.");
       window.history.replaceState({}, '', '/');
     }
   }, [fetchEvents]);

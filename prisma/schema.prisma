@@ -8,15 +8,28 @@ datasource db {
 }
 
 model CalendarEvent {
-  id        String   @id @default(uuid())
-  title     String
-  notes     String?
-  date      DateTime
-  time      String
-  endTime   String?
-  createdBy String
-  status    String   @default("pending")
-  archived  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  title         String
+  notes         String?
+  date          DateTime
+  time          String
+  endTime       String?
+  createdBy     String
+  status        String   @default("pending")
+  archived      Boolean  @default(false)
+  googleEventId String?  // Google Calendar event ID (accepter's event)
+  creatorGoogleEventId String?  // Google Calendar event ID for the event creator
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model GoogleCalendarToken {
+  id           String   @id @default(uuid())
+  userId       String   @unique // "Wife" or "Husband"
+  accessToken  String
+  refreshToken String?
+  expiryDate   DateTime?
+  email        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

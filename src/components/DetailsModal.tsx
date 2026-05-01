@@ -35,7 +35,8 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event }: Deta
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action,
-          eventId: event.id
+          eventId: event.id,
+          user: currentUser
         })
       });
       if (res.ok) {

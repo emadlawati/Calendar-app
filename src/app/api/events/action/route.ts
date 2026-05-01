@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import prisma from '@/lib/prisma';
 import resend from '@/lib/resend';
+import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '@/lib/google-calendar';
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString('en-US', {
@@ -22,10 +23,37 @@ export async function POST(request: Request) {
     }
 
     if (action === 'accept') {
+      // Fetch the event to get details for Google Calendar sync
+      const acceptedEvent = await prisma.calendarEvent.findUnique({
+        where: { id: eventId }
+      });
+
       await prisma.calendarEvent.update({
         where: { id: eventId },
         data: { status: 'accepted' }
       });
+
+      // Sync to Google Calendar for the user who accepted
+      if (acceptedEvent && user) {
+        const dateStr = acceptedEvent.date.toISOString().split('T')[0]; // YYYY-MM-DD
+        const googleEventId = await createCalendarEvent(user, {
+          title: acceptedEvent.title,
+          date: dateStr,
+          time: acceptedEvent.time,
+          endTime: acceptedEvent.endTime,
+          notes: acceptedEvent.notes,
+        });
+        
+        if (googleEventId) {
+          // Store the Google Calendar event ID for future updates/deletes
+          await prisma.calendarEvent.update({
+            where: { id: eventId },
+            data: { googleEventId },
+          });
+          console.log(`Google Calendar event created for ${user}: ${googleEventId}`);
+        }
+      }
+
       return NextResponse.json({ success: true, message: "Event accepted" });
     }
 
@@ -47,6 +75,44 @@ export async function POST(request: Request) {
           time: time
         }
       });
+
+      const dateStr = new Date(date).toISOString().split('T')[0];
+      const creator = existingEvent.createdBy;
+
+      // Update Google Calendar for the original creator's event
+      if (existingEvent.creatorGoogleEventId) {
+        updateCalendarEvent(existingEvent.creatorGoogleEventId, creator, {
+          title: existingEvent.title,
+          date: dateStr,
+          time: time,
+          endTime: existingEvent.endTime,
+          notes: existingEvent.notes,
+        }).then(success => {
+          if (success) {
+            console.log(`Creator's Google Calendar event updated for ${creator}`);
+          }
+        }).catch(err => {
+          console.error(`Creator's Google Calendar update failed for ${creator}:`, err);
+        });
+      }
+
+      // Update Google Calendar for the accepter's event if it exists
+      if (existingEvent.googleEventId) {
+        const accepter = user || (creator === "Wife" ? "Husband" : "Wife");
+        updateCalendarEvent(existingEvent.googleEventId, accepter, {
+          title: existingEvent.title,
+          date: dateStr,
+          time: time,
+          endTime: existingEvent.endTime,
+          notes: existingEvent.notes,
+        }).then(success => {
+          if (success) {
+            console.log(`Accepter's Google Calendar event updated for ${accepter}`);
+          }
+        }).catch(err => {
+          console.error(`Accepter's Google Calendar update failed for ${accepter}:`, err);
+        });
+      }
 
       // Send email notification to the original event creator
       const adjuster = user || "Your partner";
@@ -78,7 +144,7 @@ export async function POST(request: Request) {
                 </div>
 
                 <div style="margin-top: 20px;">
-                  <a href="${baseUrl}/api/events/action?id=${eventId}&action=accept" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
+                  <a href="${baseUrl}/api/events/action?id=${eventId}&action=accept&user=${originalCreator}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
                     Meow Accept 🧶
                   </a>
                 </div>
@@ -97,6 +163,38 @@ export async function POST(request: Request) {
     }
 
     if (action === 'delete') {
+      // Fetch event to check for Google Calendar events
+      const eventToDelete = await prisma.calendarEvent.findUnique({
+        where: { id: eventId }
+      });
+
+      // Delete accepter's Google Calendar event if it was synced
+      if (eventToDelete?.googleEventId) {
+        const accepter = eventToDelete.createdBy === "Wife" ? "Husband" : "Wife";
+        deleteCalendarEvent(eventToDelete.googleEventId, accepter)
+          .then(success => {
+            if (success) {
+              console.log(`Accepter's Google Calendar event deleted for ${accepter}`);
+            }
+          })
+          .catch(err => {
+            console.error(`Accepter's Google Calendar delete failed for ${accepter}:`, err);
+          });
+      }
+
+      // Delete creator's Google Calendar event if it was synced
+      if (eventToDelete?.creatorGoogleEventId) {
+        deleteCalendarEvent(eventToDelete.creatorGoogleEventId, eventToDelete.createdBy)
+          .then(success => {
+            if (success) {
+              console.log(`Creator's Google Calendar event deleted for ${eventToDelete.createdBy}`);
+            }
+          })
+          .catch(err => {
+            console.error(`Creator's Google Calendar delete failed for ${eventToDelete.createdBy}:`, err);
+          });
+      }
+
       await prisma.calendarEvent.delete({
         where: { id: eventId }
       });
@@ -125,20 +223,48 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "Failed to process action" }, { status: 500 });
   }
 }
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('id');
     const action = searchParams.get('action');
+    const acceptedBy = searchParams.get('user'); // "Wife" or "Husband"
 
     if (!eventId || action !== 'accept') {
       return NextResponse.redirect(new URL('/', request.url));
     }
 
+    // Fetch the event to get details for Google Calendar sync
+    const acceptedEvent = await prisma.calendarEvent.findUnique({
+      where: { id: eventId }
+    });
+
     await prisma.calendarEvent.update({
       where: { id: eventId },
       data: { status: 'accepted' }
     });
+
+    // Sync to Google Calendar for the person who accepted via email link
+    if (acceptedEvent && acceptedBy) {
+      const dateStr = acceptedEvent.date.toISOString().split('T')[0];
+      const googleEventId = await createCalendarEvent(acceptedBy, {
+        title: acceptedEvent.title,
+        date: dateStr,
+        time: acceptedEvent.time,
+        endTime: acceptedEvent.endTime,
+        notes: acceptedEvent.notes,
+      });
+      
+      if (googleEventId) {
+        // Store the Google Calendar event ID for future updates/deletes
+        await prisma.calendarEvent.update({
+          where: { id: eventId },
+          data: { googleEventId },
+        });
+        console.log(`Google Calendar event created for ${acceptedBy}: ${googleEventId}`);
+      }
+    }
 
     // Redirect to home with a success message
     return NextResponse.redirect(new URL('/?accepted=true', request.url));
