@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "./UserProvider";
-import { Cat, ExternalLink, Unlink } from "lucide-react";
+import { Cat, ExternalLink, Unlink, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
@@ -16,6 +16,8 @@ export default function UserToggle() {
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [isConnecting, setIsConnecting] = useState<string | null>(null); // "Wife" | "Husband" | null
+  const [isResyncing, setIsResyncing] = useState(false);
+  const [resyncMessage, setResyncMessage] = useState<string | null>(null);
 
   const toggleUser = () => {
     setCurrentUser(currentUser === "Wife" ? "Husband" : "Wife");
@@ -51,6 +53,31 @@ export default function UserToggle() {
       console.error("Failed to initiate Google connection:", err);
     } finally {
       setIsConnecting(null);
+    }
+  };
+
+  const resyncGoogleCalendar = async () => {
+    setIsResyncing(true);
+    setResyncMessage(null);
+    try {
+      const res = await fetch("/api/events/resync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: currentUser }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResyncMessage(`✅ Synced ${data.syncedCount} events to ${currentUser}'s Google Calendar`);
+      } else {
+        setResyncMessage(`❌ Resync failed: ${data.error || "Unknown error"}`);
+      }
+    } catch (err) {
+      setResyncMessage("❌ Resync failed: Network error");
+      console.error("Resync error:", err);
+    } finally {
+      setIsResyncing(false);
+      // Clear message after 5 seconds
+      setTimeout(() => setResyncMessage(null), 5000);
     }
   };
 
@@ -151,6 +178,33 @@ export default function UserToggle() {
             )}
           </motion.button>
         </div>
+
+        {/* Resync button */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={resyncGoogleCalendar}
+            disabled={isResyncing}
+            className="w-full text-xs py-2 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 bg-white/80 border border-latte-brown/10 shadow-sm hover:bg-latte-brown/5 disabled:opacity-50 disabled:cursor-wait text-text-dark"
+          >
+            <RefreshCw size={12} className={isResyncing ? "animate-spin" : ""} />
+            {isResyncing ? "Resyncing..." : "Resync Google Calendar"}
+          </motion.button>
+          {resyncMessage && (
+            <motion.p
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-xs text-center mt-1 text-text-dark/70"
+            >
+              {resyncMessage}
+            </motion.p>
+          )}
+        </motion.div>
       </motion.div>
     </div>
   );
