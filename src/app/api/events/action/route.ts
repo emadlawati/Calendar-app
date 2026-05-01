@@ -168,33 +168,42 @@ export async function POST(request: Request) {
         where: { id: eventId }
       });
 
+      if (!eventToDelete) {
+        return NextResponse.json({ success: false, error: "Event not found" }, { status: 404 });
+      }
+
+      // Delete from Google Calendar (both creator's and accepter's events)
+      const deletionPromises: Promise<boolean>[] = [];
+
       // Delete accepter's Google Calendar event if it was synced
-      if (eventToDelete?.googleEventId) {
+      if (eventToDelete.googleEventId) {
         const accepter = eventToDelete.createdBy === "Wife" ? "Husband" : "Wife";
-        deleteCalendarEvent(eventToDelete.googleEventId, accepter)
-          .then(success => {
-            if (success) {
-              console.log(`Accepter's Google Calendar event deleted for ${accepter}`);
-            }
-          })
-          .catch(err => {
-            console.error(`Accepter's Google Calendar delete failed for ${accepter}:`, err);
-          });
+        deletionPromises.push(
+          deleteCalendarEvent(eventToDelete.googleEventId, accepter)
+        );
       }
 
       // Delete creator's Google Calendar event if it was synced
-      if (eventToDelete?.creatorGoogleEventId) {
-        deleteCalendarEvent(eventToDelete.creatorGoogleEventId, eventToDelete.createdBy)
-          .then(success => {
-            if (success) {
-              console.log(`Creator's Google Calendar event deleted for ${eventToDelete.createdBy}`);
-            }
-          })
-          .catch(err => {
-            console.error(`Creator's Google Calendar delete failed for ${eventToDelete.createdBy}:`, err);
-          });
+      if (eventToDelete.creatorGoogleEventId) {
+        deletionPromises.push(
+          deleteCalendarEvent(eventToDelete.creatorGoogleEventId, eventToDelete.createdBy)
+        );
       }
 
+      // Wait for all Google Calendar deletions to complete (best effort)
+      if (deletionPromises.length > 0) {
+        const results = await Promise.allSettled(deletionPromises);
+        results.forEach((result, i) => {
+          const eventType = i === 0 ? "Accepter's" : "Creator's";
+          if (result.status === 'fulfilled' && result.value) {
+            console.log(`${eventType} Google Calendar event deleted successfully`);
+          } else if (result.status === 'rejected') {
+            console.error(`${eventType} Google Calendar delete failed:`, result.reason);
+          }
+        });
+      }
+
+      // Delete from database (regardless of Google Calendar result — best effort)
       await prisma.calendarEvent.delete({
         where: { id: eventId }
       });
