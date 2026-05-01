@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
         try {
           await resend.emails.send({
-            from: 'Calendar 🐾 <onboarding@resend.dev>',
+            from: 'Calendar 🐾 <noreply@yaminami.uk>',
             to: recipientEmail,
             subject: `🐾 ${existingEvent.title} — ${adjuster} proposed a new time!`,
             html: `
