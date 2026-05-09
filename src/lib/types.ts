@@ -45,3 +45,22 @@ export interface ActionPayload {
   category?: string | null;
   user?: User;
 }
+
+export interface StickyNote {
+  id: string;
+  content: string;
+  createdBy: User;
+  read: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface BucketItem {
+  id: string;
+  title: string;
+  category: string;
+  notes: string | null;
+  completed: boolean;
+  createdBy: User;
+  createdAt: string;
+}

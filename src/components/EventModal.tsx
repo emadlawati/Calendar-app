@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, CalendarHeart, Clock } from "lucide-react";
 import { useSession } from "./SessionProvider";
 import type { CreateEventPayload } from "@/lib/types";
-import { EVENT_CATEGORIES } from "@/lib/categories";
+import { EVENT_CATEGORIES, getCategoryById } from "@/lib/categories";
+import type { BucketItem } from "@/lib/types";
 
 interface EventModalProps {
   isOpen: boolean;
@@ -24,6 +25,29 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
   const [notes, setNotes] = useState("");
   const [category, setCategory] = useState("other");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showBucketPicker, setShowBucketPicker] = useState(false);
+  const [bucketItems, setBucketItems] = useState<BucketItem[]>([]);
+  const [bucketLoading, setBucketLoading] = useState(false);
+
+  const loadBucketItems = async () => {
+    setBucketLoading(true);
+    try {
+      const res = await fetch("/api/bucket");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setBucketItems(data.filter((i: BucketItem) => !i.completed));
+      }
+    } catch { /* ignore */ }
+    setBucketLoading(false);
+    setShowBucketPicker(true);
+  };
+
+  const pickFromBucket = (item: BucketItem) => {
+    setTitle(item.title);
+    setCategory(item.category);
+    if (item.notes) setNotes(item.notes);
+    setShowBucketPicker(false);
+  };
 
   // Use a 2-hour default duration if no endTime is set
   const computeDefaultEndTime = (startTime: string): string => {
@@ -125,6 +149,44 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                     placeholder="e.g. Movie night & cuddles"
                   />
                 </div>
+
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={loadBucketItems}
+                  className="w-full text-xs font-bold text-latte-brown hover:text-blush-pink transition-colors py-1 flex items-center justify-center gap-1"
+                >
+                  <span>🎯</span> Pick from Bucket List
+                </motion.button>
+
+                {showBucketPicker && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="bg-milk-white/50 border border-soft-peach rounded-2xl p-3 space-y-1 max-h-40 overflow-y-auto"
+                  >
+                    {bucketLoading ? (
+                      <p className="text-xs text-center text-text-dark/40 py-2">Loading...</p>
+                    ) : bucketItems.length === 0 ? (
+                      <p className="text-xs text-center text-text-dark/40 py-2">
+                        Bucket list empty! Add ideas first.
+                      </p>
+                    ) : (
+                      bucketItems.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => pickFromBucket(item)}
+                          className="w-full text-left px-3 py-1.5 rounded-xl text-sm hover:bg-white transition-colors flex items-center gap-2"
+                        >
+                          <span>{getCategoryById(item.category).emoji}</span>
+                          <span className="truncate">{item.title}</span>
+                        </button>
+                      ))
+                    )}
+                  </motion.div>
+                )}
 
                 <div>
                   <label className="block text-sm font-bold mb-2 ml-2 text-text-dark/80">Category</label>

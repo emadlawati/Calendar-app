@@ -6,6 +6,7 @@ export interface EventCategory {
 }
 
 export const EVENT_CATEGORIES: EventCategory[] = [
+  { id: "romantic", label: "Romantic", emoji: "❤️", color: "#ffcdd2" },
   { id: "date-night", label: "Date Night", emoji: "🍽️", color: "#fce4ec" },
   { id: "adventure", label: "Adventure", emoji: "🏃", color: "#e8f5e9" },
   { id: "special", label: "Special Occasion", emoji: "🎂", color: "#fff3e0" },
@@ -15,5 +16,5 @@ export const EVENT_CATEGORIES: EventCategory[] = [
 ];
 
 export function getCategoryById(id: string | null | undefined): EventCategory {
-  return EVENT_CATEGORIES.find((c) => c.id === id) || EVENT_CATEGORIES[5];
+  return EVENT_CATEGORIES.find((c) => c.id === id) || EVENT_CATEGORIES[6];
 }

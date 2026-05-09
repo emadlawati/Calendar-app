@@ -7,15 +7,18 @@ import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { motion, AnimatePresence } from "framer-motion";
 import UserMenu from "@/components/UserMenu";
+import NudgeButton from "@/components/NudgeButton";
 import EventModal from "@/components/EventModal";
 import DetailsModal from "@/components/DetailsModal";
 import CountdownBanner from "@/components/CountdownBanner";
+import NoteDrawer from "@/components/NoteDrawer";
+import BucketListDrawer from "@/components/BucketListDrawer";
 import Toast from "@/components/Toast";
 import { useSession } from "@/components/SessionProvider";
 import { triggerConfetti } from "@/lib/confetti";
 import { getCategoryById } from "@/lib/categories";
-import type { CalendarEvent } from "@/lib/types";
-import { HeartPulse, Plus } from "lucide-react";
+import type { CalendarEvent, StickyNote } from "@/lib/types";
+import { HeartPulse, Plus, X, Heart } from "lucide-react";
 
 // Setup react-big-calendar localizer
 const locales = {
@@ -46,6 +49,9 @@ export default function Home() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [view, setView] = useState<View>(Views.MONTH);
   const [showArchived, setShowArchived] = useState(false);
+  const [isNoteDrawerOpen, setIsNoteDrawerOpen] = useState(false);
+  const [isBucketDrawerOpen, setIsBucketDrawerOpen] = useState(false);
+  const [flyingNotes, setFlyingNotes] = useState<StickyNote[]>([]);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -102,7 +108,33 @@ export default function Home() {
       setToastMessage("😿 Could not connect Google Calendar. Please try again.");
       window.history.replaceState({}, '', '/');
     }
-  }, [fetchEvents]);
+    }, [fetchEvents]);
+
+  // Fetch unread flying notes on page load
+  useEffect(() => {
+    fetch("/api/notes")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setFlyingNotes(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const dismissNote = async (id: string) => {
+    setFlyingNotes((prev) => prev.filter((n) => n.id !== id));
+    await fetch(`/api/notes/${id}`, { method: "PATCH" }).catch(() => {});
+  };
+
+  // Listen for nudge events from NudgeButton
+  useEffect(() => {
+    const handler = (e: CustomEvent) => {
+      setToastMessage(`💕 ${e.detail}`);
+    };
+    window.addEventListener("nudge-sent", handler as EventListener);
+    return () => window.removeEventListener("nudge-sent", handler as EventListener);
+  }, []);
 
   const handleSelectSlot = (slotInfo: { start: Date }) => {
     setSelectedDate(slotInfo.start);
@@ -175,24 +207,41 @@ export default function Home() {
             </motion.div>
             <h1 className="text-2xl md:text-3xl font-sniglet text-text-dark">Our Calendar</h1>
           </div>
-          <UserMenu />
+          <div className="flex items-center gap-2">
+            <NudgeButton />
+            <UserMenu />
+          </div>
         </header>
 
         <div className="mb-4 relative z-10">
           <CountdownBanner events={events} />
         </div>
 
-        <div className="flex justify-end mb-4 relative z-10">
+        <div className="flex justify-end mb-4 relative z-10 gap-2 flex-wrap">
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsNoteDrawerOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-colors border-2 bg-white text-latte-brown border-latte-brown/30 hover:border-blush-pink"
+          >
+            💌 Notes
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsBucketDrawerOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-colors border-2 bg-white text-latte-brown border-latte-brown/30 hover:border-blush-pink"
+          >
+            🎯 Bucket List
+          </motion.button>
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowArchived(!showArchived)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-colors border-2 ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-colors border-2 ${
               showArchived 
                 ? 'bg-latte-brown text-white border-latte-brown' 
                 : 'bg-white text-latte-brown border-latte-brown/30 hover:border-latte-brown'
             }`}
           >
-            {showArchived ? '🐾 Showing All' : '📦 Show Archived'}
+            {showArchived ? '🐾 Showing All' : '📦 Archived'}
           </motion.button>
         </div>
 
@@ -287,6 +336,64 @@ export default function Home() {
           onSuccess={fetchEvents}
           event={selectedEvent}
         />
+
+        <NoteDrawer
+          isOpen={isNoteDrawerOpen}
+          onClose={() => setIsNoteDrawerOpen(false)}
+        />
+
+        <BucketListDrawer
+          isOpen={isBucketDrawerOpen}
+          onClose={() => setIsBucketDrawerOpen(false)}
+        />
+
+        {/* Flying Sticky Notes */}
+        <AnimatePresence>
+          {flyingNotes.map((note, index) => (
+            <motion.div
+              key={note.id}
+              initial={{ opacity: 0, y: -60, rotate: -5, x: 20 }}
+              animate={{
+                opacity: 1,
+                y: [null, -15, 0],
+                rotate: [-3, 2, 0],
+              }}
+              exit={{ opacity: 0, x: 100, rotate: 15 }}
+              transition={{
+                delay: index * 0.25,
+                y: { duration: 2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" },
+              }}
+              style={{
+                top: `${60 + index * 110}px`,
+                right: "16px",
+              }}
+              className="fixed z-50 w-64 bg-yellow-100/95 backdrop-blur-sm rounded-lg shadow-lg border border-yellow-200 p-4 cursor-pointer"
+              onClick={() => dismissNote(note.id)}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dismissNote(note.id);
+                }}
+                className="absolute top-1.5 right-1.5 text-yellow-500/50 hover:text-yellow-700 transition-colors"
+              >
+                <X size={14} />
+              </button>
+              <div className="flex items-start gap-2">
+                <Heart size={16} className="text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-text-dark leading-snug font-quicksand">{note.content}</p>
+                  <p className="text-[10px] text-text-dark/40 mt-1.5">
+                    — {note.createdBy === "Wife" ? "Budoor" : "Imad"} 💌
+                  </p>
+                  <p className="text-[9px] text-text-dark/25 mt-0.5">
+                    {new Date(note.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
 
         <Toast
           message={toastMessage || ""}

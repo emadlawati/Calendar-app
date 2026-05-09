@@ -34,3 +34,22 @@ model GoogleCalendarToken {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+model StickyNote {
+  id        String    @id @default(uuid())
+  content   String
+  createdBy String
+  read      Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model BucketItem {
+  id        String   @id @default(uuid())
+  title     String
+  category  String   @default("other")
+  notes     String?
+  completed Boolean  @default(false)
+  createdBy String
+  createdAt DateTime @default(now())
+}
