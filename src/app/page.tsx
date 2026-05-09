@@ -6,13 +6,16 @@ import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { motion, AnimatePresence } from "framer-motion";
-import UserToggle from "@/components/UserToggle";
+import UserMenu from "@/components/UserMenu";
 import EventModal from "@/components/EventModal";
 import DetailsModal from "@/components/DetailsModal";
+import CountdownBanner from "@/components/CountdownBanner";
 import Toast from "@/components/Toast";
-import { useUser } from "@/components/UserProvider";
+import { useSession } from "@/components/SessionProvider";
+import { triggerConfetti } from "@/lib/confetti";
+import { getCategoryById } from "@/lib/categories";
 import type { CalendarEvent } from "@/lib/types";
-import { HeartPulse } from "lucide-react";
+import { HeartPulse, Plus } from "lucide-react";
 
 // Setup react-big-calendar localizer
 const locales = {
@@ -33,7 +36,7 @@ interface CalendarViewEvent extends CalendarEvent {
 }
 
 export default function Home() {
-  const { currentUser } = useUser();
+  const { isLoading: isSessionLoading } = useSession();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -82,11 +85,13 @@ export default function Home() {
   }, [showArchived]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchEvents();
     // Check for URL query params (email accept, google connect, etc.)
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('accepted') === 'true') {
       setToastMessage("Meow! The plan has been accepted! 🧶");
+      triggerConfetti();
       // Clean up the URL
       window.history.replaceState({}, '', '/');
     } else if (urlParams.get('google') === 'connected') {
@@ -110,11 +115,11 @@ export default function Home() {
   };
 
   const eventStyleGetter = (event: CalendarViewEvent) => {
-    const isWife = event.createdBy === "Wife";
+    const category = getCategoryById(event.category);
     const isPending = event.status === "pending";
 
-    const backgroundColor = isWife ? "var(--color-wife-pink)" : "var(--color-husband-blue)";
-    const border = isPending ? "2px dashed var(--color-latte-brown)" : "2px solid white";
+    const backgroundColor = category.color;
+    const border = isPending ? `2px dashed ${category.color === '#fdfbf7' ? 'var(--color-latte-brown)' : category.color}` : "2px solid rgba(255,255,255,0.6)";
     const opacity = isPending ? 0.8 : 1;
 
     return {
@@ -160,7 +165,7 @@ export default function Home() {
           🧶
         </motion.div>
 
-        <header className="flex justify-between items-center mb-8 relative z-10">
+        <header className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4 md:mb-8 relative z-10">
           <div className="flex items-center gap-2">
             <motion.div
               whileHover={{ rotate: [0, -10, 10, 0] }}
@@ -168,10 +173,14 @@ export default function Home() {
             >
               <HeartPulse className="text-blush-pink" size={32} />
             </motion.div>
-            <h1 className="text-3xl font-sniglet text-text-dark">Our Calendar</h1>
+            <h1 className="text-2xl md:text-3xl font-sniglet text-text-dark">Our Calendar</h1>
           </div>
-          <UserToggle />
+          <UserMenu />
         </header>
+
+        <div className="mb-4 relative z-10">
+          <CountdownBanner events={events} />
+        </div>
 
         <div className="flex justify-end mb-4 relative z-10">
           <motion.button
@@ -189,10 +198,10 @@ export default function Home() {
 
         <motion.div 
           layout
-          className="flex-1 plush-card p-4 md:p-6 mb-8 flex flex-col min-h-[700px] relative z-10"
+          className="flex-1 plush-card p-3 md:p-6 mb-8 flex flex-col min-h-[400px] md:min-h-[700px] relative z-10"
         >
-          <div className="flex-1 h-full min-h-[600px]">
-            {isLoading ? (
+          <div className="flex-1 h-full min-h-[350px] md:min-h-[600px]">
+            {(isLoading || isSessionLoading) ? (
               <div className="flex items-center justify-center h-full">
                 <motion.div
                   animate={{ rotate: 360 }}
@@ -219,7 +228,7 @@ export default function Home() {
                       whileHover={{ scale: 1.05 }}
                       className="flex items-center gap-1"
                     >
-                      <span>{event.status === 'accepted' ? '🐾' : '🧶'}</span>
+                      <span>{getCategoryById(event.category).emoji}</span>
                       <span className="truncate">{event.title}</span>
                     </motion.div>
                   )
@@ -236,7 +245,8 @@ export default function Home() {
           </div>
         </motion.div>
 
-        <div className="flex justify-center relative z-10">
+        {/* Desktop Create Event Button */}
+        <div className="hidden md:flex justify-center relative z-10">
           <motion.button
             whileHover={{ scale: 1.1, y: -5, boxShadow: "0 20px 30px -10px rgba(215, 204, 200, 0.6)" }}
             whileTap={{ scale: 0.9 }}
@@ -253,6 +263,16 @@ export default function Home() {
             </motion.span>
           </motion.button>
         </div>
+
+        {/* Mobile FAB */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setIsModalOpen(true)}
+          className="md:hidden fixed bottom-6 right-6 z-50 w-14 h-14 bg-blush-pink text-text-dark rounded-full shadow-plush flex items-center justify-center border-4 border-white"
+        >
+          <Plus size={28} />
+        </motion.button>
 
         <EventModal 
           isOpen={isModalOpen} 

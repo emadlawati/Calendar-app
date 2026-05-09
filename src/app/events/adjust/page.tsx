@@ -3,28 +3,33 @@
 import { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { CalendarClock, Cat, Loader2 } from "lucide-react";
-import { useUser } from "@/components/UserProvider";
+import { useSession } from "@/components/SessionProvider";
 import { useSearchParams } from "next/navigation";
+import { EVENT_CATEGORIES } from "@/lib/categories";
 import type { CalendarEvent } from "@/lib/types";
 
 function AdjustEventForm() {
-  const { currentUser } = useUser();
+  const { user: sessionUser } = useSession();
   const searchParams = useSearchParams();
-  const eventId = searchParams.get('id');
+  const eventId = searchParams.get("id");
+  const urlUser = searchParams.get("user"); // from email link
+  const currentUser = (urlUser || sessionUser) as "Wife" | "Husband";
+  const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [notes, setNotes] = useState("");
+  const [category, setCategory] = useState("other");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [event, setEvent] = useState<CalendarEvent | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(!!eventId);
+  const [fetchError, setFetchError] = useState<string>("");
+  const noIdError = eventId ? null : "No event ID provided";
+  const error = noIdError || fetchError || null;
 
   useEffect(() => {
-    if (!eventId) {
-      setError("No event ID provided");
-      setLoading(false);
-      return;
-    }
+    if (!eventId) return;
 
     fetch(`/api/events/${eventId}`)
       .then(res => {
@@ -33,10 +38,11 @@ function AdjustEventForm() {
       })
       .then(data => {
         setEvent(data);
+        setCategory(data.category || "other");
         setLoading(false);
       })
       .catch(err => {
-        setError(err.message);
+        setFetchError(err.message);
         setLoading(false);
       });
   }, [eventId]);
@@ -54,6 +60,10 @@ function AdjustEventForm() {
           action: 'adjust',
           date,
           time,
+          title,
+          notes,
+          endTime: endTime || null,
+          category,
           user: currentUser,
           eventId: eventId
         })
@@ -114,7 +124,7 @@ function AdjustEventForm() {
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-sm plush-card p-6 relative overflow-hidden"
+        className="w-full max-w-sm md:max-w-md plush-card p-6 md:p-8 relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 p-4 opacity-10">
           <Cat size={120} />
@@ -145,6 +155,41 @@ function AdjustEventForm() {
           ) : (
             <form onSubmit={handlePropose} className="space-y-4">
               <div>
+                <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">Event Title</label>
+                <input
+                  required
+                  type="text"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder={event.title}
+                  className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-2 ml-2 text-text-dark/80">Category</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {EVENT_CATEGORIES.map((cat) => (
+                    <motion.button
+                      key={cat.id}
+                      type="button"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCategory(cat.id)}
+                      className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl text-xs font-bold transition-all border-2 ${
+                        category === cat.id
+                          ? "border-blush-pink bg-blush-pink/30 shadow-sm"
+                          : "border-transparent bg-white/50 hover:bg-white/80"
+                      }`}
+                    >
+                      <span className="text-lg">{cat.emoji}</span>
+                      <span className="text-[10px] leading-tight text-text-dark/70">{cat.label}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">New Date</label>
                 <input
                   required
@@ -155,14 +200,36 @@ function AdjustEventForm() {
                 />
               </div>
 
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">New Start Time</label>
+                  <input
+                    required
+                    type="time"
+                    value={time}
+                    onChange={e => setTime(e.target.value)}
+                    className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">New End Time</label>
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={e => setEndTime(e.target.value)}
+                    placeholder={event.endTime || undefined}
+                    className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">New Time</label>
-                <input
-                  required
-                  type="time"
-                  value={time}
-                  onChange={e => setTime(e.target.value)}
-                  className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
+                <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">Meow Notes 🐾</label>
+                <textarea
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  placeholder={event.notes || "Any additional thoughts..."}
+                  className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand resize-none h-20"
                 />
               </div>
 
@@ -173,7 +240,7 @@ function AdjustEventForm() {
                 disabled={isSubmitting}
                 className="w-full mt-2 bg-text-dark text-milk-white font-sniglet text-lg py-4 rounded-2xl shadow-plush flex justify-center items-center gap-2"
               >
-                {isSubmitting ? "Sending..." : "Propose Time 🐾"}
+                {isSubmitting ? "Sending..." : "Propose Changes 🐾"}
               </motion.button>
             </form>
           )}

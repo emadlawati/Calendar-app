@@ -3,20 +3,19 @@ export const dynamic = 'force-dynamic';
 import prisma from '@/lib/prisma';
 import resend from '@/lib/resend';
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '@/lib/google-calendar';
-
-function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
+import { getRequestUser } from '@/lib/auth';
+import { getDisplayName } from '@/lib/names';
+import { getCategoryById } from '@/lib/categories';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { action, date, time, user, eventId } = body;
+    const { action, date, time, title, notes: adjustNotes, endTime, category: adjustCategory, user: bodyUser, eventId } = body;
+
+    const user = await getRequestUser(bodyUser);
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
 
     if (!eventId) {
       return NextResponse.json({ success: false, error: "Event ID is required" }, { status: 400 });
@@ -42,6 +41,7 @@ export async function POST(request: Request) {
           time: acceptedEvent.time,
           endTime: acceptedEvent.endTime,
           notes: acceptedEvent.notes,
+          category: acceptedEvent.category,
         });
         
         if (googleEventId) {
@@ -58,7 +58,6 @@ export async function POST(request: Request) {
     }
 
     if (action === 'adjust') {
-      // Fetch the current event before updating so we know who created it
       const existingEvent = await prisma.calendarEvent.findUnique({
         where: { id: eventId }
       });
@@ -67,30 +66,41 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: "Event not found" }, { status: 404 });
       }
 
+      // Build update data, using new values when provided, keeping originals otherwise
+      const updatedTitle = title || existingEvent.title;
+      const updatedNotes = adjustNotes !== undefined ? adjustNotes : existingEvent.notes;
+      const updatedEndTime = endTime !== undefined ? endTime : existingEvent.endTime;
+      const updatedCategory = adjustCategory !== undefined ? adjustCategory : existingEvent.category;
+      const updatedDate = new Date(date || existingEvent.date);
+      const updatedTime = time || existingEvent.time;
+
       await prisma.calendarEvent.update({
         where: { id: eventId },
         data: {
           status: 'adjusted',
-          date: new Date(date),
-          time: time
+          date: updatedDate,
+          time: updatedTime,
+          title: updatedTitle,
+          notes: updatedNotes,
+          endTime: updatedEndTime,
+          category: updatedCategory,
         }
       });
 
-      const dateStr = new Date(date).toISOString().split('T')[0];
+      const dateStr = updatedDate.toISOString().split('T')[0];
       const creator = existingEvent.createdBy;
 
       // Update Google Calendar for the original creator's event
       if (existingEvent.creatorGoogleEventId) {
         updateCalendarEvent(existingEvent.creatorGoogleEventId, creator, {
-          title: existingEvent.title,
+          title: updatedTitle,
           date: dateStr,
-          time: time,
-          endTime: existingEvent.endTime,
-          notes: existingEvent.notes,
+          time: updatedTime,
+          endTime: updatedEndTime,
+          notes: updatedNotes,
+          category: updatedCategory,
         }).then(success => {
-          if (success) {
-            console.log(`Creator's Google Calendar event updated for ${creator}`);
-          }
+          if (success) console.log(`Creator's Google Calendar event updated for ${creator}`);
         }).catch(err => {
           console.error(`Creator's Google Calendar update failed for ${creator}:`, err);
         });
@@ -100,47 +110,67 @@ export async function POST(request: Request) {
       if (existingEvent.googleEventId) {
         const accepter = user || (creator === "Wife" ? "Husband" : "Wife");
         updateCalendarEvent(existingEvent.googleEventId, accepter, {
-          title: existingEvent.title,
+          title: updatedTitle,
           date: dateStr,
-          time: time,
-          endTime: existingEvent.endTime,
-          notes: existingEvent.notes,
+          time: updatedTime,
+          endTime: updatedEndTime,
+          notes: updatedNotes,
+          category: updatedCategory,
         }).then(success => {
-          if (success) {
-            console.log(`Accepter's Google Calendar event updated for ${accepter}`);
-          }
+          if (success) console.log(`Accepter's Google Calendar event updated for ${accepter}`);
         }).catch(err => {
           console.error(`Accepter's Google Calendar update failed for ${accepter}:`, err);
         });
       }
 
       // Send email notification to the original event creator
-      const adjuster = user || "Your partner";
+      const adjusterDisplayName = user ? getDisplayName(user) : "Your partner";
       const originalCreator = existingEvent.createdBy;
       const recipientEmail = originalCreator === "Wife"
         ? process.env.WIFE_EMAIL
         : process.env.HUSBAND_EMAIL;
-      const recipientName = originalCreator === "Wife" ? "Wife" : "Husband";
+      const cat = getCategoryById(updatedCategory);
 
       if (recipientEmail && process.env.RESEND_API_KEY !== "re_...") {
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-        const newDateFormatted = formatDate(new Date(date));
 
         try {
+          // Build a detailed list of changes for the email
+          const changes: string[] = [];
+          if (title && title !== existingEvent.title) {
+            changes.push(`<li>📝 Title: <strong>${existingEvent.title}</strong> → <strong style="color:#e91e63;">${title}</strong></li>`);
+          }
+          if (date || time) {
+            const oldDateStr = existingEvent.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            const newDateStr = updatedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            if (oldDateStr !== newDateStr || existingEvent.time !== updatedTime) {
+              changes.push(`<li>📅 Date/Time: <strong>${oldDateStr} @ ${existingEvent.time}</strong> → <strong style="color:#e91e63;">${newDateStr} @ ${updatedTime}</strong></li>`);
+            }
+          }
+          if (adjustNotes !== undefined && adjustNotes !== existingEvent.notes) {
+            changes.push(`<li>💬 Notes updated to: <em>"${adjustNotes || 'none'}"</em></li>`);
+          }
+          if (endTime !== undefined && endTime !== existingEvent.endTime) {
+            changes.push(`<li>⏰ End Time: <strong>${existingEvent.endTime || 'not set'}</strong> → <strong style="color:#e91e63;">${endTime || 'not set'}</strong></li>`);
+          }
+
+          const changesHtml = changes.length > 0 
+            ? `<ul style="padding: 0; list-style: none; margin: 15px 0;">${changes.join('')}</ul>`
+            : '<p style="margin: 15px 0;">View the updated plan in your calendar.</p>';
+
           await resend.emails.send({
             from: 'Calendar 🐾 <noreply@yaminami.uk>',
             to: recipientEmail,
-            subject: `🐾 ${existingEvent.title} — ${adjuster} proposed a new time!`,
+            subject: `${cat.emoji} ${updatedTitle} — ${adjusterDisplayName} proposed changes!`,
             html: `
               <div style="font-family: sans-serif; background-color: #fdfbf7; padding: 40px; border-radius: 32px; color: #5d4037; border: 2px solid #d7ccc8;">
-                <h1 style="color: #5d4037; font-size: 24px;">Meow! ${adjuster} wants to adjust the plan 🐾</h1>
+                <h1 style="color: #5d4037; font-size: 24px;">Meow! ${adjusterDisplayName} wants to adjust the plan 🐾</h1>
 
                 <div style="background-color: #ffffff; padding: 24px; border-radius: 24px; margin: 20px 0; border: 1px solid #ffeedb;">
-                  <p style="margin: 0; font-size: 14px; color: #5d4037; opacity: 0.8;">The Plan:</p>
-                  <h2 style="margin: 5px 0; color: #5d4037;">${existingEvent.title}</h2>
-                  <p style="margin: 5px 0;">📅 Was: ${formatDate(existingEvent.date)} @ ${existingEvent.time}</p>
-                  <p style="margin: 5px 0; color: #e91e63;">✏️ Proposed: ${newDateFormatted} @ ${time}</p>
-                  ${existingEvent.notes ? `<p style="margin: 15px 0; font-style: italic; color: #5d4037;">"Meow Notes: ${existingEvent.notes}"</p>` : ''}
+                  <p style="margin: 0; font-size: 14px; color: #5d4037; opacity: 0.8;">${cat.emoji} ${cat.label} — Changes proposed:</p>
+                  <h2 style="margin: 5px 0; color: #5d4037;">${updatedTitle}</h2>
+                  ${changesHtml}
+                  ${updatedNotes ? `<p style="margin: 15px 0; font-style: italic; color: #5d4037;">"Meow Notes: ${updatedNotes}"</p>` : ''}
                 </div>
 
                 <div style="margin-top: 20px;">
@@ -255,7 +285,7 @@ export async function GET(request: Request) {
     });
 
     // Sync to Google Calendar for the person who accepted via email link
-    if (acceptedEvent && acceptedBy) {
+      if (acceptedEvent && acceptedBy) {
       const dateStr = acceptedEvent.date.toISOString().split('T')[0];
       const googleEventId = await createCalendarEvent(acceptedBy, {
         title: acceptedEvent.title,
@@ -263,6 +293,7 @@ export async function GET(request: Request) {
         time: acceptedEvent.time,
         endTime: acceptedEvent.endTime,
         notes: acceptedEvent.notes,
+        category: acceptedEvent.category,
       });
       
       if (googleEventId) {

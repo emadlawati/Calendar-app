@@ -2,10 +2,13 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CalendarHeart, Clock, MessageSquare, User, Check, Edit2, Trash2, Archive, RotateCcw } from "lucide-react";
-import { useUser } from "@/components/UserProvider";
+import { useSession } from "@/components/SessionProvider";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { triggerConfetti } from "@/lib/confetti";
+import { getCategoryById } from "@/lib/categories";
+import { getDisplayName } from "@/lib/names";
 import type { CalendarEvent } from "@/lib/types";
 
 interface DetailsModalProps {
@@ -16,7 +19,7 @@ interface DetailsModalProps {
 }
 
 export default function DetailsModal({ isOpen, onClose, onSuccess, event }: DetailsModalProps) {
-  const { currentUser } = useUser();
+  const { user: currentUser } = useSession();
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
@@ -41,6 +44,9 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event }: Deta
       });
       if (res.ok) {
         setShowConfirmDelete(false);
+        if (action === "accept") {
+          triggerConfetti();
+        }
         onSuccess();
         onClose();
       }
@@ -80,7 +86,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event }: Deta
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             transition={{ type: "spring", bounce: 0.4 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm z-50 p-8 plush-card"
+            className="fixed inset-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:w-full md:max-w-sm z-50 p-4 md:p-8 plush-card rounded-none md:rounded-[2.5rem] overflow-y-auto"
           >
             {/* Cat Ear Motifs */}
             <div className="absolute -top-4 -left-1 w-10 h-10 bg-white rotate-45 rounded-tl-2xl border-t border-l border-latte-brown/20" />
@@ -103,7 +109,23 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event }: Deta
 
               <div className="space-y-6">
                 <div className="bg-milk-white/50 p-4 rounded-3xl border border-soft-peach">
-                  <h3 className="text-xl font-bold font-sniglet text-text-dark">{event.title}</h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-xl font-bold font-sniglet text-text-dark">{event.title}</h3>
+                    {event.category && (
+                      <span className="text-sm">{getCategoryById(event.category).emoji}</span>
+                    )}
+                  </div>
+                  {event.category && (
+                    <span
+                      className="inline-block text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
+                      style={{
+                        backgroundColor: getCategoryById(event.category).color,
+                        color: "#5d4037",
+                      }}
+                    >
+                      {getCategoryById(event.category).label}
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -125,7 +147,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event }: Deta
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-wider font-bold opacity-40">Proposed By</p>
-                      <span className="font-quicksand font-bold text-sm">{event.createdBy}</span>
+                      <span className="font-quicksand font-bold text-sm">{getDisplayName(event.createdBy)}</span>
                     </div>
                   </div>
 
@@ -136,7 +158,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event }: Deta
                       </div>
                       <div className="bg-white p-4 rounded-3xl border border-latte-brown/10 flex-1 relative">
                         <div className="absolute -left-2 top-4 w-4 h-4 bg-white rotate-45 border-l border-b border-latte-brown/10" />
-                        <p className="text-sm font-quicksand leading-relaxed italic relative z-10">"{event.notes}"</p>
+                        <p className="text-sm font-quicksand leading-relaxed italic relative z-10">&ldquo;{event.notes}&rdquo;</p>
                       </div>
                     </div>
                   )}

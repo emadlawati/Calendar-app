@@ -1,35 +1,102 @@
-import { NextResponse } from 'next/server';
-export const dynamic = 'force-dynamic';
-import { saveTokensFromCode } from '@/lib/google-calendar';
+import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+import { google } from "googleapis";
+import prisma from "@/lib/prisma";
+import { getOAuth2Client } from "@/lib/google-calendar";
+import { createSession } from "@/lib/session";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const code = searchParams.get('code');
-    const userId = searchParams.get('state');
+    const code = searchParams.get("code");
+    const state = searchParams.get("state");
 
-    if (!code || !userId) {
-      console.error('Missing code or userId:', { code: !!code, userId: !!userId });
+    if (!code || !state) {
+      console.error("Missing code or state:", { code: !!code, state: !!state });
       return NextResponse.redirect(
-        new URL('/?google=error&reason=missing_params', request.url)
+        new URL("/?google=error&reason=missing_params", request.url)
       );
     }
 
-    await saveTokensFromCode(code, userId);
+    // Exchange code for tokens (only once!)
+    const oauth2Client = getOAuth2Client();
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
 
-    // Redirect back to the app with success
+    // Get user's email from Google
+    const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+    const { data: userInfo } = await oauth2.userinfo.get();
+    const email = userInfo.email;
+
+    if (!email) {
+      return NextResponse.redirect(
+        new URL("/login?error=no_email", request.url)
+      );
+    }
+
+    const isLogin = state === "login";
+    let userId: string;
+
+    if (isLogin) {
+      // Login flow: determine identity from email
+      const wifeEmail = process.env.WIFE_EMAIL;
+      const husbandEmail = process.env.HUSBAND_EMAIL;
+
+      if (email === wifeEmail) {
+        userId = "Wife";
+      } else if (email === husbandEmail) {
+        userId = "Husband";
+      } else {
+        console.error("Unauthorized email attempted login:", email);
+        return NextResponse.redirect(
+          new URL("/login?error=unauthorized", request.url)
+        );
+      }
+    } else {
+      // Calendar connect flow: state carries the userId
+      userId = state;
+    }
+
+    // Save tokens to DB
+    const refreshTokenValue = tokens.refresh_token ?? null;
+    await prisma.googleCalendarToken.upsert({
+      where: { userId },
+      update: {
+        accessToken: tokens.access_token!,
+        refreshToken: refreshTokenValue,
+        expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+        email,
+      },
+      create: {
+        userId,
+        accessToken: tokens.access_token!,
+        refreshToken: refreshTokenValue,
+        expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+        email,
+      },
+    });
+
+    // Create session for login flow
+    if (isLogin) {
+      await createSession({ userId: userId as "Wife" | "Husband", email });
+    }
+
+    // Redirect
+    if (isLogin) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
     return NextResponse.redirect(
       new URL(`/?google=connected&user=${userId}`, request.url)
     );
   } catch (error) {
-    console.error('Google OAuth Callback Error:', error);
-    // Log more details about the error
+    console.error("Google OAuth Callback Error:", error);
     if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
     }
     return NextResponse.redirect(
-      new URL(`/?google=error&reason=callback_failed`, request.url)
+      new URL("/?google=error&reason=callback_failed", request.url)
     );
   }
 }

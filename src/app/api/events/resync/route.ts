@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import prisma from '@/lib/prisma';
 import { createCalendarEvent } from '@/lib/google-calendar';
+import { getRequestUser } from '@/lib/auth';
 
 interface SyncResult {
   eventId: string;
@@ -13,10 +14,11 @@ interface SyncResult {
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await request.json();
+    const { userId: bodyUserId } = await request.json();
+    const userId = await getRequestUser(bodyUserId);
 
-    if (!userId || (userId !== "Wife" && userId !== "Husband")) {
-      return NextResponse.json({ success: false, error: "Valid userId (Wife or Husband) is required" }, { status: 400 });
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     // Fetch all non-archived events
@@ -48,6 +50,7 @@ export async function POST(request: Request) {
             time: event.time,
             endTime: event.endTime,
             notes: event.notes,
+            category: event.category,
           });
 
           if (googleEventId) {

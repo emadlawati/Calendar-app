@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CalendarHeart, Clock } from "lucide-react";
-import { useUser } from "./UserProvider";
+import { useSession } from "./SessionProvider";
 import type { CreateEventPayload } from "@/lib/types";
+import { EVENT_CATEGORIES } from "@/lib/categories";
 
 interface EventModalProps {
   isOpen: boolean;
@@ -14,12 +15,14 @@ interface EventModalProps {
 }
 
 export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }: EventModalProps) {
-  const { currentUser } = useUser();
+  const { user } = useSession();
+  const currentUser = user!; // proxy ensures session exists
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(selectedDate ? selectedDate.toISOString().split('T')[0] : "");
   const [time, setTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
+  const [category, setCategory] = useState("other");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Use a 2-hour default duration if no endTime is set
@@ -43,14 +46,15 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
     e.preventDefault();
     setIsSubmitting(true);
 
-    const payload: CreateEventPayload = {
-      title,
-      date,
-      time,
-      endTime: endTime || undefined,
-      notes,
-      createdBy: currentUser,
-    };
+      const payload: CreateEventPayload = {
+        title,
+        date,
+        time,
+        endTime: endTime || undefined,
+        notes,
+        category,
+        createdBy: currentUser,
+      };
 
     try {
       const res = await fetch('/api/events/create', {
@@ -93,7 +97,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             transition={{ type: "spring", bounce: 0.5 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50 p-6 plush-card"
+            className="fixed inset-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:w-full md:max-w-md z-50 p-4 md:p-8 plush-card rounded-none md:rounded-[2.5rem] overflow-y-auto"
           >
             {/* Cat Ear Motifs */}
             <div className="absolute -top-3 -left-1 w-8 h-8 bg-white rotate-45 rounded-tl-xl border-t border-l border-latte-brown/20" />
@@ -120,6 +124,29 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                     className="w-full bg-milk-white border-2 border-soft-peach rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
                     placeholder="e.g. Movie night & cuddles"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold mb-2 ml-2 text-text-dark/80">Category</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {EVENT_CATEGORIES.map((cat) => (
+                      <motion.button
+                        key={cat.id}
+                        type="button"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setCategory(cat.id)}
+                        className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl text-xs font-bold transition-all border-2 ${
+                          category === cat.id
+                            ? "border-blush-pink bg-blush-pink/30 shadow-sm"
+                            : "border-transparent bg-white/50 hover:bg-white/80"
+                        }`}
+                      >
+                        <span className="text-lg">{cat.emoji}</span>
+                        <span className="text-[10px] leading-tight text-text-dark/70">{cat.label}</span>
+                      </motion.button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex gap-4">

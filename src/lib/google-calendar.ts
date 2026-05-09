@@ -25,6 +25,25 @@ export function getAuthUrl(userId: string): string {
 }
 
 /**
+ * Exchange code for tokens and return the email without saving to DB.
+ * Used during the login flow to determine user identity.
+ */
+export async function getEmailFromLogin(code: string): Promise<string | null> {
+  try {
+    const oauth2Client = getOAuth2Client();
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+    const { data: userInfo } = await oauth2.userinfo.get();
+    return userInfo.email ?? null;
+  } catch (err) {
+    console.error("Failed to get email from code:", err);
+    return null;
+  }
+}
+
+/**
  * Exchange authorization code for tokens and save to DB.
  */
 export async function saveTokensFromCode(code: string, userId: string) {
@@ -127,6 +146,7 @@ export async function createCalendarEvent(
     time: string;     // HH:mm
     endTime: string | null;
     notes: string | null;
+    category?: string | null;
   }
 ): Promise<string | null> {
   const auth = await getAuthenticatedClient(userId);
@@ -147,13 +167,13 @@ export async function createCalendarEvent(
   const timeZone = 'Asia/Muscat';
 
   try {
-    const response = await calendar.events.insert({
+      const response = await calendar.events.insert({
       calendarId: 'primary',
       requestBody: {
         summary: `🐾 ${event.title}`,
         description: event.notes
-          ? `From Couples Calendar 🐾\n\nNotes: ${event.notes}`
-          : 'From Couples Calendar 🐾',
+          ? `From Couples Calendar 🐾\n\n${event.category ? `Category: ${event.category}\n` : ""}Notes: ${event.notes}`
+          : `From Couples Calendar 🐾${event.category ? `\n\nCategory: ${event.category}` : ""}`,
         start: {
           dateTime: startDateTime,
           timeZone,
@@ -184,6 +204,7 @@ export async function updateCalendarEvent(
     time: string;     // HH:mm
     endTime: string | null;
     notes: string | null;
+    category?: string | null;
   }
 ): Promise<boolean> {
   const auth = await getAuthenticatedClient(userId);
@@ -209,8 +230,8 @@ export async function updateCalendarEvent(
       requestBody: {
         summary: `🐾 ${event.title}`,
         description: event.notes
-          ? `From Couples Calendar 🐾\n\nNotes: ${event.notes}`
-          : 'From Couples Calendar 🐾',
+          ? `From Couples Calendar 🐾\n\n${event.category ? `Category: ${event.category}\n` : ""}Notes: ${event.notes}`
+          : `From Couples Calendar 🐾${event.category ? `\n\nCategory: ${event.category}` : ""}`,
         start: {
           dateTime: startDateTime,
           timeZone,

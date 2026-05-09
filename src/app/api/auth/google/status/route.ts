@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import prisma from '@/lib/prisma';
+import { getRequestUser } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const userId = await getRequestUser(searchParams.get('userId') || undefined);
 
-    if (!userId || (userId !== 'Wife' && userId !== 'Husband')) {
+    if (!userId) {
       return NextResponse.json(
-        { success: false, error: 'userId must be "Wife" or "Husband"' },
-        { status: 400 }
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
       );
     }
 

@@ -40,10 +40,28 @@ body {
 
 .calendar-custom .rbc-toolbar { 
   margin-bottom: 1.5rem;
-  padding: 1rem;
+  padding: 0.75rem;
   background-color: rgba(255, 255, 255, 0.5);
   border-radius: 1.5rem;
   border: 1px solid rgba(215, 204, 200, 0.2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .calendar-custom .rbc-toolbar {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .calendar-custom .rbc-toolbar .rbc-toolbar-label {
+    font-size: 0.875rem;
+    padding: 0.25rem 0;
+    width: 100%;
+    text-align: center;
+  }
 }
 
 .calendar-custom .rbc-toolbar button {
@@ -194,6 +212,17 @@ body {
 
 .calendar-custom .rbc-day-slot .rbc-events-container {
   border-left: 2px solid rgba(215, 204, 200, 0.12);
+}
+
+/* Mobile: make week/day views scroll horizontally */
+@media (max-width: 768px) {
+  .calendar-custom .rbc-time-view {
+    min-width: 600px;
+  }
+
+  .calendar-custom {
+    overflow-x: auto;
+  }
 }
 
 .calendar-custom .rbc-allday-cell {

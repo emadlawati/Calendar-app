@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Sniglet, Quicksand } from "next/font/google";
 import "./globals.css";
-import { UserProvider } from "@/components/UserProvider";
+import { SessionProvider } from "@/components/SessionProvider";
 
 const sniglet = Sniglet({
   weight: ["400", "800"],
@@ -27,9 +27,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${sniglet.variable} ${quicksand.variable} font-quicksand bg-milk-white text-text-dark antialiased`}>
-        <UserProvider>
+        <SessionProvider>
           {children}
-        </UserProvider>
+        </SessionProvider>
       </body>
     </html>
   );
