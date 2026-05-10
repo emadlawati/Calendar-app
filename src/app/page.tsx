@@ -21,6 +21,8 @@ import type { CalendarEvent, StickyNote } from "@/lib/types";
 import { HeartPulse, Plus, X, Heart } from "lucide-react";
 import { getDisplayName } from "@/lib/names";
 
+const TIMEZONE = "+04:00"; // Asia/Muscat GMT+4
+
 // Setup react-big-calendar localizer
 const locales = {
   "en-US": enUS,
@@ -65,14 +67,12 @@ export default function Home() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setEvents(data.map((event: CalendarEvent) => {
-          // Parse YYYY-MM-DD from the stored date
           const datePart = new Date(event.date).toISOString().split('T')[0];
-          // Combine with the HH:mm time string
-          const start = new Date(`${datePart}T${event.time}:00`);
-          // Use endTime from DB if available, otherwise default to 1 hour
+          // Parse times in Asia/Muscat timezone (GMT+4)
+          const start = new Date(`${datePart}T${event.time}:00${TIMEZONE}`);
           let end: Date;
           if (event.endTime) {
-            end = new Date(`${datePart}T${event.endTime}:00`);
+            end = new Date(`${datePart}T${event.endTime}:00${TIMEZONE}`);
           } else {
             end = new Date(start.getTime() + 60 * 60 * 1000);
           }
