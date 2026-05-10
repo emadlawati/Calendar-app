@@ -147,6 +147,7 @@ export async function createCalendarEvent(
     endTime: string | null;
     notes: string | null;
     category?: string | null;
+    allDay?: boolean;
   }
 ): Promise<string | null> {
   const auth = await getAuthenticatedClient(userId);
@@ -154,19 +155,32 @@ export async function createCalendarEvent(
 
   const calendar = google.calendar({ version: 'v3', auth });
 
-  const startDateTime = `${event.date}T${event.time}:00`;
-  const endDateTime = event.endTime
-    ? `${event.date}T${event.endTime}:00`
-    : `${event.date}T${event.time}:00`;
-
-  // If no endTime, default to 1 hour
-  const end = event.endTime
-    ? endDateTime
-    : new Date(new Date(startDateTime).getTime() + 60 * 60 * 1000).toISOString();
-
   const timeZone = 'Asia/Muscat';
 
   try {
+    if (event.allDay) {
+      const response = await calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: {
+          summary: `🐾 ${event.title}`,
+          description: event.notes
+            ? `From Couples Calendar 🐾\n\n${event.category ? `Category: ${event.category}\n` : ""}Notes: ${event.notes}`
+            : `From Couples Calendar 🐾${event.category ? `\n\nCategory: ${event.category}` : ""}`,
+          start: { date: event.date },
+          end: { date: event.date },
+        },
+      });
+      return response.data.id || null;
+    }
+
+    const startDateTime = `${event.date}T${event.time}:00`;
+    const endDateTime = event.endTime
+      ? `${event.date}T${event.endTime}:00`
+      : `${event.date}T${event.time}:00`;
+
+    const end = event.endTime
+      ? endDateTime
+      : new Date(new Date(startDateTime).getTime() + 60 * 60 * 1000).toISOString();
       const response = await calendar.events.insert({
       calendarId: 'primary',
       requestBody: {
@@ -205,25 +219,41 @@ export async function updateCalendarEvent(
     endTime: string | null;
     notes: string | null;
     category?: string | null;
+    allDay?: boolean;
   }
 ): Promise<boolean> {
   const auth = await getAuthenticatedClient(userId);
   if (!auth) return false;
 
   const calendar = google.calendar({ version: 'v3', auth });
-
-  const startDateTime = `${event.date}T${event.time}:00`;
-  const endDateTime = event.endTime
-    ? `${event.date}T${event.endTime}:00`
-    : `${event.date}T${event.time}:00`;
-
-  const end = event.endTime
-    ? endDateTime
-    : new Date(new Date(startDateTime).getTime() + 60 * 60 * 1000).toISOString();
-
   const timeZone = 'Asia/Muscat';
 
   try {
+    if (event.allDay) {
+      await calendar.events.update({
+        calendarId: 'primary',
+        eventId: googleEventId,
+        requestBody: {
+          summary: `🐾 ${event.title}`,
+          description: event.notes
+            ? `From Couples Calendar 🐾\n\n${event.category ? `Category: ${event.category}\n` : ""}Notes: ${event.notes}`
+            : `From Couples Calendar 🐾${event.category ? `\n\nCategory: ${event.category}` : ""}`,
+          start: { date: event.date },
+          end: { date: event.date },
+        },
+      });
+      return true;
+    }
+
+    const startDateTime = `${event.date}T${event.time}:00`;
+    const endDateTime = event.endTime
+      ? `${event.date}T${event.endTime}:00`
+      : `${event.date}T${event.time}:00`;
+
+    const end = event.endTime
+      ? endDateTime
+      : new Date(new Date(startDateTime).getTime() + 60 * 60 * 1000).toISOString();
+
     await calendar.events.update({
       calendarId: 'primary',
       eventId: googleEventId,

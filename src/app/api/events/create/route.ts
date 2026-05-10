@@ -10,7 +10,7 @@ import { getCategoryById } from '@/lib/categories';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, date, time, endTime, notes, category, createdBy: bodyCreatedBy } = body;
+    const { title, date, time, endTime, notes, category, allDay, createdBy: bodyCreatedBy } = body;
 
     const createdBy = await getRequestUser(bodyCreatedBy);
     if (!createdBy) {
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
         endTime: endTime || null,
         notes,
         category: category || "other",
+        allDay: allDay || false,
         createdBy,
         status: "pending"
       }

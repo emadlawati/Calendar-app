@@ -11,7 +11,7 @@ export default function NudgeButton() {
     if (isSending) return;
     setIsSending(true);
     try {
-      const res = await fetch("/api/nudge", { method: "POST" });
+      const res = await fetch("/api/nudge", { method: "POST", credentials: "same-origin" });
       const data = await res.json();
       if (data.success) {
         // The page.tsx toast handler will catch events

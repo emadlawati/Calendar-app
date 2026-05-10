@@ -43,6 +43,7 @@ export default function BucketListDrawer({ isOpen, onClose }: BucketListDrawerPr
       const res = await fetch("/api/bucket", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ title: newTitle.trim() }),
       });
       if (res.ok) {

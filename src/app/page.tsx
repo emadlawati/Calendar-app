@@ -81,6 +81,7 @@ export default function Home() {
             ...event,
             start,
             end,
+            allDay: event.allDay || false,
           };
         }));
       }
@@ -267,6 +268,7 @@ export default function Home() {
                 events={events}
                 startAccessor="start"
                 endAccessor="end"
+                allDayAccessor="allDay"
                 view={view}
                 onView={(newView: View) => setView(newView)}
                 style={{ height: "100%", fontFamily: "var(--font-quicksand)" }}

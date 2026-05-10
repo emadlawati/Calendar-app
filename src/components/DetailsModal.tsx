@@ -36,6 +36,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event }: Deta
       const res = await fetch('/api/events/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "same-origin",
         body: JSON.stringify({
           action,
           eventId: event.id,

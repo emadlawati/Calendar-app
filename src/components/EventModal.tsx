@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CalendarHeart, Clock } from "lucide-react";
+import { X, CalendarHeart, Clock, Sun } from "lucide-react";
 import { useSession } from "./SessionProvider";
 import type { CreateEventPayload } from "@/lib/types";
 import { EVENT_CATEGORIES, getCategoryById } from "@/lib/categories";
@@ -24,7 +24,9 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
   const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
   const [category, setCategory] = useState("other");
+  const [allDay, setAllDay] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [showBucketPicker, setShowBucketPicker] = useState(false);
   const [bucketItems, setBucketItems] = useState<BucketItem[]>([]);
   const [bucketLoading, setBucketLoading] = useState(false);
@@ -69,14 +71,16 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError("");
 
       const payload: CreateEventPayload = {
         title,
         date,
-        time,
-        endTime: endTime || undefined,
+        time: allDay ? "00:00" : time,
+        endTime: allDay ? "23:59" : (endTime || undefined),
         notes,
         category,
+        allDay,
         createdBy: currentUser,
       };
 
@@ -84,23 +88,24 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
       const res = await fetch('/api/events/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "same-origin",
         body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
-        console.error("Failed to create event");
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to create event. Please try again.");
         setIsSubmitting(false);
         return;
       }
 
-      // Simulate network delay for cute button state
       setTimeout(() => {
         setIsSubmitting(false);
         if (onSuccess) onSuccess();
         onClose();
       }, 800);
-    } catch (err) {
-      console.error("Event creation error:", err);
+    } catch {
+      setError("Network error. Please check your connection.");
       setIsSubmitting(false);
     }
   };
@@ -224,6 +229,23 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                   </div>
                 </div>
 
+                <motion.button
+                  type="button"
+                  onClick={() => {
+                    setAllDay(!allDay);
+                    if (!allDay) { setTime("00:00"); setEndTime("23:59"); }
+                  }}
+                  className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-bold transition-all border-2 ${
+                    allDay
+                      ? "bg-amber-50 border-amber-300 text-amber-700"
+                      : "bg-white/50 border-latte-brown/10 text-latte-brown hover:border-amber-200"
+                  }`}
+                >
+                  <Sun size={16} />
+                  All Day
+                </motion.button>
+
+                {!allDay && (
                 <div className="flex gap-4">
                   <div className="flex-1">
                     <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">
@@ -255,6 +277,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                     )}
                   </div>
                 </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">Meow Notes 🐾</label>
@@ -265,6 +288,16 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                     placeholder="Don't forget to bring snacks..."
                   />
                 </div>
+
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl p-3 text-center"
+                  >
+                    {error}
+                  </motion.div>
+                )}
 
                 <motion.button
                   whileHover={{ scale: 1.02 }}

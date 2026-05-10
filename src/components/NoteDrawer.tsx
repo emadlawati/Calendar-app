@@ -36,6 +36,7 @@ export default function NoteDrawer({ isOpen, onClose }: NoteDrawerProps) {
       const res = await fetch("/api/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ content: content.trim() }),
       });
       if (res.ok) {

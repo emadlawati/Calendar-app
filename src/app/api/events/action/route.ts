@@ -10,7 +10,7 @@ import { getCategoryById } from '@/lib/categories';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { action, date, time, title, notes: adjustNotes, endTime, category: adjustCategory, user: bodyUser, eventId } = body;
+    const { action, date, time, title, notes: adjustNotes, endTime, category: adjustCategory, allDay, user: bodyUser, eventId } = body;
 
     const user = await getRequestUser(bodyUser);
     if (!user) {
@@ -71,6 +71,7 @@ export async function POST(request: Request) {
       const updatedNotes = adjustNotes !== undefined ? adjustNotes : existingEvent.notes;
       const updatedEndTime = endTime !== undefined ? endTime : existingEvent.endTime;
       const updatedCategory = adjustCategory !== undefined ? adjustCategory : existingEvent.category;
+      const updatedAllDay = allDay !== undefined ? allDay : existingEvent.allDay;
       const updatedDate = new Date(date || existingEvent.date);
       const updatedTime = time || existingEvent.time;
 
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
           notes: updatedNotes,
           endTime: updatedEndTime,
           category: updatedCategory,
+          allDay: updatedAllDay,
         }
       });
 
@@ -99,6 +101,7 @@ export async function POST(request: Request) {
           endTime: updatedEndTime,
           notes: updatedNotes,
           category: updatedCategory,
+          allDay: updatedAllDay,
         }).then(success => {
           if (success) console.log(`Creator's Google Calendar event updated for ${creator}`);
         }).catch(err => {
@@ -116,6 +119,7 @@ export async function POST(request: Request) {
           endTime: updatedEndTime,
           notes: updatedNotes,
           category: updatedCategory,
+          allDay: updatedAllDay,
         }).then(success => {
           if (success) console.log(`Accepter's Google Calendar event updated for ${accepter}`);
         }).catch(err => {

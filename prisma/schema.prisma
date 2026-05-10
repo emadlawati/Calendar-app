@@ -15,6 +15,7 @@ model CalendarEvent {
   time          String
   endTime       String?
   category      String?  // event category id (date-night, adventure, special, chores, casual, other)
+  allDay        Boolean  @default(false)
   createdBy     String
   status        String   @default("pending")
   archived      Boolean  @default(false)

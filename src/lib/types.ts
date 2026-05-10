@@ -8,10 +8,11 @@ export interface CalendarEvent {
   id: string;
   title: string;
   notes: string | null;
-  date: string; // ISO date string from the database
-  time: string;  // HH:mm format
-  endTime: string | null; // optional end time (HH:mm format)
-  category: string | null; // event category id
+  date: string;
+  time: string;
+  endTime: string | null;
+  category: string | null;
+  allDay: boolean;
   createdBy: User;
   status: EventStatus;
   archived: boolean;
@@ -31,6 +32,7 @@ export interface CreateEventPayload {
   endTime?: string;
   notes: string;
   category?: string;
+  allDay?: boolean;
   createdBy: User;
 }
 
@@ -43,6 +45,7 @@ export interface ActionPayload {
   notes?: string | null;
   endTime?: string | null;
   category?: string | null;
+  allDay?: boolean;
   user?: User;
 }
 
