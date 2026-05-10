@@ -19,6 +19,7 @@ import { triggerConfetti } from "@/lib/confetti";
 import { getCategoryById } from "@/lib/categories";
 import type { CalendarEvent, StickyNote } from "@/lib/types";
 import { HeartPulse, Plus, X, Heart } from "lucide-react";
+import { getDisplayName } from "@/lib/names";
 
 // Setup react-big-calendar localizer
 const locales = {
@@ -355,7 +356,7 @@ export default function Home() {
               initial={{ opacity: 0, y: -60, rotate: -5, x: 20 }}
               animate={{
                 opacity: 1,
-                y: [null, -15, 0],
+                y: [0, -15, 0],
                 rotate: [-3, 2, 0],
               }}
               exit={{ opacity: 0, x: 100, rotate: 15 }}
@@ -384,7 +385,7 @@ export default function Home() {
                 <div>
                   <p className="text-sm text-text-dark leading-snug font-quicksand">{note.content}</p>
                   <p className="text-[10px] text-text-dark/40 mt-1.5">
-                    — {note.createdBy === "Wife" ? "Budoor" : "Imad"} 💌
+                    — {getDisplayName(note.createdBy)} 💌
                   </p>
                   <p className="text-[9px] text-text-dark/25 mt-0.5">
                     {new Date(note.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
