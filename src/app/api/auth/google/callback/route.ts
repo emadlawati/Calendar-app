@@ -48,9 +48,11 @@ export async function GET(request: Request) {
         userId = "Husband";
       } else {
         console.error("Unauthorized email attempted login:", email);
-        return NextResponse.redirect(
-          new URL("/login?error=unauthorized", request.url)
-        );
+        console.error("Expected Wife:", wifeEmail, "| Husband:", husbandEmail);
+        const errorUrl = new URL("/login", request.url);
+        errorUrl.searchParams.set("error", "unauthorized");
+        errorUrl.searchParams.set("email", email);
+        return NextResponse.redirect(errorUrl);
       }
     } else {
       // Calendar connect flow: state carries the userId

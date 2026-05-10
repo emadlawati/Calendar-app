@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+  const attemptedEmail = searchParams.get("email");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -53,10 +54,15 @@ function LoginContent() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl p-3 mb-6 flex items-center gap-2"
+            className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl p-4 mb-6 text-left"
           >
-            <Cat size={16} />
-            <span>This Google account isn&apos;t registered. Please use your couple&apos;s email.</span>
+            <p className="font-bold mb-1 flex items-center gap-1"><Cat size={14} /> Not registered!</p>
+            <p className="mb-2">
+              The Google account{attemptedEmail ? ` (${attemptedEmail})` : ""} you tried isn't linked to this calendar.
+            </p>
+            <p className="text-xs opacity-70">
+              Make sure <strong>WIFE_EMAIL</strong> and <strong>HUSBAND_EMAIL</strong> in Vercel environment variables match your actual Google emails.
+            </p>
           </motion.div>
         )}
 
