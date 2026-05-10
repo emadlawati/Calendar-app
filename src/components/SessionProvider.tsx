@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import type { User } from "@/lib/types";
 
 interface SessionState {
@@ -8,7 +8,7 @@ interface SessionState {
   email: string | null;
   isLoading: boolean;
   logout: () => Promise<void>;
-  refresh: () => Promise<void>;
+  refresh: () => void;
 }
 
 const SessionContext = createContext<SessionState>({
@@ -24,24 +24,40 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch("/api/auth/me");
-      const data = await res.json();
-      setUser(data.user);
-      setEmail(data.email);
-    } catch {
-      setUser(null);
-      setEmail(null);
-    } finally {
-      setIsLoading(false);
-    }
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        setUser(data.user);
+        setEmail(data.email);
+      })
+      .catch(() => {
+        setUser(null);
+        setEmail(null);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refresh();
-  }, [refresh]);
+    if (isLoading) return;
+    // Only redirect if we're on the main app page (not login, not adjust, not API)
+    const loc = window.location.pathname;
+    if (!user && loc !== "/login" && !loc.startsWith("/events/adjust") && !loc.startsWith("/api/")) {
+      window.location.href = "/login";
+    }
+  }, [user, isLoading]);
+
+  const refresh = () => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        setUser(data.user);
+        setEmail(data.email);
+      })
+      .catch(() => {});
+  };
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
