@@ -38,24 +38,37 @@ export async function GET(request: Request) {
     let userId: string;
 
     if (isLogin) {
-      const wifeEmail = (process.env.WIFE_EMAIL || "").trim();
-      const husbandEmail = (process.env.HUSBAND_EMAIL || "").trim();
-      const loginEmail = (email || "").trim();
+      const loginEmail = (email || "").trim().toLowerCase();
 
       console.log("Login attempt — email:", loginEmail);
-      console.log("Expected Wife:", wifeEmail, "| Husband:", husbandEmail);
 
-      if (loginEmail.toLowerCase() === wifeEmail.toLowerCase()) {
-        userId = "Wife";
-      } else if (loginEmail.toLowerCase() === husbandEmail.toLowerCase()) {
-        userId = "Husband";
+      // First: check if this email already exists in Google Calendar tokens
+      const existingToken = await prisma.googleCalendarToken.findFirst({
+        where: { email: { equals: loginEmail, mode: "insensitive" } },
+      });
+
+      if (existingToken) {
+        userId = existingToken.userId;
+        console.log("Login matched via existing Google Calendar token — userId:", userId);
       } else {
-        console.error("MISMATCH — got:", loginEmail, "wanted:", wifeEmail, "or", husbandEmail);
-        console.error("Lengths — got:", loginEmail.length, "wife:", wifeEmail.length, "husband:", husbandEmail.length);
-        const errorUrl = new URL("/login", request.url);
-        errorUrl.searchParams.set("error", "unauthorized");
-        errorUrl.searchParams.set("email", loginEmail);
-        return NextResponse.redirect(errorUrl);
+        // Fallback: compare against env vars
+        const wifeEmail = (process.env.WIFE_EMAIL || "").trim().toLowerCase();
+        const husbandEmail = (process.env.HUSBAND_EMAIL || "").trim().toLowerCase();
+
+        console.log("Expected Wife:", wifeEmail, "| Husband:", husbandEmail);
+
+        if (loginEmail === wifeEmail) {
+          userId = "Wife";
+        } else if (loginEmail === husbandEmail) {
+          userId = "Husband";
+        } else {
+          console.error("MISMATCH — got:", loginEmail, "wanted:", wifeEmail, "or", husbandEmail);
+          console.error("Lengths — got:", loginEmail.length, "wife:", wifeEmail.length, "husband:", husbandEmail.length);
+          const errorUrl = new URL("/login", request.url);
+          errorUrl.searchParams.set("error", "unauthorized");
+          errorUrl.searchParams.set("email", loginEmail);
+          return NextResponse.redirect(errorUrl);
+        }
       }
     } else {
       // Calendar connect flow: state carries the userId
