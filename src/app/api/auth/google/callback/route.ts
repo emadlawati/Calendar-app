@@ -38,20 +38,23 @@ export async function GET(request: Request) {
     let userId: string;
 
     if (isLogin) {
-      // Login flow: determine identity from email
-      const wifeEmail = process.env.WIFE_EMAIL;
-      const husbandEmail = process.env.HUSBAND_EMAIL;
+      const wifeEmail = (process.env.WIFE_EMAIL || "").trim();
+      const husbandEmail = (process.env.HUSBAND_EMAIL || "").trim();
+      const loginEmail = (email || "").trim();
 
-      if (email === wifeEmail) {
+      console.log("Login attempt — email:", loginEmail);
+      console.log("Expected Wife:", wifeEmail, "| Husband:", husbandEmail);
+
+      if (loginEmail.toLowerCase() === wifeEmail.toLowerCase()) {
         userId = "Wife";
-      } else if (email === husbandEmail) {
+      } else if (loginEmail.toLowerCase() === husbandEmail.toLowerCase()) {
         userId = "Husband";
       } else {
-        console.error("Unauthorized email attempted login:", email);
-        console.error("Expected Wife:", wifeEmail, "| Husband:", husbandEmail);
+        console.error("MISMATCH — got:", loginEmail, "wanted:", wifeEmail, "or", husbandEmail);
+        console.error("Lengths — got:", loginEmail.length, "wife:", wifeEmail.length, "husband:", husbandEmail.length);
         const errorUrl = new URL("/login", request.url);
         errorUrl.searchParams.set("error", "unauthorized");
-        errorUrl.searchParams.set("email", email);
+        errorUrl.searchParams.set("email", loginEmail);
         return NextResponse.redirect(errorUrl);
       }
     } else {
