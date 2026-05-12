@@ -55,12 +55,21 @@ export default function NoteDrawer({ isOpen, onClose }: NoteDrawerProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.18 }}
-          className="absolute right-6 top-[88px] w-80 z-50 p-[18px] note-card"
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-50"
+            style={{ background: "rgba(40, 25, 15, 0.3)" }}
+          />
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.18 }}
+            className="fixed top-20 sm:top-[88px] right-4 sm:right-6 left-4 sm:left-auto sm:w-80 z-50 p-4 sm:p-[18px] note-card"
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
@@ -133,6 +142,7 @@ export default function NoteDrawer({ isOpen, onClose }: NoteDrawerProps) {
             </>
           )}
         </motion.div>
+        </>
       )}
     </AnimatePresence>
   );

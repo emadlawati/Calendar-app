@@ -152,7 +152,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
 
             {/* 2-COLUMN BODY */}
             <form onSubmit={handleSubmit} className="overflow-y-auto">
-              <div className="grid gap-5 p-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-4 sm:p-6">
                 {/* LEFT COLUMN */}
                 <div className="space-y-4">
                   {/* Title */}

@@ -48,7 +48,7 @@ export default function CountdownBanner({
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-8 rounded-3xl flex items-center justify-between gap-6 px-[26px] py-5 relative overflow-hidden shadow-xl"
+      className="mx-4 sm:mx-8 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 px-4 sm:px-[26px] py-4 sm:py-5 relative overflow-hidden shadow-xl"
       style={{
         background: "linear-gradient(135deg, #6b3a1f 0%, #8a4a22 100%)",
         boxShadow: "0 14px 30px -14px rgba(60, 30, 10, 0.5)",

@@ -151,7 +151,7 @@ export default function Home() {
         <UserMenu onSendNote={() => setIsNoteDrawerOpen(true)} />
 
         {/* Countdown Banner */}
-        <div className="mt-5">
+        <div className="mt-4 sm:mt-5">
           <CountdownBanner
             events={events}
             onOpenNotes={() => setIsNoteDrawerOpen(true)}
@@ -162,7 +162,7 @@ export default function Home() {
         </div>
 
         {/* Calendar Card */}
-        <motion.div layout className="flex-1 calendar-card mx-8 mt-[18px] mb-8 flex flex-col min-h-[400px] md:min-h-[650px]">
+        <motion.div layout className="flex-1 calendar-card mx-4 sm:mx-8 mt-[14px] sm:mt-[18px] mb-8 flex flex-col min-h-[360px] md:min-h-[650px]">
           <div className="flex-1 h-full min-h-[350px] md:min-h-[600px]">
             {(isLoading || isSessionLoading) ? (
               <div className="flex items-center justify-center h-full">
@@ -218,7 +218,7 @@ export default function Home() {
           whileHover={{ scale: 1.05, y: -2 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsModalOpen(true)}
-          className="btn-accent fixed bottom-6 right-8 z-50"
+          className="btn-accent fixed bottom-5 sm:bottom-6 right-4 sm:right-8 z-50 text-sm sm:text-[15px] px-4 sm:px-[22px] py-3 sm:py-[14px]"
         >
           <PlusIcon size={18} />
           New event

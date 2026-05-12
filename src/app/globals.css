@@ -358,11 +358,39 @@ input:focus, textarea:focus {
   .calendar-custom .rbc-toolbar {
     flex-direction: column;
     align-items: center;
+    gap: 6px;
   }
   .calendar-custom .rbc-toolbar .rbc-toolbar-label {
-    font-size: 16px;
+    font-size: 15px;
+    order: -1;
+    width: 100%;
+    text-align: center;
+  }
+  .calendar-custom .rbc-toolbar .rbc-btn-group {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+  }
+  .calendar-custom .rbc-toolbar .rbc-btn-group:last-child {
+    margin-top: 2px;
+  }
+  .calendar-custom .rbc-toolbar button {
+    font-size: 11.5px;
+    padding: 5px 10px;
   }
   .calendar-custom .rbc-month-row {
-    min-height: 60px;
+    min-height: 56px;
+  }
+  .calendar-custom .rbc-date-cell {
+    font-size: 11px;
+    padding: 2px 4px;
+  }
+  .calendar-custom .rbc-header {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+  .calendar-custom .rbc-event-content {
+    font-size: 10px;
+    padding: 2px 4px;
   }
 }

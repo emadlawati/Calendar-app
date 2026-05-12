@@ -29,40 +29,40 @@ export default function UserMenu({
 
   if (!user) return null;
 
-  const startDate = new Date(process.env.NEXT_PUBLIC_RELATIONSHIP_START || "2019-01-01");
+  const startDate = new Date(process.env.NEXT_PUBLIC_RELATIONSHIP_START || "2017-01-31");
   const daysTogether = Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
   return (
-    <header className="flex items-center justify-between gap-4 px-8 pt-5 pb-0 flex-wrap">
+    <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 px-4 sm:px-8 pt-4 sm:pt-5 pb-0">
       {/* Left: logo + title */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <div
-          className="w-11 h-11 rounded-[14px] flex items-center justify-center shadow-lg shrink-0"
+          className="w-10 h-10 sm:w-11 sm:h-11 rounded-[12px] sm:rounded-[14px] flex items-center justify-center shadow-lg shrink-0"
           style={{ background: "var(--accent)", color: "var(--on-accent)" }}
         >
-          <CoffeeIcon size={22} />
+          <CoffeeIcon size={20} />
         </div>
         <div>
           <h1
-            className="text-[28px] leading-tight"
+            className="text-[22px] sm:text-[28px] leading-tight"
             style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}
           >
             Our Calendar
           </h1>
           <p
-            className="text-xs flex items-center gap-1 mt-0.5"
+            className="text-[10.5px] sm:text-xs flex items-center gap-1 mt-0.5"
             style={{ color: "var(--text-soft)" }}
           >
-            {getDisplayName("Wife")} &amp; {getDisplayName("Husband")} &middot; brewing memories since 2019
+            {getDisplayName("Wife")} &amp; {getDisplayName("Husband")} &middot; together since 2017
           </p>
         </div>
       </div>
 
-      {/* Right: pills */}
-      <div className="flex items-center gap-3">
-        {/* Days together pill */}
+      {/* Right: pills — wrap on small screens */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+        {/* Days together pill — hide on smallest screens */}
         <div
-          className="flex items-center gap-3 px-4 py-2 rounded-full border shadow-sm"
+          className="hidden sm:flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm"
           style={{
             background: "var(--card-bg)",
             borderColor: "var(--card-border)",
@@ -107,7 +107,7 @@ export default function UserMenu({
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
           onClick={onSendNote}
-          className="flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm transition-colors"
+          className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-colors"
           style={{
             background: "var(--card-bg)",
             borderColor: "var(--card-border)",
@@ -115,7 +115,7 @@ export default function UserMenu({
           }}
         >
           <span style={{ color: "#c14a33" }}><HeartIcon size={14} /></span>
-          <span className="text-sm font-medium">Send note</span>
+          <span className="text-xs sm:text-sm font-medium">Send note</span>
         </motion.button>
 
         {/* Google Connect */}
