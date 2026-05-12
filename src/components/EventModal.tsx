@@ -115,6 +115,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
+            onClick={(e) => e.stopPropagation()}
             className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 modal-shell flex flex-col w-[720px] max-w-[95vw] max-h-[88vh]"
           >
             {/* Header strip */}
@@ -140,8 +141,9 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                 </div>
               </div>
               <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors"
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onClose(); }}
+                className="relative z-10 w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors hover:opacity-80"
                 style={{ background: "rgba(255,255,255,0.6)", color: "var(--text-soft)" }}
               >
                 <XIcon size={16} />
