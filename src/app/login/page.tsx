@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { HeartPulse, Cat } from "lucide-react";
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { CoffeeIcon, PawIcon } from "@/components/icons";
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -16,62 +16,49 @@ function LoginContent() {
     try {
       const res = await fetch("/api/auth/login");
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      setIsLoading(false);
-    }
+      if (data.url) window.location.href = data.url;
+    } catch { setIsLoading(false); }
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-milk-white">
+    <main className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: "var(--bg)" }}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", bounce: 0.5 }}
-        className="w-full max-w-sm plush-card p-8 text-center relative"
+        className="w-full max-w-sm p-8 rounded-3xl border shadow-xl text-center"
+        style={{ background: "var(--card-bg)", borderColor: "var(--card-border)", boxShadow: "var(--card-shadow)" }}
       >
-        <div className="absolute -top-3 -left-1 w-8 h-8 bg-white rotate-45 rounded-tl-xl border-t border-l border-latte-brown/20" />
-        <div className="absolute -top-3 -right-1 w-8 h-8 bg-white rotate-45 rounded-tr-xl border-t border-r border-latte-brown/20" />
-
-        <motion.div
-          animate={{ rotate: [0, -10, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <HeartPulse className="text-blush-pink mx-auto" size={48} />
+        <motion.div animate={{ rotate: [0, -5, 5, 0] }} transition={{ duration: 2, repeat: Infinity }}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto shadow-lg"
+            style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
+            <CoffeeIcon size={28} />
+          </div>
         </motion.div>
 
-        <h1 className="text-2xl font-sniglet text-text-dark mt-4">
-          Purrfect Plans
+        <h1 className="text-2xl mt-4" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
+          Our Calendar
         </h1>
-        <p className="text-text-dark/60 text-sm mt-2 mb-8">
-          Your shared couple&apos;s calendar 🐾
+        <p className="text-sm mt-1.5 mb-8" style={{ color: "var(--text-soft)" }}>
+          brewing memories together
         </p>
 
         {error === "unauthorized" && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl p-4 mb-6 text-left"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="rounded-2xl p-4 mb-6 text-left text-sm border"
+            style={{ background: "rgba(193, 74, 51, 0.06)", borderColor: "rgba(193, 74, 51, 0.2)", color: "#9b3a2a" }}
           >
-            <p className="font-bold mb-1 flex items-center gap-1"><Cat size={14} /> Not registered!</p>
-            <p className="mb-2">
-              The Google account{attemptedEmail ? ` (${attemptedEmail})` : ""} you tried isn't linked to this calendar.
-            </p>
-            <p className="text-xs opacity-70">
-              Make sure <strong>WIFE_EMAIL</strong> and <strong>HUSBAND_EMAIL</strong> in Vercel environment variables match your actual Google emails.
-            </p>
+            <p className="font-semibold mb-1 flex items-center gap-1"><PawIcon size={12} /> Not registered!</p>
+            <p className="mb-2">The Google account{attemptedEmail ? ` (${attemptedEmail})` : ""} you tried isn&apos;t linked to this calendar.</p>
+            <p className="text-xs opacity-70">Make sure WIFE_EMAIL and HUSBAND_EMAIL in Vercel environment variables match your actual Google emails.</p>
           </motion.div>
         )}
 
         {error === "no_email" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl p-3 mb-6"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="rounded-2xl p-3 mb-6 text-sm border"
+            style={{ background: "rgba(193, 74, 51, 0.06)", borderColor: "rgba(193, 74, 51, 0.2)", color: "#9b3a2a" }}>
             Could not retrieve your email. Please try again.
           </motion.div>
         )}
@@ -79,10 +66,9 @@ function LoginContent() {
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
-          onClick={handleLogin}
-          disabled={isLoading}
-          className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-6 py-4 font-sniglet text-text-dark flex items-center justify-center gap-3 hover:border-blush-pink transition-colors shadow-sm disabled:opacity-50"
-        >
+          onClick={handleLogin} disabled={isLoading}
+          className="w-full rounded-2xl px-6 py-4 flex items-center justify-center gap-3 border transition-colors disabled:opacity-50 shadow-sm"
+          style={{ background: "var(--card-bg)", borderColor: "var(--card-border)", color: "var(--text)" }}>
           {isLoading ? (
             <span>Connecting...</span>
           ) : (
@@ -98,8 +84,8 @@ function LoginContent() {
           )}
         </motion.button>
 
-        <p className="text-xs text-text-dark/40 mt-6">
-          Only registered couples can access this calendar 🧶
+        <p className="text-xs mt-6" style={{ color: "var(--text-very)" }}>
+          Only registered couples can access this calendar
         </p>
       </motion.div>
     </main>
@@ -109,8 +95,8 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-milk-white">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }} className="text-4xl">🧶</motion.div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }} className="text-3xl">☕</motion.div>
       </div>
     }>
       <LoginContent />

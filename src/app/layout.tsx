@@ -1,22 +1,23 @@
 import type { Metadata } from "next";
-import { Sniglet, Quicksand } from "next/font/google";
+import { Caprasimo, Outfit } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/components/SessionProvider";
 
-const sniglet = Sniglet({
-  weight: ["400", "800"],
+const caprasimo = Caprasimo({
+  weight: "400",
   subsets: ["latin"],
-  variable: "--font-sniglet",
+  variable: "--font-caprasimo",
 });
 
-const quicksand = Quicksand({
+const outfit = Outfit({
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
-  variable: "--font-quicksand",
+  variable: "--font-outfit",
 });
 
 export const metadata: Metadata = {
-  title: "Purrfect Plans - Couple's Calendar",
-  description: "A cute calendar for planning dates together.",
+  title: "Purrfect Plans — Couple's Calendar",
+  description: "A cozy calendar for planning dates together.",
 };
 
 export default function RootLayout({
@@ -26,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${sniglet.variable} ${quicksand.variable} font-quicksand bg-milk-white text-text-dark antialiased`}>
+      <body className={`${caprasimo.variable} ${outfit.variable}`}>
         <SessionProvider>
           {children}
         </SessionProvider>

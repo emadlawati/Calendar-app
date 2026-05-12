@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle } from "lucide-react";
+import { XIcon } from "@/components/icons";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -13,59 +13,36 @@ interface ConfirmDialogProps {
   isLoading?: boolean;
 }
 
-export default function ConfirmDialog({
-  isOpen,
-  onClose,
-  onConfirm,
-  title,
-  message,
-  confirmLabel,
-  isLoading = false,
-}: ConfirmDialogProps) {
+export default function ConfirmDialog({ isOpen, onClose, onConfirm, title, message, confirmLabel, isLoading }: ConfirmDialogProps) {
   return (
     <AnimatePresence>
       {isOpen && (
         <>
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-text-dark/20 backdrop-blur-sm z-50"
+            className="fixed inset-0 z-[60]" style={{ background: "rgba(40, 25, 15, 0.5)", backdropFilter: "blur(4px)" }}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            transition={{ type: "spring", bounce: 0.3 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm z-50 p-6 plush-card"
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[70] w-80 p-6 rounded-3xl shadow-xl"
+            style={{ background: "var(--card-bg)" }}
           >
-            <div className="text-center">
-              <div className="mx-auto w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mb-4 shadow-sm">
-                <AlertTriangle className="text-red-400" size={28} />
-              </div>
-              <h3 className="text-xl font-sniglet text-text-dark mb-2">{title}</h3>
-              <p className="text-sm font-quicksand text-text-dark/70 mb-6">{message}</p>
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={onClose}
-                  disabled={isLoading}
-                  className="flex-1 bg-soft-peach text-text-dark font-sniglet py-3 rounded-2xl border-2 border-white shadow-sm"
-                >
-                  Cancel
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={onConfirm}
-                  disabled={isLoading}
-                  className="flex-1 bg-red-400 text-white font-sniglet py-3 rounded-2xl shadow-sm border-2 border-white"
-                >
-                  {isLoading ? "Deleting..." : confirmLabel}
-                </motion.button>
-              </div>
+            <button onClick={onClose} className="absolute top-4 right-4" style={{ color: "var(--text-soft)" }}>
+              <XIcon size={16} />
+            </button>
+            <h3 className="text-lg mb-2" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>{title}</h3>
+            <p className="text-sm mb-5" style={{ color: "var(--text-soft)" }}>{message}</p>
+            <div className="flex gap-3">
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: "var(--chip-bg)", color: "var(--chip-text)" }}>
+                Cancel
+              </button>
+              <button onClick={onConfirm} disabled={isLoading}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                style={{ background: "#c14a33", color: "#fff" }}>
+                {isLoading ? "..." : confirmLabel}
+              </button>
             </div>
           </motion.div>
         </>
