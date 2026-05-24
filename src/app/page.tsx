@@ -216,7 +216,7 @@ export default function Home() {
               >
                 <div>
                   <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-                    How was {pendingMemory.event.title}?
+                    Save this memory?
                   </p>
                   <p className="text-xs" style={{ color: "var(--text-soft)" }}>
                     {pendingMemory.daysAgo} {pendingMemory.daysAgo === 1 ? "day" : "days"} ago
@@ -229,7 +229,7 @@ export default function Home() {
                   className="chip-pill font-medium text-xs"
                   style={{ whiteSpace: "nowrap" }}
                 >
-                  Rate & remember &rarr;
+                  Save memory &rarr;
                 </motion.button>
               </motion.div>
             </div>
@@ -321,6 +321,11 @@ export default function Home() {
             }
           }}
           event={selectedEvent}
+          onSaveMemory={(evt) => {
+            const daysAgo = Math.floor((Date.now() - new Date(evt.date).getTime()) / (1000 * 60 * 60 * 24));
+            setPendingMemory({ event: { id: evt.id, title: evt.title, category: evt.category ?? null }, daysAgo });
+            setIsRateModalOpen(true);
+          }}
         />
 
         <NoteDrawer

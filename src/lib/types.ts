@@ -108,6 +108,6 @@ export interface MemoryStats {
 }
 
 export interface PendingMemory {
-  event: CalendarEvent;
+  event: { id: string; title: string; category: string | null };
   daysAgo: number;
 }

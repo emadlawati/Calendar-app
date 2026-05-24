@@ -7,6 +7,16 @@ import { getCategoryById } from "@/lib/categories";
 import type { CalendarEvent, SpecialDateWithCountdown } from "@/lib/types";
 import SpecialDateCarousel from "./SpecialDateCarousel";
 
+const TZ = "Asia/Muscat";
+
+function getGulfDate(dateStr: string): Date {
+  return new Date(new Date(dateStr).toLocaleDateString("en-CA", { timeZone: TZ }));
+}
+
+function getGulfToday(): Date {
+  return new Date(new Date().toLocaleDateString("en-CA", { timeZone: TZ }));
+}
+
 interface CountdownBannerProps {
   events: CalendarEvent[];
   onOpenNotes: () => void;
@@ -25,21 +35,20 @@ export default function CountdownBanner({
   specialDates = [],
 }: CountdownBannerProps) {
   const { nextEvent, daysLeft } = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
+    const today = getGulfToday();
 
     const upcoming = events
       .filter((e) => {
         if (e.archived) return false;
-        const eventDate = new Date(new Date(e.date).toISOString().split("T")[0]);
-        return eventDate >= now;
+        const eventDate = getGulfDate(e.date);
+        return eventDate >= today;
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     if (upcoming.length > 0) {
       const next = upcoming[0];
-      const eventDate = new Date(new Date(next.date).toISOString().split("T")[0]);
-      const diffMs = eventDate.getTime() - now.getTime();
+      const eventDate = getGulfDate(next.date);
+      const diffMs = eventDate.getTime() - today.getTime();
       return { nextEvent: next, daysLeft: Math.ceil(diffMs / (1000 * 60 * 60 * 24)) };
     }
     return { nextEvent: null, daysLeft: null };
@@ -90,13 +99,13 @@ export default function CountdownBanner({
                 {daysLeft === 0 ? "!" : daysLeft}
               </span>
               <span className="text-[9.5px] tracking-[0.08em] opacity-75">
-                {daysLeft === 0 ? "TODAY" : "DAYS"}
+                {daysLeft === 0 ? "TODAY" : daysLeft === 1 ? "DAY" : "DAYS"}
               </span>
             </div>
 
             <div className="min-w-0">
               <p className="text-[11.5px] uppercase tracking-wider opacity-75 mb-1">
-                Up next together
+                {daysLeft === 0 ? "It's happening today!" : daysLeft === 1 ? "Tomorrow" : "Up next together"}
               </p>
               <p
                 className="text-[22px] leading-tight truncate"

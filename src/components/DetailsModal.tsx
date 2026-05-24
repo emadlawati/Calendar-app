@@ -16,9 +16,10 @@ interface DetailsModalProps {
   onClose: () => void;
   onSuccess: (newBadges?: { id: string; label: string; emoji: string }[]) => void;
   event: CalendarEvent | null;
+  onSaveMemory?: (event: CalendarEvent) => void;
 }
 
-export default function DetailsModal({ isOpen, onClose, onSuccess, event }: DetailsModalProps) {
+export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSaveMemory }: DetailsModalProps) {
   const { user: currentUser } = useSession();
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -28,6 +29,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event }: Deta
 
   const isPartner = event.createdBy !== currentUser;
   const isPending = event.status === "pending";
+  const isPast = new Date(event.date) < new Date() && event.status === "accepted";
   const cat = getCategoryById(event.category);
   const Icon = CategoryIcons[cat.id];
 
@@ -195,6 +197,19 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event }: Deta
                   <SendIcon size={14} /> Adjust
                 </motion.button>
               </div>
+            )}
+
+            {/* Save Memory button for past events */}
+            {isPast && onSaveMemory && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => { onSaveMemory(event); onClose(); }}
+                className="w-full mt-4 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+              >
+                📸 Save Memory
+              </motion.button>
             )}
 
             <button onClick={onClose}

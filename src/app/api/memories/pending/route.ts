@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+const TZ = "Asia/Muscat";
+
+function getGulfDate(date: Date): Date {
+  return new Date(date.toLocaleDateString("en-CA", { timeZone: TZ }));
+}
+
+function getGulfNow(): Date {
+  return new Date(new Date().toLocaleString("en-CA", { timeZone: TZ }));
+}
+
 export async function GET() {
   try {
-    const now = new Date();
+    const now = getGulfNow();
 
     const recentAcceptedEvent = await prisma.calendarEvent.findFirst({
       where: {
@@ -18,7 +28,6 @@ export async function GET() {
       return NextResponse.json(null);
     }
 
-    // Check if the event's date + endTime is in the past
     const eventDate = new Date(recentAcceptedEvent.date);
     const endTime = recentAcceptedEvent.endTime || "23:59";
     const [hours, minutes] = endTime.split(":").map(Number);
@@ -31,7 +40,6 @@ export async function GET() {
 
     const daysAgo = Math.floor((now.getTime() - eventEnd.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Only show prompt for events within last 14 days
     if (daysAgo > 14) {
       return NextResponse.json(null);
     }
