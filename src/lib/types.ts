@@ -95,7 +95,7 @@ export interface MemoryData {
   eventId: string;
   event?: CalendarEvent;
   journal: string | null;
-  photoUrl: string | null;
+  photos: string | null;
   createdBy: User;
   createdAt: string;
   updatedAt: string;

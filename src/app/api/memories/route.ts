@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getRequestUser } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
@@ -26,18 +25,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const user = await getRequestUser(body.createdBy);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+
+    const photos = Array.isArray(body.photos) ? JSON.stringify(body.photos) : null;
 
     const memory = await prisma.memory.create({
       data: {
         eventId: body.eventId,
         rating: 5,
         journal: body.journal || null,
-        photoUrl: body.photoUrl || null,
-        createdBy: user,
+        photos,
+        createdBy: "Wife",
       },
       include: { event: true },
     });

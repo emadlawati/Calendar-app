@@ -9,7 +9,7 @@ import { ArrowLeft } from "lucide-react";
 interface Memory {
   id: string;
   journal: string | null;
-  photoUrl: string | null;
+  photos: string | null;
   createdAt: string;
   event: {
     title: string;

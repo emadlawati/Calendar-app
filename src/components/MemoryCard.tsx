@@ -1,12 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getCategoryById } from "@/lib/categories";
 
 interface Memory {
   id: string;
   journal: string | null;
-  photoUrl: string | null;
+  photos: string | null;
   createdAt: string;
   event: {
     title: string;
@@ -18,6 +20,12 @@ interface Memory {
 export default function MemoryCard({ memory }: { memory: Memory }) {
   const cat = getCategoryById(memory.event.category);
   const dateStr = new Date(memory.event.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const [photoIndex, setPhotoIndex] = useState(0);
+
+  let photos: string[] = [];
+  if (memory.photos) {
+    try { photos = JSON.parse(memory.photos); } catch { /* ignore */ }
+  }
 
   return (
     <motion.div
@@ -27,8 +35,34 @@ export default function MemoryCard({ memory }: { memory: Memory }) {
       whileHover={{ y: -2 }}
       transition={{ duration: 0.15 }}
     >
-      {memory.photoUrl ? (
-        <img src={memory.photoUrl} alt={memory.event.title} className="w-full aspect-auto object-cover" />
+      {photos.length > 0 ? (
+        <div className="relative">
+          <img src={photos[photoIndex]} alt={memory.event.title} className="w-full aspect-auto object-cover" />
+          {photos.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.preventDefault(); setPhotoIndex((i) => (i === 0 ? photos.length - 1 : i - 1)); }}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.4)", color: "#fff" }}
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); setPhotoIndex((i) => (i === photos.length - 1 ? 0 : i + 1)); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.4)", color: "#fff" }}
+              >
+                <ChevronRight size={14} />
+              </button>
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                {photos.map((_, i) => (
+                  <div key={i} className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: i === photoIndex ? "#fff" : "rgba(255,255,255,0.5)" }} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       ) : (
         <div className="w-full h-32 flex items-center justify-center"
           style={{ background: cat.color }}>

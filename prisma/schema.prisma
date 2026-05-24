@@ -85,7 +85,7 @@ model Memory {
   event     CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   rating    Int
   journal   String?
-  photoUrl  String?
+  photos    String?       // JSON array of base64 URLs
   createdBy String
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt

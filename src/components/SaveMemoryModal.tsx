@@ -2,38 +2,48 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, X } from "lucide-react";
+import { Camera, X, Plus } from "lucide-react";
 
 interface PendingMemory {
   event: { id: string; title: string; category: string | null };
   daysAgo: number;
 }
 
-interface RateDateModalProps {
+interface SaveMemoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   pending: PendingMemory | null;
 }
 
-export default function SaveMemoryModal({ isOpen, onClose, onSuccess, pending }: RateDateModalProps) {
+export default function SaveMemoryModal({ isOpen, onClose, onSuccess, pending }: SaveMemoryModalProps) {
   const [journal, setJournal] = React.useState("");
-  const [photoBase64, setPhotoBase64] = React.useState<string | null>(null);
+  const [photos, setPhotos] = React.useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState("");
 
   if (!pending) return null;
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 4 * 1024 * 1024) {
-      setError("Photo must be under 4MB");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setPhotoBase64(reader.result as string);
-    reader.readAsDataURL(file);
+  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const readers: Promise<string>[] = files.map((file) => {
+      if (file.size > 4 * 1024 * 1024) throw new Error("Photo must be under 4MB");
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(readers)
+      .then((results) => setPhotos((prev) => [...prev, ...results]))
+      .catch(() => setError("Photo must be under 4MB"));
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,7 +55,7 @@ export default function SaveMemoryModal({ isOpen, onClose, onSuccess, pending }:
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ eventId: pending.event.id, journal: journal || null, photoUrl: photoBase64 || null }),
+        body: JSON.stringify({ eventId: pending.event.id, journal: journal || null, photos: photos.length > 0 ? photos : null }),
       });
       if (!res.ok) throw new Error("Failed to save memory");
       setTimeout(() => {
@@ -98,25 +108,27 @@ export default function SaveMemoryModal({ isOpen, onClose, onSuccess, pending }:
               </div>
 
               <div>
-                <label className="field-label">Photo</label>
-                {photoBase64 ? (
-                  <div className="relative rounded-xl overflow-hidden mb-2">
-                    <img src={photoBase64} alt="Memory" className="w-full h-48 object-cover" />
-                    <button type="button" onClick={() => setPhotoBase64(null)}
-                      className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
-                      style={{ background: "rgba(0,0,0,0.5)", color: "#fff" }}
-                    >
-                      <X size={14} />
-                    </button>
+                <label className="field-label">Photos</label>
+                {photos.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {photos.map((photo, i) => (
+                      <div key={i} className="relative rounded-xl overflow-hidden">
+                        <img src={photo} alt={`Memory ${i + 1}`} className="w-full h-32 object-cover" />
+                        <button type="button" onClick={() => removePhoto(i)}
+                          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center"
+                          style={{ background: "rgba(0,0,0,0.5)", color: "#fff" }}>
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center gap-2 py-8 rounded-xl border-2 border-dashed cursor-pointer transition-colors hover:opacity-80"
-                    style={{ borderColor: "var(--input-border)", color: "var(--text-soft)" }}>
-                    <Camera size={28} strokeWidth={1.5} />
-                    <span className="text-xs">Add a photo (optional)</span>
-                    <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
-                  </label>
                 )}
+                <label className="flex flex-col items-center justify-center gap-2 py-6 rounded-xl border-2 border-dashed cursor-pointer transition-colors hover:opacity-80"
+                  style={{ borderColor: "var(--input-border)", color: "var(--text-soft)" }}>
+                  <Plus size={24} strokeWidth={1.5} />
+                  <span className="text-xs">{photos.length > 0 ? "Add more photos" : "Add photos"}</span>
+                  <input type="file" accept="image/*" multiple onChange={handlePhotoAdd} className="hidden" />
+                </label>
               </div>
 
               {error && <p className="text-xs" style={{ color: "#c14a33" }}>{error}</p>}
