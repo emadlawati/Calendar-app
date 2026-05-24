@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { getCategoryById } from "@/lib/categories";
 
 interface Memory {
@@ -17,10 +17,17 @@ interface Memory {
   };
 }
 
-export default function MemoryCard({ memory }: { memory: Memory }) {
+interface MemoryCardProps {
+  memory: Memory;
+  onEdit: (memory: Memory) => void;
+  onDelete: (memory: Memory) => void;
+}
+
+export default function MemoryCard({ memory, onEdit, onDelete }: MemoryCardProps) {
   const cat = getCategoryById(memory.event.category);
   const dateStr = new Date(memory.event.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [showActions, setShowActions] = useState(false);
 
   let photos: string[] = [];
   if (memory.photos) {
@@ -31,10 +38,31 @@ export default function MemoryCard({ memory }: { memory: Memory }) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="break-inside-avoid note-card overflow-hidden cursor-default"
+      className="break-inside-avoid note-card overflow-hidden cursor-default relative"
       whileHover={{ y: -2 }}
       transition={{ duration: 0.15 }}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
     >
+      {showActions && (
+        <div className="absolute top-2 right-2 z-10 flex gap-1">
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(memory); }}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
+            style={{ background: "rgba(0,0,0,0.5)", color: "#fff" }}
+          >
+            <Pencil size={12} />
+          </button>
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(memory); }}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
+            style={{ background: "rgba(197, 48, 48, 0.7)", color: "#fff" }}
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      )}
+
       {photos.length > 0 ? (
         <div className="relative">
           <img src={photos[photoIndex]} alt={memory.event.title} className="w-full aspect-auto object-cover" />

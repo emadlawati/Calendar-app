@@ -2,7 +2,15 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, X, Plus } from "lucide-react";
+import { X, Plus } from "lucide-react";
+
+interface MemoryData {
+  id?: string;
+  eventId?: string;
+  journal: string | null;
+  photos: string | null;
+  event?: { title: string; date: string; category: string | null };
+}
 
 interface PendingMemory {
   event: { id: string; title: string; category: string | null };
@@ -14,15 +22,35 @@ interface SaveMemoryModalProps {
   onClose: () => void;
   onSuccess: () => void;
   pending: PendingMemory | null;
+  editMemory?: MemoryData | null;
 }
 
-export default function SaveMemoryModal({ isOpen, onClose, onSuccess, pending }: SaveMemoryModalProps) {
+export default function SaveMemoryModal({ isOpen, onClose, onSuccess, pending, editMemory }: SaveMemoryModalProps) {
+  const isEdit = !!editMemory?.id;
+
   const [journal, setJournal] = React.useState("");
   const [photos, setPhotos] = React.useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState("");
 
-  if (!pending) return null;
+  React.useEffect(() => {
+    if (editMemory) {
+      setJournal(editMemory.journal || "");
+      if (editMemory.photos) {
+        try { setPhotos(JSON.parse(editMemory.photos)); } catch { setPhotos([]); }
+      } else {
+        setPhotos([]);
+      }
+    } else {
+      setJournal("");
+      setPhotos([]);
+    }
+  }, [editMemory]);
+
+  const eventTitle = isEdit ? editMemory?.event?.title : pending?.event.title;
+  const subtitle = isEdit ? "Edit" : pending ? `${pending.daysAgo} ${pending.daysAgo === 1 ? "day" : "days"} ago` : "";
+
+  if (!pending && !editMemory) return null;
 
   const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -51,11 +79,17 @@ export default function SaveMemoryModal({ isOpen, onClose, onSuccess, pending }:
     setIsSubmitting(true);
     setError("");
     try {
-      const res = await fetch("/api/memories", {
-        method: "POST",
+      const url = isEdit ? `/api/memories/${editMemory!.id}` : "/api/memories";
+      const method = isEdit ? "PATCH" : "POST";
+      const body = isEdit
+        ? { journal: journal || null, photos: photos.length > 0 ? photos : null }
+        : { eventId: pending!.event.id, journal: journal || null, photos: photos.length > 0 ? photos : null };
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ eventId: pending.event.id, journal: journal || null, photos: photos.length > 0 ? photos : null }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("Failed to save memory");
       setTimeout(() => {
@@ -90,11 +124,13 @@ export default function SaveMemoryModal({ isOpen, onClose, onSuccess, pending }:
             </button>
 
             <h2 className="text-xl mb-1" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
-              Save the Memory
+              {isEdit ? "Edit Memory" : "Save the Memory"}
             </h2>
-            <p className="text-xs mb-5" style={{ color: "var(--text-soft)" }}>
-              {pending.event.title} · {pending.daysAgo} {pending.daysAgo === 1 ? "day" : "days"} ago
-            </p>
+            {eventTitle && (
+              <p className="text-xs mb-5" style={{ color: "var(--text-soft)" }}>
+                {eventTitle} · {subtitle}
+              </p>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
@@ -134,7 +170,7 @@ export default function SaveMemoryModal({ isOpen, onClose, onSuccess, pending }:
               {error && <p className="text-xs" style={{ color: "#c14a33" }}>{error}</p>}
 
               <button type="submit" disabled={isSubmitting} className="btn-send w-full justify-center">
-                {isSubmitting ? "Saving..." : "Save Memory"}
+                {isSubmitting ? "Saving..." : isEdit ? "Save Changes" : "Save Memory"}
               </button>
             </form>
           </motion.div>

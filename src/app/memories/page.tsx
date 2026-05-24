@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import MemoryCard from "@/components/MemoryCard";
+import SaveMemoryModal from "@/components/SaveMemoryModal";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { ArrowLeft } from "lucide-react";
 
 interface Memory {
@@ -29,14 +31,12 @@ export default function MemoriesPage() {
   const [stats, setStats] = useState<MemoryStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState("all");
+  const [editMemory, setEditMemory] = useState<Memory | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Memory | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/memories/stats")
-      .then((r) => r.json())
-      .then(setStats);
-  }, []);
-
-  useEffect(() => {
+  const fetchMemories = () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (filterCategory !== "all") params.set("category", filterCategory);
@@ -48,7 +48,34 @@ export default function MemoriesPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetch("/api/memories/stats")
+      .then((r) => r.json())
+      .then(setStats);
+  }, []);
+
+  useEffect(() => {
+    fetchMemories();
   }, [filterCategory]);
+
+  const handleEdit = (memory: Memory) => {
+    setEditMemory(memory);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await fetch(`/api/memories/${deleteTarget.id}`, { method: "DELETE" });
+      setMemories((prev) => prev.filter((m) => m.id !== deleteTarget.id));
+      fetch("/api/memories/stats").then((r) => r.json()).then(setStats);
+    } catch { /* ignore */ }
+    setIsDeleting(false);
+    setDeleteTarget(null);
+  };
 
   const categories = stats?.categoryCounts || [];
 
@@ -120,10 +147,38 @@ export default function MemoriesPage() {
       ) : (
         <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5">
           {memories.map((m) => (
-            <MemoryCard key={m.id} memory={m} />
+            <MemoryCard
+              key={m.id}
+              memory={m}
+              onEdit={handleEdit}
+              onDelete={(mem) => setDeleteTarget(mem)}
+            />
           ))}
         </div>
       )}
+
+      <SaveMemoryModal
+        isOpen={isEditModalOpen}
+        onClose={() => { setIsEditModalOpen(false); setEditMemory(null); }}
+        onSuccess={() => { fetchMemories(); fetch("/api/memories/stats").then((r) => r.json()).then(setStats); setEditMemory(null); }}
+        pending={null}
+        editMemory={editMemory ? {
+          id: editMemory.id,
+          journal: editMemory.journal,
+          photos: editMemory.photos,
+          event: editMemory.event,
+        } : null}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete Memory?"
+        message="Are you sure? This memory will be gone forever."
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+      />
     </motion.main>
   );
 }
