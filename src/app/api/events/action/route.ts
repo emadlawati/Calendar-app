@@ -6,6 +6,8 @@ import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '@
 import { getRequestUser } from '@/lib/auth';
 import { getDisplayName } from '@/lib/names';
 import { getCategoryById } from '@/lib/categories';
+import { recalculateStreaks } from '@/lib/streaks';
+import { getBadgeById } from '@/lib/achievements';
 
 export async function POST(request: Request) {
   try {
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
           notes: acceptedEvent.notes,
           category: acceptedEvent.category,
         });
-        
+
         if (googleEventId) {
           // Store the Google Calendar event ID for future updates/deletes
           await prisma.calendarEvent.update({
@@ -54,7 +56,15 @@ export async function POST(request: Request) {
         }
       }
 
-      return NextResponse.json({ success: true, message: "Event accepted" });
+      // Recalculate streaks after accepting
+      const streakResult = await recalculateStreaks();
+      const newBadges = streakResult.newUnlocks.map((b) => ({ id: b.id, label: b.label, emoji: b.emoji }));
+
+      return NextResponse.json({
+        success: true,
+        message: "Event accepted",
+        newBadges: newBadges.length > 0 ? newBadges : undefined,
+      });
     }
 
     if (action === 'adjust') {
@@ -309,6 +319,8 @@ export async function GET(request: Request) {
         console.log(`Google Calendar event created for ${acceptedBy}: ${googleEventId}`);
       }
     }
+
+    await recalculateStreaks();
 
     // Redirect to home with a success message
     return NextResponse.redirect(new URL('/?accepted=true', request.url));

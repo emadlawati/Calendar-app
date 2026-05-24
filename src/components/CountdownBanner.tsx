@@ -4,7 +4,8 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { NoteIcon, TargetIcon, ArchiveIcon } from "@/components/icons";
 import { getCategoryById } from "@/lib/categories";
-import type { CalendarEvent } from "@/lib/types";
+import type { CalendarEvent, SpecialDateWithCountdown } from "@/lib/types";
+import SpecialDateCarousel from "./SpecialDateCarousel";
 
 interface CountdownBannerProps {
   events: CalendarEvent[];
@@ -12,6 +13,7 @@ interface CountdownBannerProps {
   onOpenBucket: () => void;
   onToggleArchive: () => void;
   showArchived: boolean;
+  specialDates?: SpecialDateWithCountdown[];
 }
 
 export default function CountdownBanner({
@@ -20,6 +22,7 @@ export default function CountdownBanner({
   onOpenBucket,
   onToggleArchive,
   showArchived,
+  specialDates = [],
 }: CountdownBannerProps) {
   const { nextEvent, daysLeft } = useMemo(() => {
     const now = new Date();
@@ -48,7 +51,7 @@ export default function CountdownBanner({
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-4 sm:mx-8 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 px-4 sm:px-[26px] py-4 sm:py-5 relative overflow-hidden shadow-xl"
+      className="mx-4 sm:mx-8 rounded-3xl flex flex-col gap-4 sm:gap-5 px-4 sm:px-[26px] py-4 sm:py-5 relative overflow-hidden shadow-xl"
       style={{
         background: "linear-gradient(135deg, #6b3a1f 0%, #8a4a22 100%)",
         boxShadow: "0 14px 30px -14px rgba(60, 30, 10, 0.5)",
@@ -64,6 +67,9 @@ export default function CountdownBanner({
         <path d="M30 55 Q50 35 70 55 T110 55" opacity="0.6" />
         <path d="M0 40 Q20 20 40 40 T80 40" opacity="0.5" />
       </svg>
+
+      {/* Top row: event info + action tiles */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
 
       {/* Left: event info */}
       <div className="flex items-center gap-5 relative z-10 flex-1 min-w-0">
@@ -161,6 +167,19 @@ export default function CountdownBanner({
           <ArchiveIcon size={18} />
           <span className="text-[11px] opacity-90">{showArchived ? "All" : "Archive"}</span>
         </motion.button>
+      </div>
+
+      </div>{/* end top row */}
+
+      {/* Special dates row — full width below main row */}
+      <div className="w-full relative z-10">
+        <SpecialDateCarousel dates={specialDates.map(d => ({
+          id: d.id,
+          title: d.title,
+          emoji: d.emoji,
+          daysLeft: d.daysLeft,
+          type: d.type,
+        }))} />
       </div>
     </motion.div>
   );

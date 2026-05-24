@@ -2,9 +2,11 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSession } from "./SessionProvider";
 import { getDisplayName } from "@/lib/names";
 import { CoffeeIcon, HeartIcon } from "@/components/icons";
+import ThemeToggle from "./ThemeToggle";
 
 interface GoogleStatus {
   connected: boolean;
@@ -118,6 +120,18 @@ export default function UserMenu({
           <span className="text-xs sm:text-sm font-medium">Send note</span>
         </motion.button>
 
+        {/* Memories link */}
+        <Link href="/memories"
+          className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-colors hover:opacity-80"
+          style={{
+            background: "var(--card-bg)",
+            borderColor: "var(--card-border)",
+            color: "var(--text)",
+          }}
+        >
+          <span className="text-xs sm:text-sm font-medium">📸 Memories</span>
+        </Link>
+
         {/* Google Connect */}
         {googleStatus && !googleStatus.connected && (
           <motion.button
@@ -150,6 +164,8 @@ export default function UserMenu({
         >
           Sign out
         </motion.button>
+
+        <ThemeToggle />
       </div>
     </header>
   );

@@ -6,6 +6,7 @@ import { useSession } from "./SessionProvider";
 import { getDisplayName } from "@/lib/names";
 import { EVENT_CATEGORIES, getCategoryById } from "@/lib/categories";
 import { CategoryIcons, CalendarIcon, XIcon, SendIcon, SunIcon, TargetIcon, HeartIcon, CheckIcon } from "@/components/icons";
+import RecurrenceSelector, { type RecurrenceOption } from "./RecurrenceSelector";
 import type { CreateEventPayload, BucketItem } from "@/lib/types";
 
 interface EventModalProps {
@@ -30,6 +31,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
   const [showBucketPicker, setShowBucketPicker] = useState(false);
   const [bucketItems, setBucketItems] = useState<BucketItem[]>([]);
   const [bucketLoading, setBucketLoading] = useState(false);
+  const [recurrence, setRecurrence] = useState<RecurrenceOption>("once");
 
   const partner = currentUser === "Wife" ? "Husband" : "Wife";
   const partnerDisplay = getDisplayName(partner);
@@ -69,11 +71,11 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
     };
 
     try {
-      const res = await fetch('/api/events/create', {
+      const res = await fetch(recurrence !== "once" ? '/api/recurring' : '/api/events/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: "same-origin",
-        body: JSON.stringify(payload)
+        body: JSON.stringify(recurrence !== "once" ? { ...payload, frequency: recurrence } : payload)
       });
 
       if (!res.ok) {
@@ -226,6 +228,12 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
 
                 {/* RIGHT COLUMN */}
                 <div className="space-y-4">
+                  {/* Recurrence */}
+                  <div>
+                    <label className="field-label">Repeats?</label>
+                    <RecurrenceSelector value={recurrence} onChange={setRecurrence} />
+                  </div>
+
                   {/* When */}
                   <div>
                     <label className="field-label">When?</label>

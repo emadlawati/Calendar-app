@@ -18,9 +18,11 @@ export interface CalendarEvent {
   archived: boolean;
   googleEventId?: string | null;
   creatorGoogleEventId?: string | null;
+  seriesId?: string | null;
+  isRecurring?: boolean;
+  isRecurringInstance?: boolean;
   createdAt: string;
   updatedAt: string;
-  // Frontend-only computed fields for react-big-calendar
   start?: Date;
   end?: Date;
 }
@@ -66,4 +68,46 @@ export interface BucketItem {
   completed: boolean;
   createdBy: User;
   createdAt: string;
+}
+
+export interface SpecialDateData {
+  id: string;
+  title: string;
+  date: string;
+  type: "annual" | "one-time";
+  emoji: string | null;
+  createdBy: User;
+  createdAt: string;
+}
+
+export interface SpecialDateWithCountdown extends SpecialDateData {
+  daysLeft: number;
+}
+
+export interface StreakData {
+  currentStreak: number;
+  longestStreak: number;
+  achievements: { badgeId: string; unlockedAt: string }[];
+}
+
+export interface MemoryData {
+  id: string;
+  eventId: string;
+  event?: CalendarEvent;
+  journal: string | null;
+  photoUrl: string | null;
+  createdBy: User;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MemoryStats {
+  totalMemories: number;
+  categoryCounts: { category: string; count: number; emoji: string }[];
+  thisYearCount: number;
+}
+
+export interface PendingMemory {
+  event: CalendarEvent;
+  daysAgo: number;
 }

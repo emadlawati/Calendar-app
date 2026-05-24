@@ -8,26 +8,32 @@ datasource db {
 }
 
 model CalendarEvent {
-  id            String   @id @default(uuid())
-  title         String
-  notes         String?
-  date          DateTime
-  time          String
-  endTime       String?
-  category      String?  // event category id (date-night, adventure, special, chores, casual, other)
-  allDay        Boolean  @default(false)
-  createdBy     String
-  status        String   @default("pending")
-  archived      Boolean  @default(false)
-  googleEventId String?  // Google Calendar event ID (accepter's event)
-  creatorGoogleEventId String?  // Google Calendar event ID for the event creator
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String   @id @default(uuid())
+  title               String
+  notes               String?
+  date                DateTime
+  time                String
+  endTime             String?
+  category            String?
+  allDay              Boolean  @default(false)
+  createdBy           String
+  status              String   @default("pending")
+  archived            Boolean  @default(false)
+  googleEventId       String?
+  creatorGoogleEventId String?
+  seriesId            String?
+  series              RecurringSeries? @relation(fields: [seriesId], references: [id])
+  isRecurring         Boolean  @default(false)
+  isRecurringInstance Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  memory              Memory?
 }
 
 model GoogleCalendarToken {
   id           String   @id @default(uuid())
-  userId       String   @unique // "Wife" or "Husband"
+  userId       String   @unique
   accessToken  String
   refreshToken String?
   expiryDate   DateTime?
@@ -51,6 +57,67 @@ model BucketItem {
   category  String   @default("other")
   notes     String?
   completed Boolean  @default(false)
+  createdBy String
+  createdAt DateTime @default(now())
+}
+
+model Streak {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  currentStreak Int      @default(0)
+  longestStreak Int      @default(0)
+  lastWeekStart DateTime
+  updatedAt     DateTime @updatedAt
+}
+
+model Achievement {
+  id         String   @id @default(uuid())
+  userId     String
+  badgeId    String
+  unlockedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+}
+
+model Memory {
+  id        String        @id @default(uuid())
+  eventId   String        @unique
+  event     CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  rating    Int
+  journal   String?
+  photoUrl  String?
+  createdBy String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model RecurringSeries {
+  id             String          @id @default(uuid())
+  title          String
+  notes          String?
+  category       String?
+  allDay         Boolean         @default(false)
+  time           String
+  endTime        String?
+  createdBy      String
+  frequency      String
+  interval       Int             @default(1)
+  startDate      DateTime
+  endDate        DateTime?
+  generatedUntil DateTime
+  status         String          @default("active")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  events         CalendarEvent[]
+}
+
+model SpecialDate {
+  id        String   @id @default(uuid())
+  title     String
+  date      DateTime
+  type      String   @default("annual")
+  emoji     String?
   createdBy String
   createdAt DateTime @default(now())
 }

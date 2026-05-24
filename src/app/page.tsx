@@ -10,6 +10,7 @@ import UserMenu from "@/components/UserMenu";
 import EventModal from "@/components/EventModal";
 import DetailsModal from "@/components/DetailsModal";
 import CountdownBanner from "@/components/CountdownBanner";
+import StreakBanner from "@/components/StreakBanner";
 import NoteDrawer from "@/components/NoteDrawer";
 import BucketListDrawer from "@/components/BucketListDrawer";
 import Toast from "@/components/Toast";
@@ -17,7 +18,8 @@ import { useSession } from "@/components/SessionProvider";
 import { triggerConfetti } from "@/lib/confetti";
 import { getCategoryById } from "@/lib/categories";
 import { CategoryIcons, PlusIcon } from "@/components/icons";
-import type { CalendarEvent, StickyNote } from "@/lib/types";
+import type { CalendarEvent, StickyNote, SpecialDateWithCountdown, StreakData, PendingMemory } from "@/lib/types";
+import SaveMemoryModal from "@/components/SaveMemoryModal";
 
 const TIMEZONE = "+04:00";
 
@@ -43,6 +45,10 @@ export default function Home() {
   const [isNoteDrawerOpen, setIsNoteDrawerOpen] = useState(false);
   const [isBucketDrawerOpen, setIsBucketDrawerOpen] = useState(false);
   const [flyingNotes, setFlyingNotes] = useState<StickyNote[]>([]);
+  const [specialDates, setSpecialDates] = useState<SpecialDateWithCountdown[]>([]);
+  const [streakData, setStreakData] = useState<StreakData | null>(null);
+  const [pendingMemory, setPendingMemory] = useState<PendingMemory | null>(null);
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -93,6 +99,36 @@ export default function Home() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) setFlyingNotes(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch streaks
+  useEffect(() => {
+    fetch("/api/streaks")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.currentStreak !== undefined) setStreakData(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch special dates
+  useEffect(() => {
+    fetch("/api/special-dates")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setSpecialDates(data as SpecialDateWithCountdown[]);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Check for pending memories to rate
+  useEffect(() => {
+    fetch("/api/memories/pending")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.event) setPendingMemory(data);
       })
       .catch(() => {});
   }, []);
@@ -158,7 +194,46 @@ export default function Home() {
             onOpenBucket={() => setIsBucketDrawerOpen(true)}
             onToggleArchive={() => setShowArchived(!showArchived)}
             showArchived={showArchived}
+            specialDates={specialDates}
           />
+          {streakData && (
+            <div className="mx-4 sm:mx-8 mt-3">
+              <StreakBanner streak={streakData} />
+            </div>
+          )}
+
+          {pendingMemory && (
+            <div className="mx-4 sm:mx-8 mt-3">
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center justify-between gap-3 p-4 rounded-2xl border"
+                style={{
+                  background: "var(--card-bg)",
+                  borderColor: "var(--card-border)",
+                  boxShadow: "var(--card-shadow)",
+                }}
+              >
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                    How was {pendingMemory.event.title}?
+                  </p>
+                  <p className="text-xs" style={{ color: "var(--text-soft)" }}>
+                    {pendingMemory.daysAgo} {pendingMemory.daysAgo === 1 ? "day" : "days"} ago
+                  </p>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setIsRateModalOpen(true)}
+                  className="chip-pill font-medium text-xs"
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  Rate & remember &rarr;
+                </motion.button>
+              </motion.div>
+            </div>
+          )}
         </div>
 
         {/* Calendar Card */}
@@ -235,7 +310,16 @@ export default function Home() {
         <DetailsModal
           isOpen={isDetailsOpen}
           onClose={() => setIsDetailsOpen(false)}
-          onSuccess={fetchEvents}
+          onSuccess={(newBadges) => {
+            fetchEvents();
+            fetch("/api/streaks").then(r => r.json()).then(d => {
+              if (d.currentStreak !== undefined) setStreakData(d);
+            });
+            if (newBadges?.length) {
+              setToastMessage(`\u{1F389} Achievement unlocked: ${newBadges[0].emoji} ${newBadges[0].label}!`);
+              triggerConfetti();
+            }
+          }}
           event={selectedEvent}
         />
 
@@ -247,6 +331,13 @@ export default function Home() {
         <BucketListDrawer
           isOpen={isBucketDrawerOpen}
           onClose={() => setIsBucketDrawerOpen(false)}
+        />
+
+        <SaveMemoryModal
+          isOpen={isRateModalOpen}
+          onClose={() => setIsRateModalOpen(false)}
+          onSuccess={() => { fetchEvents(); setPendingMemory(null); }}
+          pending={pendingMemory}
         />
 
         {/* Flying Notes */}

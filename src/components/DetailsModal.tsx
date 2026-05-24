@@ -14,7 +14,7 @@ import type { CalendarEvent } from "@/lib/types";
 interface DetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newBadges?: { id: string; label: string; emoji: string }[]) => void;
   event: CalendarEvent | null;
 }
 
@@ -42,7 +42,15 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event }: Deta
       });
       if (res.ok) {
         setShowConfirmDelete(false);
-        if (action === "accept") triggerConfetti();
+        const data = await res.json();
+        if (action === "accept") {
+          triggerConfetti();
+          if (data.newBadges?.length > 0) {
+            onSuccess(data.newBadges);
+            onClose();
+            return;
+          }
+        }
         onSuccess();
         onClose();
       }
@@ -92,6 +100,12 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event }: Deta
                 style={{ background: cat.color, color: cat.textColor }}>
                 {cat.label}
               </span>
+              {event.isRecurringInstance && (
+                <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ml-1.5"
+                  style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                  recurring
+                </span>
+              )}
             </div>
 
             <div className="space-y-3 mb-5">
