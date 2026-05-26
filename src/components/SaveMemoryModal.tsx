@@ -52,22 +52,26 @@ export default function SaveMemoryModal({ isOpen, onClose, onSuccess, pending, e
 
   if (!pending && !editMemory) return null;
 
-  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+    setError("");
 
-    const readers: Promise<string>[] = files.map((file) => {
-      if (file.size > 4 * 1024 * 1024) throw new Error("Photo must be under 4MB");
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
+    const uploads: Promise<string>[] = files.map(async (file) => {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: form, credentials: "same-origin" });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      return data.url as string;
     });
 
-    Promise.all(readers)
-      .then((results) => setPhotos((prev) => [...prev, ...results]))
-      .catch(() => setError("Photo must be under 4MB"));
+    try {
+      const urls = await Promise.all(uploads);
+      setPhotos((prev) => [...prev, ...urls]);
+    } catch {
+      setError("Failed to upload photo. Please try again.");
+    }
   };
 
   const removePhoto = (index: number) => {
