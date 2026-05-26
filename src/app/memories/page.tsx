@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import MemoryCard from "@/components/MemoryCard";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus, X } from "lucide-react";
+import { getCategoryById } from "@/lib/categories";
+import type { CalendarEvent, PendingMemory } from "@/lib/types";
 
 interface Memory {
   id: string;
@@ -36,6 +38,13 @@ export default function MemoriesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Memory | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // New memory flow
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [pickerEvents, setPickerEvents] = useState<CalendarEvent[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [newMemoryPending, setNewMemoryPending] = useState<PendingMemory | null>(null);
+  const [isNewMemoryModalOpen, setIsNewMemoryModalOpen] = useState(false);
+
   const fetchMemories = () => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -59,6 +68,31 @@ export default function MemoriesPage() {
   useEffect(() => {
     fetchMemories();
   }, [filterCategory]);
+
+  const openPicker = async () => {
+    setIsPickerOpen(true);
+    setPickerLoading(true);
+    try {
+      const res = await fetch("/api/events");
+      const data: CalendarEvent[] = await res.json();
+      const now = new Date();
+      const eligible = data.filter((e) => {
+        if (e.status !== "accepted" || e.archived) return false;
+        if (e.memoryId) return false;
+        const eventDate = new Date((e.date as string).split("T")[0] + "T00:00:00+04:00");
+        return eventDate <= now;
+      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setPickerEvents(eligible);
+    } catch { /* ignore */ }
+    setPickerLoading(false);
+  };
+
+  const handlePickEvent = (event: CalendarEvent) => {
+    const daysAgo = Math.floor((Date.now() - new Date((event.date as string).split("T")[0]).getTime()) / (1000 * 60 * 60 * 24));
+    setNewMemoryPending({ event: { id: event.id, title: event.title, category: event.category ?? null }, daysAgo });
+    setIsPickerOpen(false);
+    setIsNewMemoryModalOpen(true);
+  };
 
   const handleEdit = (memory: Memory) => {
     setEditMemory(memory);
@@ -86,15 +120,26 @@ export default function MemoriesPage() {
       className="min-h-screen max-w-4xl mx-auto px-4 sm:px-8 py-6"
     >
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/" className="flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
-          style={{ color: "var(--text-soft)" }}>
-          <ArrowLeft size={16} />
-          Calendar
-        </Link>
-        <h1 className="text-2xl" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
-          Memory Wall
-        </h1>
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
+            style={{ color: "var(--text-soft)" }}>
+            <ArrowLeft size={16} />
+            Calendar
+          </Link>
+          <h1 className="text-2xl" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
+            Memory Wall
+          </h1>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={openPicker}
+          className="flex items-center gap-1.5 chip-pill font-semibold text-xs"
+        >
+          <Plus size={13} />
+          New Memory
+        </motion.button>
       </div>
 
       {/* Stats Bar */}
@@ -157,6 +202,86 @@ export default function MemoriesPage() {
         </div>
       )}
 
+      {/* Event Picker Sheet */}
+      <AnimatePresence>
+        {isPickerOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsPickerOpen(false)}
+              className="fixed inset-0 z-40"
+              style={{ background: "rgba(40, 25, 15, 0.45)", backdropFilter: "blur(6px)" }}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 modal-shell w-[440px] max-w-[95vw] max-h-[75vh] flex flex-col p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
+                  Pick an event
+                </h2>
+                <button onClick={() => setIsPickerOpen(false)} style={{ color: "var(--text-soft)" }}>
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="text-xs mb-4" style={{ color: "var(--text-soft)" }}>
+                Choose a past event to save a memory for
+              </p>
+
+              <div className="flex-1 overflow-y-auto space-y-2">
+                {pickerLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="text-2xl">
+                      ☕
+                    </motion.div>
+                  </div>
+                ) : pickerEvents.length === 0 ? (
+                  <p className="text-center text-sm py-8" style={{ color: "var(--text-soft)" }}>
+                    No past events without memories 🎉
+                  </p>
+                ) : (
+                  pickerEvents.map((event) => {
+                    const cat = getCategoryById(event.category);
+                    return (
+                      <motion.button
+                        key={event.id}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => handlePickEvent(event)}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors"
+                        style={{
+                          background: "var(--input-bg)",
+                          borderColor: "var(--divider)",
+                        }}
+                      >
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base"
+                          style={{ background: cat.color }}
+                        >
+                          {cat.emoji}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
+                            {event.title}
+                          </p>
+                          <p className="text-[11px]" style={{ color: "var(--text-soft)" }}>
+                            {new Date(event.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                          </p>
+                        </div>
+                      </motion.button>
+                    );
+                  })
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <SaveMemoryModal
         isOpen={isEditModalOpen}
         onClose={() => { setIsEditModalOpen(false); setEditMemory(null); }}
@@ -168,6 +293,17 @@ export default function MemoriesPage() {
           photos: editMemory.photos,
           event: editMemory.event,
         } : null}
+      />
+
+      <SaveMemoryModal
+        isOpen={isNewMemoryModalOpen}
+        onClose={() => { setIsNewMemoryModalOpen(false); setNewMemoryPending(null); }}
+        onSuccess={() => {
+          fetchMemories();
+          fetch("/api/memories/stats").then((r) => r.json()).then(setStats);
+          setNewMemoryPending(null);
+        }}
+        pending={newMemoryPending}
       />
 
       <ConfirmDialog

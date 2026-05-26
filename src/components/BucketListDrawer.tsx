@@ -25,40 +25,55 @@ export default function BucketListDrawer({ isOpen, onClose }: BucketListDrawerPr
       .catch(() => {});
   }, [isOpen]);
 
-  const refreshItems = () => {
-    fetch("/api/bucket")
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setItems(data); })
-      .catch(() => {});
-  };
-
   const handleAdd = async () => {
     if (!newTitle.trim()) return;
     setIsSubmitting(true);
+    const tempId = `temp-${Date.now()}`;
+    const optimistic: BucketItem = {
+      id: tempId,
+      title: newTitle.trim(),
+      category: "other",
+      notes: null,
+      completed: false,
+      createdBy: "Husband",
+      createdAt: new Date().toISOString(),
+    };
+    setItems((prev) => [optimistic, ...prev]);
+    setNewTitle("");
     try {
       const res = await fetch("/api/bucket", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ title: newTitle.trim() }),
+        body: JSON.stringify({ title: optimistic.title }),
       });
-      if (res.ok) { setNewTitle(""); refreshItems(); }
-    } catch { /* ignore */ }
+      if (res.ok) {
+        const { item: real }: { item: BucketItem } = await res.json();
+        setItems((prev) => prev.map((i) => (i.id === tempId ? real : i)));
+      } else {
+        setItems((prev) => prev.filter((i) => i.id !== tempId));
+      }
+    } catch {
+      setItems((prev) => prev.filter((i) => i.id !== tempId));
+    }
     setIsSubmitting(false);
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/bucket/${id}`, { method: "DELETE" });
-    refreshItems();
+    setItems((prev) => prev.filter((i) => i.id !== id));
+    await fetch(`/api/bucket/${id}`, { method: "DELETE" }).catch(() => {});
   };
 
   const handleToggleComplete = async (item: BucketItem) => {
+    const updated = { ...item, completed: !item.completed };
+    setItems((prev) => prev.map((i) => (i.id === item.id ? updated : i)));
     await fetch(`/api/bucket/${item.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ completed: !item.completed }),
+      body: JSON.stringify({ completed: updated.completed }),
+    }).catch(() => {
+      setItems((prev) => prev.map((i) => (i.id === item.id ? item : i)));
     });
-    refreshItems();
   };
 
   const filteredItems = showCompleted ? items : items.filter((i) => !i.completed);

@@ -12,11 +12,21 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const showAll = searchParams.get("all") === "true";
+    const showSent = searchParams.get("sent") === "true";
 
     if (showAll) {
       const notes = await prisma.stickyNote.findMany({
         orderBy: { createdAt: "desc" },
         take: 50,
+      });
+      return NextResponse.json(notes);
+    }
+
+    if (showSent) {
+      const notes = await prisma.stickyNote.findMany({
+        where: { createdBy: user },
+        orderBy: { createdAt: "desc" },
+        take: 30,
       });
       return NextResponse.json(notes);
     }
