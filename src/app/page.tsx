@@ -49,6 +49,7 @@ export default function Home() {
   const [streakData, setStreakData] = useState<StreakData | null>(null);
   const [pendingMemory, setPendingMemory] = useState<PendingMemory | null>(null);
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
+  const [flashback, setFlashback] = useState<{ memory: { id: string; journal: string | null; photos: string | null; event: { id: string; title: string; category: string | null } }; yearsAgo: number } | null>(null);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -133,6 +134,14 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
+  // "On this day" flashback
+  useEffect(() => {
+    fetch("/api/memories/flashback")
+      .then((r) => r.json())
+      .then((data) => { if (data?.memory) setFlashback(data); })
+      .catch(() => {});
+  }, []);
+
   const dismissNote = async (id: string) => {
     setFlyingNotes((prev) => prev.filter((n) => n.id !== id));
     await fetch(`/api/notes/${id}`, { method: "PATCH" }).catch(() => {});
@@ -195,6 +204,10 @@ export default function Home() {
             onToggleArchive={() => setShowArchived(!showArchived)}
             showArchived={showArchived}
             specialDates={specialDates}
+            onDeleteSpecialDate={async (id) => {
+              await fetch(`/api/special-dates/${id}`, { method: "DELETE", credentials: "same-origin" });
+              setSpecialDates((prev) => prev.filter((d) => d.id !== id));
+            }}
           />
           {streakData && (
             <div className="mx-4 sm:mx-8 mt-3">
@@ -219,7 +232,7 @@ export default function Home() {
                     Save this memory?
                   </p>
                   <p className="text-xs" style={{ color: "var(--text-soft)" }}>
-                    {pendingMemory.daysAgo} {pendingMemory.daysAgo === 1 ? "day" : "days"} ago
+                    {pendingMemory.event.title} · {pendingMemory.daysAgo} {pendingMemory.daysAgo === 1 ? "day" : "days"} ago
                   </p>
                 </div>
                 <motion.button
@@ -231,6 +244,35 @@ export default function Home() {
                 >
                   Save memory &rarr;
                 </motion.button>
+              </motion.div>
+            </div>
+          )}
+
+          {flashback && (
+            <div className="mx-4 sm:mx-8 mt-3">
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center justify-between gap-3 p-4 rounded-2xl border"
+                style={{ background: "var(--card-bg)", borderColor: "var(--card-border)", boxShadow: "var(--card-shadow)" }}
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                    📸 On this day, {flashback.yearsAgo} {flashback.yearsAgo === 1 ? "year" : "years"} ago
+                  </p>
+                  <p className="text-xs truncate" style={{ color: "var(--text-soft)" }}>
+                    {flashback.memory.event.title}
+                  </p>
+                </div>
+                <motion.a
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  href="/memories"
+                  className="chip-pill font-medium text-xs shrink-0"
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  View &rarr;
+                </motion.a>
               </motion.div>
             </div>
           )}
@@ -272,6 +314,7 @@ export default function Home() {
                       >
                         <Icon size={11} color={cat.textColor} />
                         <span className="truncate">{event.title}</span>
+                        {event.memoryId && <span style={{ fontSize: 9, opacity: 0.8 }}>📸</span>}
                       </motion.div>
                     );
                   },

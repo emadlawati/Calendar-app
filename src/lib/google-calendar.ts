@@ -1,6 +1,17 @@
 import { google } from 'googleapis';
 import prisma from '@/lib/prisma';
 
+function addOneHour(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  return `${String((h + 1) % 24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function nextDay(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split("T")[0];
+}
+
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/userinfo.email',
@@ -167,20 +178,16 @@ export async function createCalendarEvent(
             ? `From Couples Calendar 🐾\n\n${event.category ? `Category: ${event.category}\n` : ""}Notes: ${event.notes}`
             : `From Couples Calendar 🐾${event.category ? `\n\nCategory: ${event.category}` : ""}`,
           start: { date: event.date },
-          end: { date: event.date },
+          end: { date: nextDay(event.date) },
         },
       });
       return response.data.id || null;
     }
 
     const startDateTime = `${event.date}T${event.time}:00`;
-    const endDateTime = event.endTime
-      ? `${event.date}T${event.endTime}:00`
-      : `${event.date}T${event.time}:00`;
-
     const end = event.endTime
-      ? endDateTime
-      : new Date(new Date(startDateTime).getTime() + 60 * 60 * 1000).toISOString();
+      ? `${event.date}T${event.endTime}:00`
+      : `${event.date}T${addOneHour(event.time)}:00`;
       const response = await calendar.events.insert({
       calendarId: 'primary',
       requestBody: {
@@ -239,20 +246,15 @@ export async function updateCalendarEvent(
             ? `From Couples Calendar 🐾\n\n${event.category ? `Category: ${event.category}\n` : ""}Notes: ${event.notes}`
             : `From Couples Calendar 🐾${event.category ? `\n\nCategory: ${event.category}` : ""}`,
           start: { date: event.date },
-          end: { date: event.date },
+          end: { date: nextDay(event.date) },
         },
       });
       return true;
     }
 
-    const startDateTime = `${event.date}T${event.time}:00`;
-    const endDateTime = event.endTime
-      ? `${event.date}T${event.endTime}:00`
-      : `${event.date}T${event.time}:00`;
-
     const end = event.endTime
-      ? endDateTime
-      : new Date(new Date(startDateTime).getTime() + 60 * 60 * 1000).toISOString();
+      ? `${event.date}T${event.endTime}:00`
+      : `${event.date}T${addOneHour(event.time)}:00`;
 
     await calendar.events.update({
       calendarId: 'primary',
@@ -263,7 +265,7 @@ export async function updateCalendarEvent(
           ? `From Couples Calendar 🐾\n\n${event.category ? `Category: ${event.category}\n` : ""}Notes: ${event.notes}`
           : `From Couples Calendar 🐾${event.category ? `\n\nCategory: ${event.category}` : ""}`,
         start: {
-          dateTime: startDateTime,
+          dateTime: `${event.date}T${event.time}:00`,
           timeZone,
         },
         end: {

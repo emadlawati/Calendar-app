@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 
 interface SpecialDate {
   id: string;
@@ -12,7 +12,12 @@ interface SpecialDate {
   type: "annual" | "one-time";
 }
 
-export default function SpecialDateCarousel({ dates }: { dates: SpecialDate[] }) {
+interface SpecialDateCarouselProps {
+  dates: SpecialDate[];
+  onDelete?: (id: string) => void;
+}
+
+export default function SpecialDateCarousel({ dates, onDelete }: SpecialDateCarouselProps) {
   const [expanded, setExpanded] = useState(false);
 
   const sorted = [...dates]
@@ -34,7 +39,7 @@ export default function SpecialDateCarousel({ dates }: { dates: SpecialDate[] })
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium group/chip"
               style={{
                 background: d.daysLeft === 0 ? "rgba(252, 232, 200, 0.25)" : "rgba(252, 232, 200, 0.12)",
                 borderColor: d.daysLeft === 0 ? "rgba(252, 232, 200, 0.5)" : "rgba(252, 232, 200, 0.2)",
@@ -45,8 +50,18 @@ export default function SpecialDateCarousel({ dates }: { dates: SpecialDate[] })
                 {d.title}
               </span>
               <span className="opacity-75 shrink-0">
-                {d.daysLeft === 0 ? "TODAY \u{1F389}" : `in ${d.daysLeft}d`}
+                {d.daysLeft === 0 ? "TODAY 🎉" : `in ${d.daysLeft}d`}
               </span>
+              {onDelete && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(d.id); }}
+                  className="opacity-0 group-hover/chip:opacity-100 transition-opacity ml-0.5 shrink-0"
+                  style={{ color: "rgba(252,232,200,0.7)" }}
+                  aria-label="Remove"
+                >
+                  <X size={11} />
+                </button>
+              )}
             </motion.div>
           ))}
         </AnimatePresence>

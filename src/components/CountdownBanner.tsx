@@ -24,6 +24,7 @@ interface CountdownBannerProps {
   onToggleArchive: () => void;
   showArchived: boolean;
   specialDates?: SpecialDateWithCountdown[];
+  onDeleteSpecialDate?: (id: string) => void;
 }
 
 export default function CountdownBanner({
@@ -33,6 +34,7 @@ export default function CountdownBanner({
   onToggleArchive,
   showArchived,
   specialDates = [],
+  onDeleteSpecialDate,
 }: CountdownBannerProps) {
   const { nextEvent, daysLeft } = useMemo(() => {
     const today = getGulfToday();
@@ -182,13 +184,10 @@ export default function CountdownBanner({
 
       {/* Special dates row — full width below main row */}
       <div className="w-full relative z-10">
-        <SpecialDateCarousel dates={specialDates.map(d => ({
-          id: d.id,
-          title: d.title,
-          emoji: d.emoji,
-          daysLeft: d.daysLeft,
-          type: d.type,
-        }))} />
+        <SpecialDateCarousel
+          dates={specialDates.map(d => ({ id: d.id, title: d.title, emoji: d.emoji, daysLeft: d.daysLeft, type: d.type }))}
+          onDelete={onDeleteSpecialDate}
+        />
       </div>
     </motion.div>
   );

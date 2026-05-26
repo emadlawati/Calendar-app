@@ -22,6 +22,7 @@ function AdjustEventForm() {
   const [category, setCategory] = useState("other");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
   const [event, setEvent] = useState<CalendarEvent | null>(null);
   const [loading, setLoading] = useState(!!eventId);
   const [fetchError, setFetchError] = useState<string>("");
@@ -38,6 +39,11 @@ function AdjustEventForm() {
       })
       .then(data => {
         setEvent(data);
+        setTitle(data.title || "");
+        setDate(data.date ? data.date.split("T")[0] : "");
+        setTime(data.time || "");
+        setEndTime(data.endTime || "");
+        setNotes(data.notes || "");
         setCategory(data.category || "other");
         setLoading(false);
       })
@@ -70,7 +76,7 @@ function AdjustEventForm() {
       });
 
       if (!res.ok) {
-        console.error("Failed to propose adjustment");
+        setSubmitError(true);
         setIsSubmitting(false);
         return;
       }
@@ -232,6 +238,12 @@ function AdjustEventForm() {
                   className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand resize-none h-20"
                 />
               </div>
+
+              {submitError && (
+                <p className="text-sm text-center rounded-xl py-2" style={{ color: "#c14a33", background: "rgba(193,74,51,0.08)" }}>
+                  Something went wrong. Please try again.
+                </p>
+              )}
 
               <motion.button
                 whileHover={{ scale: 1.02 }}

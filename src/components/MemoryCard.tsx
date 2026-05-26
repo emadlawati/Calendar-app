@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ChevronRight, Pencil, Trash2, X } from "lucide-react";
 import { getCategoryById } from "@/lib/categories";
 
 interface Memory {
@@ -28,6 +28,7 @@ export default function MemoryCard({ memory, onEdit, onDelete }: MemoryCardProps
   const dateStr = new Date(memory.event.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   const [photoIndex, setPhotoIndex] = useState(0);
   const [showActions, setShowActions] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   let photos: string[] = [];
   if (memory.photos) {
@@ -65,7 +66,12 @@ export default function MemoryCard({ memory, onEdit, onDelete }: MemoryCardProps
 
       {photos.length > 0 ? (
         <div className="relative">
-          <img src={photos[photoIndex]} alt={memory.event.title} className="w-full aspect-auto object-cover" />
+          <img
+            src={photos[photoIndex]}
+            alt={memory.event.title}
+            className="w-full aspect-auto object-cover cursor-zoom-in"
+            onClick={() => setLightbox(photos[photoIndex])}
+          />
           {photos.length > 1 && (
             <>
               <button
@@ -117,6 +123,37 @@ export default function MemoryCard({ memory, onEdit, onDelete }: MemoryCardProps
           </p>
         )}
       </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(8px)" }}
+            onClick={() => setLightbox(null)}
+          >
+            <button
+              className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}
+              onClick={() => setLightbox(null)}
+            >
+              <X size={18} />
+            </button>
+            <motion.img
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              src={lightbox}
+              alt="Memory"
+              className="max-w-full max-h-[90vh] rounded-2xl object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

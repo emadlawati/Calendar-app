@@ -126,6 +126,14 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                     {new Date(event.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                     {event.allDay ? " · All day" : ` @ ${event.time}`}
                   </span>
+                  {event.status === "accepted" && !hasStarted && (() => {
+                    const daysUntil = Math.ceil((eventStart.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    return (
+                      <p className="text-[11px] mt-0.5 font-medium" style={{ color: "var(--accent)" }}>
+                        {daysUntil === 0 ? "Today! 🎉" : daysUntil === 1 ? "Tomorrow 🗓️" : `In ${daysUntil} days 🗓️`}
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
 
