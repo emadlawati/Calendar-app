@@ -60,6 +60,40 @@ export async function POST(request: Request) {
       const streakResult = await recalculateStreaks();
       const newBadges = streakResult.newUnlocks.map((b) => ({ id: b.id, label: b.label, emoji: b.emoji }));
 
+      // Notify the original creator that their plan was accepted
+      if (acceptedEvent) {
+        const creatorEmail = acceptedEvent.createdBy === "Wife"
+          ? process.env.WIFE_EMAIL
+          : process.env.HUSBAND_EMAIL;
+        const accepterDisplay = getDisplayName(user);
+        const cat = getCategoryById(acceptedEvent.category);
+        const dateStr = acceptedEvent.date.toISOString().split("T")[0];
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+
+        if (creatorEmail && process.env.RESEND_API_KEY !== "re_...") {
+          resend.emails.send({
+            from: "Calendar 🐾 <noreply@yaminami.uk>",
+            to: creatorEmail,
+            subject: `${cat.emoji} ${acceptedEvent.title} — ${accepterDisplay} accepted! 🎉`,
+            html: `
+              <div style="font-family: sans-serif; background-color: #fdfbf7; padding: 40px; border-radius: 32px; color: #5d4037; border: 2px solid #d7ccc8;">
+                <h1 style="color: #5d4037; font-size: 24px;">${accepterDisplay} accepted your plan! 🧶</h1>
+                <div style="background-color: #ffffff; padding: 24px; border-radius: 24px; margin: 20px 0; border: 1px solid #ffeedb;">
+                  <p style="margin: 0; font-size: 14px; color: #5d4037; opacity: 0.8;">${cat.emoji} ${cat.label}</p>
+                  <h2 style="margin: 5px 0; color: #5d4037;">${acceptedEvent.title}</h2>
+                  <p style="margin: 5px 0;">📅 ${new Date(dateStr).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} @ ${acceptedEvent.time}</p>
+                  ${acceptedEvent.notes ? `<p style="margin: 15px 0; font-style: italic;">"${acceptedEvent.notes}"</p>` : ""}
+                </div>
+                <a href="${baseUrl}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
+                  Open Calendar 🐾
+                </a>
+                <p style="margin-top: 30px; font-size: 12px; opacity: 0.6;">Sent with love from your shared calendar app.</p>
+              </div>
+            `,
+          }).catch((err: unknown) => console.error("Accept notification email failed:", err));
+        }
+      }
+
       return NextResponse.json({
         success: true,
         message: "Event accepted",
@@ -321,6 +355,40 @@ export async function GET(request: Request) {
     }
 
     await recalculateStreaks();
+
+    // Notify the original creator that their plan was accepted via email link
+    if (acceptedEvent && acceptedBy) {
+      const creatorEmail = acceptedEvent.createdBy === "Wife"
+        ? process.env.WIFE_EMAIL
+        : process.env.HUSBAND_EMAIL;
+      const accepterDisplay = getDisplayName(acceptedBy as "Wife" | "Husband");
+      const cat = getCategoryById(acceptedEvent.category);
+      const dateStr = acceptedEvent.date.toISOString().split("T")[0];
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+
+      if (creatorEmail && process.env.RESEND_API_KEY !== "re_...") {
+        resend.emails.send({
+          from: "Calendar 🐾 <noreply@yaminami.uk>",
+          to: creatorEmail,
+          subject: `${cat.emoji} ${acceptedEvent.title} — ${accepterDisplay} accepted! 🎉`,
+          html: `
+            <div style="font-family: sans-serif; background-color: #fdfbf7; padding: 40px; border-radius: 32px; color: #5d4037; border: 2px solid #d7ccc8;">
+              <h1 style="color: #5d4037; font-size: 24px;">${accepterDisplay} accepted your plan! 🧶</h1>
+              <div style="background-color: #ffffff; padding: 24px; border-radius: 24px; margin: 20px 0; border: 1px solid #ffeedb;">
+                <p style="margin: 0; font-size: 14px; color: #5d4037; opacity: 0.8;">${cat.emoji} ${cat.label}</p>
+                <h2 style="margin: 5px 0; color: #5d4037;">${acceptedEvent.title}</h2>
+                <p style="margin: 5px 0;">📅 ${new Date(dateStr).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} @ ${acceptedEvent.time}</p>
+                ${acceptedEvent.notes ? `<p style="margin: 15px 0; font-style: italic;">"${acceptedEvent.notes}"</p>` : ""}
+              </div>
+              <a href="${baseUrl}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
+                Open Calendar 🐾
+              </a>
+              <p style="margin-top: 30px; font-size: 12px; opacity: 0.6;">Sent with love from your shared calendar app.</p>
+            </div>
+          `,
+        }).catch((err: unknown) => console.error("Accept notification email failed:", err));
+      }
+    }
 
     // Redirect to home with a success message
     return NextResponse.redirect(new URL('/?accepted=true', request.url));

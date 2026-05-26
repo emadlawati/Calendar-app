@@ -16,6 +16,7 @@ export interface CalendarEvent {
   createdBy: User;
   status: EventStatus;
   archived: boolean;
+  memoryId?: string | null;
   googleEventId?: string | null;
   creatorGoogleEventId?: string | null;
   seriesId?: string | null;

@@ -9,9 +9,14 @@ export async function GET(request: Request) {
 
     const events = await prisma.calendarEvent.findMany({
       where: showArchived ? {} : { archived: false },
-      orderBy: { date: 'asc' }
+      orderBy: { date: 'asc' },
+      include: { memory: { select: { id: true } } },
     });
-    return NextResponse.json(events);
+    const mapped = events.map(({ memory, ...ev }) => ({
+      ...ev,
+      memoryId: memory?.id ?? null,
+    }));
+    return NextResponse.json(mapped);
   } catch (error) {
     console.error("Database Error:", error);
     return NextResponse.json({ success: false, error: "Failed to fetch events" }, { status: 500 });

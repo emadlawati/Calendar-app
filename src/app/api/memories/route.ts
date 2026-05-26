@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getRequestUser } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
@@ -25,6 +26,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const user = await getRequestUser(body.createdBy);
 
     const photos = Array.isArray(body.photos) ? JSON.stringify(body.photos) : null;
 
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
         rating: 5,
         journal: body.journal || null,
         photos,
-        createdBy: "Wife",
+        createdBy: user ?? "Husband",
       },
       include: { event: true },
     });

@@ -15,28 +15,39 @@ export async function GET() {
   try {
     const now = getGulfNow();
 
-    const recentAcceptedEvent = await prisma.calendarEvent.findFirst({
+    // Fetch candidates: accepted, unarchived, no memory, date not in the future
+    const candidates = await prisma.calendarEvent.findMany({
       where: {
         status: "accepted",
         archived: false,
         memory: null,
+        date: { lte: new Date() },
       },
       orderBy: { date: "desc" },
+      take: 20,
     });
 
-    if (!recentAcceptedEvent) {
+    // Find the most recent event that has actually ended
+    let targetEvent = null;
+    for (const ev of candidates) {
+      const endTime = ev.endTime || "23:59";
+      const [hours, minutes] = endTime.split(":").map(Number);
+      const eventEnd = new Date(ev.date);
+      eventEnd.setHours(hours, minutes, 0, 0);
+      if (eventEnd < now) {
+        targetEvent = ev;
+        break;
+      }
+    }
+
+    if (!targetEvent) {
       return NextResponse.json(null);
     }
 
-    const eventDate = new Date(recentAcceptedEvent.date);
-    const endTime = recentAcceptedEvent.endTime || "23:59";
+    const endTime = targetEvent.endTime || "23:59";
     const [hours, minutes] = endTime.split(":").map(Number);
-    const eventEnd = new Date(eventDate);
+    const eventEnd = new Date(targetEvent.date);
     eventEnd.setHours(hours, minutes, 0, 0);
-
-    if (eventEnd >= now) {
-      return NextResponse.json(null);
-    }
 
     const daysAgo = Math.floor((now.getTime() - eventEnd.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -46,11 +57,11 @@ export async function GET() {
 
     return NextResponse.json({
       event: {
-        id: recentAcceptedEvent.id,
-        title: recentAcceptedEvent.title,
-        date: recentAcceptedEvent.date.toISOString(),
-        time: recentAcceptedEvent.time,
-        category: recentAcceptedEvent.category,
+        id: targetEvent.id,
+        title: targetEvent.title,
+        date: targetEvent.date.toISOString(),
+        time: targetEvent.time,
+        category: targetEvent.category,
       },
       daysAgo,
     });

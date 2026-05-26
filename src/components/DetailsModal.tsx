@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { useSession } from "@/components/SessionProvider";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -29,7 +30,9 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
 
   const isPartner = event.createdBy !== currentUser;
   const isPending = event.status === "pending";
-  const isPast = new Date(event.date) < new Date() && event.status === "accepted";
+  const datePart = (event.date as string).split("T")[0];
+  const eventStart = new Date(`${datePart}T${event.time || "00:00"}:00+04:00`);
+  const hasStarted = eventStart <= new Date() && event.status === "accepted";
   const cat = getCategoryById(event.category);
   const Icon = CategoryIcons[cat.id];
 
@@ -199,17 +202,28 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
               </div>
             )}
 
-            {/* Save Memory button for past events */}
-            {isPast && onSaveMemory && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => { onSaveMemory(event); onClose(); }}
-                className="w-full mt-4 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
-                style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-              >
-                📸 Save Memory
-              </motion.button>
+            {/* Save / Edit Memory button for past events */}
+            {hasStarted && (
+              event.memoryId ? (
+                <Link
+                  href="/memories"
+                  onClick={onClose}
+                  className="w-full mt-4 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                  style={{ background: "var(--chip-bg)", color: "var(--accent)", display: "flex" }}
+                >
+                  📸 View / Edit Memory
+                </Link>
+              ) : onSaveMemory && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => { onSaveMemory(event); onClose(); }}
+                  className="w-full mt-4 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                  style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+                >
+                  📸 Save Memory
+                </motion.button>
+              )
             )}
 
             <button onClick={onClose}
