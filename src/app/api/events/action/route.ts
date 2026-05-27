@@ -240,6 +240,92 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: `Adjustment proposed to ${partner}` });
     }
 
+    if (action === 'edit') {
+      const existingEvent = await prisma.calendarEvent.findUnique({
+        where: { id: eventId }
+      });
+
+      if (!existingEvent) {
+        return NextResponse.json({ success: false, error: "Event not found" }, { status: 404 });
+      }
+
+      const updatedTitle = title || existingEvent.title;
+      const updatedNotes = adjustNotes !== undefined ? adjustNotes : existingEvent.notes;
+      const updatedEndTime = endTime !== undefined ? endTime : existingEvent.endTime;
+      const updatedCategory = adjustCategory !== undefined ? adjustCategory : existingEvent.category;
+      const updatedDate = date ? new Date(date) : existingEvent.date;
+      const updatedTime = time || existingEvent.time;
+      const updatedAllDay = allDay !== undefined ? allDay : existingEvent.allDay;
+
+      // Update the event — keep status as 'accepted'
+      await prisma.calendarEvent.update({
+        where: { id: eventId },
+        data: {
+          title: updatedTitle,
+          date: updatedDate,
+          time: updatedTime,
+          endTime: updatedEndTime,
+          notes: updatedNotes,
+          category: updatedCategory,
+          allDay: updatedAllDay,
+        },
+      });
+
+      const dateStr = updatedDate.toISOString().split('T')[0];
+
+      // Sync Google Calendar for both creator and accepter
+      if (existingEvent.creatorGoogleEventId) {
+        updateCalendarEvent(existingEvent.creatorGoogleEventId, existingEvent.createdBy, {
+          title: updatedTitle, date: dateStr, time: updatedTime,
+          endTime: updatedEndTime, notes: updatedNotes, category: updatedCategory, allDay: updatedAllDay,
+        }).catch((err: unknown) => console.error("Creator GCal edit failed:", err));
+      }
+      if (existingEvent.googleEventId) {
+        const partner = existingEvent.createdBy === "Wife" ? "Husband" : "Wife";
+        updateCalendarEvent(existingEvent.googleEventId, partner, {
+          title: updatedTitle, date: dateStr, time: updatedTime,
+          endTime: updatedEndTime, notes: updatedNotes, category: updatedCategory, allDay: updatedAllDay,
+        }).catch((err: unknown) => console.error("Partner GCal edit failed:", err));
+      }
+
+      // Send email to BOTH parties
+      const editorDisplay = getDisplayName(user);
+      const cat = getCategoryById(updatedCategory);
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const formattedDate = updatedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+      const emailRecipients: string[] = [];
+      if (process.env.WIFE_EMAIL) emailRecipients.push(process.env.WIFE_EMAIL);
+      if (process.env.HUSBAND_EMAIL) emailRecipients.push(process.env.HUSBAND_EMAIL);
+
+      if (emailRecipients.length > 0 && process.env.RESEND_API_KEY !== "re_...") {
+        const emailHtml = `
+          <div style="font-family: sans-serif; background-color: #fdfbf7; padding: 40px; border-radius: 32px; color: #5d4037; border: 2px solid #d7ccc8;">
+            <h1 style="color: #5d4037; font-size: 24px;">✏️ ${editorDisplay} updated a plan</h1>
+            <div style="background-color: #ffffff; padding: 24px; border-radius: 24px; margin: 20px 0; border: 1px solid #ffeedb;">
+              <p style="margin: 0; font-size: 13px; color: #5d4037; opacity: 0.7;">${cat.emoji} ${cat.label}</p>
+              <h2 style="margin: 6px 0; color: #5d4037;">${updatedTitle}</h2>
+              <p style="margin: 5px 0;">📅 ${formattedDate} @ ${updatedTime}${updatedEndTime ? ` – ${updatedEndTime}` : ''}</p>
+              ${updatedNotes ? `<p style="margin: 14px 0 0; font-style: italic; color: #5d4037;">"${updatedNotes}"</p>` : ''}
+            </div>
+            <a href="${baseUrl}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
+              Open Calendar 🐾
+            </a>
+            <p style="margin-top: 30px; font-size: 12px; opacity: 0.6;">Sent with love from your shared calendar app.</p>
+          </div>
+        `;
+
+        resend.emails.send({
+          from: 'Calendar 🐾 <noreply@yaminami.uk>',
+          to: emailRecipients,
+          subject: `${cat.emoji} ${updatedTitle} — updated by ${editorDisplay}`,
+          html: emailHtml,
+        }).catch((err: unknown) => console.error("Edit notification email failed:", err));
+      }
+
+      return NextResponse.json({ success: true, message: "Event updated" });
+    }
+
     if (action === 'delete') {
       // Fetch event to check for Google Calendar events
       const eventToDelete = await prisma.calendarEvent.findUnique({
