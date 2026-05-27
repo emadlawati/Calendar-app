@@ -7,6 +7,7 @@ import { useSession } from "./SessionProvider";
 import { getDisplayName } from "@/lib/names";
 import { CoffeeIcon, HeartIcon } from "@/components/icons";
 import ThemeToggle from "./ThemeToggle";
+import type { LevelResult } from "@/lib/level";
 
 interface GoogleStatus {
   connected: boolean;
@@ -20,6 +21,7 @@ export default function UserMenu({
 }) {
   const { user, logout } = useSession();
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
+  const [levelData, setLevelData] = useState<LevelResult | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -27,6 +29,10 @@ export default function UserMenu({
       .then((r) => r.json())
       .then((d) => setGoogleStatus({ connected: d.connected, email: d.email }))
       .catch(() => setGoogleStatus({ connected: false }));
+    fetch("/api/level")
+      .then((r) => r.json())
+      .then((d) => setLevelData(d))
+      .catch(() => {});
   }, [user]);
 
   if (!user) return null;
@@ -120,6 +126,23 @@ export default function UserMenu({
           <span className="text-xs sm:text-sm font-medium">Send note</span>
         </motion.button>
 
+        {/* Level pill */}
+        {levelData && (
+          <Link
+            href="/stats"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-sm transition-colors hover:opacity-80"
+            style={{
+              background: "var(--card-bg)",
+              borderColor: "var(--card-border)",
+              color: "var(--text)",
+            }}
+            title={`${levelData.title} — ${levelData.score} pts`}
+          >
+            <span className="text-sm">{levelData.emoji}</span>
+            <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Lv. {levelData.level}</span>
+          </Link>
+        )}
+
         {/* Memories link */}
         <Link href="/memories"
           className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-colors hover:opacity-80"
@@ -130,6 +153,30 @@ export default function UserMenu({
           }}
         >
           <span className="text-xs sm:text-sm font-medium">📸 Memories</span>
+        </Link>
+
+        {/* Stats link */}
+        <Link href="/stats"
+          className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-colors hover:opacity-80"
+          style={{
+            background: "var(--card-bg)",
+            borderColor: "var(--card-border)",
+            color: "var(--text)",
+          }}
+        >
+          <span className="text-xs sm:text-sm font-medium">📊 Stats</span>
+        </Link>
+
+        {/* Timeline link */}
+        <Link href="/timeline"
+          className="hidden sm:flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-colors hover:opacity-80"
+          style={{
+            background: "var(--card-bg)",
+            borderColor: "var(--card-border)",
+            color: "var(--text)",
+          }}
+        >
+          <span className="text-xs sm:text-sm font-medium">🕰️ Timeline</span>
         </Link>
 
         {/* Google Connect */}
