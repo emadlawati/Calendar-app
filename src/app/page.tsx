@@ -18,8 +18,9 @@ import { useSession } from "@/components/SessionProvider";
 import { triggerConfetti } from "@/lib/confetti";
 import { getCategoryById } from "@/lib/categories";
 import { CategoryIcons, PlusIcon } from "@/components/icons";
-import type { CalendarEvent, StickyNote, SpecialDateWithCountdown, StreakData, PendingMemory } from "@/lib/types";
+import type { CalendarEvent, StickyNote, SpecialDateWithCountdown, StreakData, PendingMemory, Reminder } from "@/lib/types";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
+import ReminderModal from "@/components/ReminderModal";
 
 const TIMEZONE = "+04:00";
 
@@ -29,6 +30,7 @@ const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales
 interface CalendarViewEvent extends CalendarEvent {
   start: Date;
   end: Date;
+  isReminder?: boolean;
 }
 
 export default function Home() {
@@ -50,6 +52,8 @@ export default function Home() {
   const [pendingMemory, setPendingMemory] = useState<PendingMemory | null>(null);
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
   const [flashback, setFlashback] = useState<{ memory: { id: string; journal: string | null; photos: string | null; event: { id: string; title: string; category: string | null } }; yearsAgo: number } | null>(null);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -142,6 +146,18 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
+  // Fetch reminders
+  const fetchReminders = useCallback(async () => {
+    fetch("/api/reminders")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setReminders(data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchReminders();
+  }, [fetchReminders]);
+
   const dismissNote = async (id: string) => {
     setFlyingNotes((prev) => prev.filter((n) => n.id !== id));
     await fetch(`/api/notes/${id}`, { method: "PATCH" }).catch(() => {});
@@ -159,11 +175,33 @@ export default function Home() {
   };
 
   const handleSelectEvent = (event: CalendarViewEvent) => {
+    // Reminders are not full calendar events — skip the details modal
+    if (event.isReminder) return;
     setSelectedEvent(event);
     setIsDetailsOpen(true);
   };
 
   const eventStyleGetter = (event: CalendarViewEvent) => {
+    if (event.isReminder) {
+      return {
+        style: {
+          backgroundColor: "#e8eaf6",
+          color: "#3949ab",
+          borderLeft: "3px solid #5c6bc0",
+          borderRadius: "8px",
+          padding: "4px 7px 4px 6px",
+          fontSize: "11.5px",
+          fontWeight: 500,
+          display: "flex" as const,
+          alignItems: "center" as const,
+          gap: "6px",
+          overflow: "hidden" as const,
+          textOverflow: "ellipsis" as const,
+          whiteSpace: "nowrap" as const,
+          cursor: "pointer",
+        },
+      };
+    }
     const cat = getCategoryById(event.category);
     return {
       style: {
@@ -184,6 +222,35 @@ export default function Home() {
       },
     };
   };
+
+  // Merge reminders into the calendar events array
+  const reminderEvents: CalendarViewEvent[] = reminders.map((r) => {
+    const datePart = new Date(r.date).toISOString().split("T")[0];
+    const start = new Date(`${datePart}T${r.time}:00${TIMEZONE}`);
+    const end = r.endTime
+      ? new Date(`${datePart}T${r.endTime}:00${TIMEZONE}`)
+      : new Date(start.getTime() + 60 * 60 * 1000);
+    return {
+      id: r.id,
+      title: r.title,
+      notes: null,
+      date: r.date,
+      time: r.time,
+      endTime: r.endTime ?? null,
+      category: null,
+      allDay: false,
+      createdBy: r.createdBy,
+      status: "accepted" as const,
+      archived: false,
+      createdAt: r.createdAt,
+      updatedAt: r.createdAt,
+      start,
+      end,
+      isReminder: true,
+    };
+  });
+
+  const allCalendarEvents = [...events, ...reminderEvents];
 
   return (
     <AnimatePresence mode="wait">
@@ -294,7 +361,7 @@ export default function Home() {
             ) : (
               <Calendar
                 localizer={localizer}
-                events={events}
+                events={allCalendarEvents}
                 startAccessor="start"
                 endAccessor="end"
                 allDayAccessor="allDay"
@@ -303,6 +370,19 @@ export default function Home() {
                 style={{ height: "100%" }}
                 components={{
                   event: ({ event }: { event: CalendarViewEvent }) => {
+                    if (event.isReminder) {
+                      return (
+                        <motion.div
+                          initial={{ scale: 0.9, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          whileHover={{ scale: 1.03 }}
+                          className="flex items-center gap-1.5 group relative"
+                        >
+                          <span style={{ fontSize: 10 }}>🔔</span>
+                          <span className="truncate">{event.title}</span>
+                        </motion.div>
+                      );
+                    }
                     const cat = getCategoryById(event.category);
                     const Icon = CategoryIcons[cat.id];
                     return (
@@ -330,6 +410,23 @@ export default function Home() {
             )}
           </div>
         </motion.div>
+
+        {/* Floating Reminder Button */}
+        <motion.button
+          whileHover={{ scale: 1.05, y: -2 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsReminderModalOpen(true)}
+          className="fixed bottom-5 sm:bottom-6 z-50 flex items-center gap-2 text-sm sm:text-[15px] px-4 sm:px-[18px] py-3 sm:py-[14px] rounded-2xl font-semibold shadow-lg transition-colors"
+          style={{
+            right: "calc(1rem + 140px)",
+            background: "var(--card-bg)",
+            border: "1.5px solid var(--card-border)",
+            color: "var(--text)",
+          }}
+        >
+          <span>🔔</span>
+          <span className="hidden sm:inline">Reminder</span>
+        </motion.button>
 
         {/* Floating New Event Button */}
         <motion.button
@@ -386,6 +483,13 @@ export default function Home() {
           onClose={() => setIsRateModalOpen(false)}
           onSuccess={() => { fetchEvents(); setPendingMemory(null); }}
           pending={pendingMemory}
+        />
+
+        <ReminderModal
+          isOpen={isReminderModalOpen}
+          onClose={() => setIsReminderModalOpen(false)}
+          onSuccess={fetchReminders}
+          onToast={setToastMessage}
         />
 
         {/* Flying Notes */}

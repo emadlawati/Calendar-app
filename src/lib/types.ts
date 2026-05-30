@@ -112,3 +112,15 @@ export interface PendingMemory {
   event: { id: string; title: string; category: string | null };
   daysAgo: number;
 }
+
+export interface Reminder {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  endTime: string | null;
+  createdBy: User;
+  sent24h: boolean;
+  sent1h: boolean;
+  createdAt: string;
+}

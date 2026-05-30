@@ -121,3 +121,15 @@ model SpecialDate {
   createdBy String
   createdAt DateTime @default(now())
 }
+
+model Reminder {
+  id        String   @id @default(uuid())
+  title     String
+  date      DateTime
+  time      String
+  endTime   String?
+  createdBy String
+  sent24h   Boolean  @default(false)
+  sent1h    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
