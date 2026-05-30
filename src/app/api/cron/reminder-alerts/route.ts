@@ -99,8 +99,8 @@ export async function GET(request: Request) {
       results.push(`24h:${reminder.title}`);
     }
 
-    // ── 1-hour alert: within [0, 90] minutes from now ──
-    if (!reminder.sent1h && minsUntil >= 0 && minsUntil <= 90) {
+    // ── 1-hour alert: reminder is 30–90 minutes away (fires ~1h before) ──
+    if (!reminder.sent1h && minsUntil >= 30 && minsUntil <= 90) {
       const html = `
         <div style="${EMAIL_STYLE}">
           <h1 style="color:#5d4037;font-size:24px;">🔔 In 1 hour!</h1>
