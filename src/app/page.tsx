@@ -411,33 +411,33 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {/* Floating Reminder Button */}
-        <motion.button
-          whileHover={{ scale: 1.05, y: -2 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsReminderModalOpen(true)}
-          className="fixed bottom-5 sm:bottom-6 z-50 flex items-center gap-2 text-sm sm:text-[15px] px-4 sm:px-[18px] py-3 sm:py-[14px] rounded-2xl font-semibold shadow-lg transition-colors"
-          style={{
-            right: "calc(1rem + 140px)",
-            background: "var(--card-bg)",
-            border: "1.5px solid var(--card-border)",
-            color: "var(--text)",
-          }}
-        >
-          <span>🔔</span>
-          <span className="hidden sm:inline">Reminder</span>
-        </motion.button>
+        {/* Floating action buttons */}
+        <div className="fixed bottom-5 sm:bottom-6 right-4 sm:right-8 z-50 flex items-center gap-2 sm:gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsReminderModalOpen(true)}
+            className="flex items-center gap-2 text-sm sm:text-[15px] px-4 sm:px-[18px] py-3 sm:py-[14px] rounded-2xl font-semibold shadow-lg transition-colors"
+            style={{
+              background: "var(--card-bg)",
+              border: "1.5px solid var(--card-border)",
+              color: "var(--text)",
+            }}
+          >
+            <span>🔔</span>
+            <span className="hidden sm:inline">Reminder</span>
+          </motion.button>
 
-        {/* Floating New Event Button */}
-        <motion.button
-          whileHover={{ scale: 1.05, y: -2 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsModalOpen(true)}
-          className="btn-accent fixed bottom-5 sm:bottom-6 right-4 sm:right-8 z-50 text-sm sm:text-[15px] px-4 sm:px-[22px] py-3 sm:py-[14px]"
-        >
-          <PlusIcon size={18} />
-          New event
-        </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsModalOpen(true)}
+            className="btn-accent text-sm sm:text-[15px] px-4 sm:px-[22px] py-3 sm:py-[14px]"
+          >
+            <PlusIcon size={18} />
+            New event
+          </motion.button>
+        </div>
 
         {/* Modals & Drawers */}
         <EventModal
