@@ -123,13 +123,15 @@ model SpecialDate {
 }
 
 model Reminder {
-  id        String   @id @default(uuid())
-  title     String
-  date      DateTime
-  time      String
-  endTime   String?
-  createdBy String
-  sent24h   Boolean  @default(false)
-  sent1h    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id                    String   @id @default(uuid())
+  title                 String
+  date                  DateTime
+  time                  String
+  endTime               String?
+  createdBy             String
+  sent24h               Boolean  @default(false)
+  sent1h                Boolean  @default(false)
+  googleEventIdWife     String?
+  googleEventIdHusband  String?
+  createdAt             DateTime @default(now())
 }

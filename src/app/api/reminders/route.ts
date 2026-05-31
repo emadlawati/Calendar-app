@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import resend from "@/lib/resend";
+import { createCalendarEvent } from "@/lib/google-calendar";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -67,7 +68,39 @@ export async function POST(request: Request) {
       },
     });
 
-    // Send confirmation email to both partners
+    // ── Sync to Google Calendar for BOTH partners ──
+    const gcalData = {
+      title: `🔔 ${title}`,
+      date,      // "YYYY-MM-DD"
+      time,
+      endTime: endTime || null,
+      notes: "Reminder from Couples Calendar",
+      category: null,
+    };
+
+    const [wifeGcalId, husbandGcalId] = await Promise.all([
+      createCalendarEvent("Wife", gcalData).catch((e) => {
+        console.error("Wife GCal reminder sync failed:", e);
+        return null;
+      }),
+      createCalendarEvent("Husband", gcalData).catch((e) => {
+        console.error("Husband GCal reminder sync failed:", e);
+        return null;
+      }),
+    ]);
+
+    // Store the Google Calendar event IDs for future deletion
+    if (wifeGcalId || husbandGcalId) {
+      await prisma.reminder.update({
+        where: { id: reminder.id },
+        data: {
+          googleEventIdWife: wifeGcalId,
+          googleEventIdHusband: husbandGcalId,
+        },
+      });
+    }
+
+    // ── Send confirmation email to both partners ──
     const recipients = [process.env.WIFE_EMAIL, process.env.HUSBAND_EMAIL].filter(Boolean) as string[];
     const noEmail = process.env.RESEND_API_KEY === "re_..." || !process.env.RESEND_API_KEY;
 
