@@ -411,13 +411,13 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {/* Floating action buttons */}
-        <div className="fixed bottom-5 sm:bottom-6 right-4 sm:right-8 z-50 flex items-center gap-2 sm:gap-3">
+        {/* Floating action buttons — two clearly separate buttons */}
+        <div className="fixed bottom-5 sm:bottom-6 right-4 sm:right-8 z-50 flex items-center gap-3">
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsReminderModalOpen(true)}
-            className="flex items-center gap-2 text-sm sm:text-[15px] px-4 sm:px-[18px] py-3 sm:py-[14px] rounded-2xl font-semibold shadow-lg transition-colors"
+            className="flex items-center gap-2 text-sm sm:text-[15px] px-4 sm:px-5 py-3 sm:py-[14px] rounded-2xl font-semibold shadow-lg"
             style={{
               background: "var(--card-bg)",
               border: "1.5px solid var(--card-border)",
@@ -425,7 +425,7 @@ export default function Home() {
             }}
           >
             <span>🔔</span>
-            <span className="hidden sm:inline">Reminder</span>
+            New reminder
           </motion.button>
 
           <motion.button

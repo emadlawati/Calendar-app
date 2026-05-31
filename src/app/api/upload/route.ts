@@ -3,11 +3,6 @@ import { put } from "@vercel/blob";
 
 export const dynamic = "force-dynamic";
 
-// Disable the default body parser so we can stream the raw file
-export const config = {
-  api: { bodyParser: false },
-};
-
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
