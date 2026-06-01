@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const PUBLIC_PREFIXES = [
   "/login",
   "/api/auth",
+  "/api/cron",
   "/events/adjust",
   "/_next",
   "/favicon.ico",
