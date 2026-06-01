@@ -9,7 +9,7 @@ const PUBLIC_PREFIXES = [
   "/favicon.ico",
 ];
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const session = request.cookies.get("session");
   const { pathname } = request.nextUrl;
 
@@ -29,3 +29,10 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 }
+
+export const config = {
+  matcher: [
+    // Run middleware on all routes except static files
+    "/((?!_next/static|_next/image|favicon.ico).*)",
+  ],
+};
