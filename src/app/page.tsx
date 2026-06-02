@@ -263,7 +263,7 @@ export default function Home() {
         <UserMenu onSendNote={() => setIsNoteDrawerOpen(true)} />
 
         {/* Countdown Banner */}
-        <div className="mt-4 sm:mt-5">
+        <div className="mt-3 sm:mt-5">
           <CountdownBanner
             events={events}
             onOpenNotes={() => setIsNoteDrawerOpen(true)}
@@ -277,13 +277,13 @@ export default function Home() {
             }}
           />
           {streakData && (
-            <div className="mx-4 sm:mx-8 mt-3">
+            <div className="mx-2.5 sm:mx-8 mt-2.5 sm:mt-3">
               <StreakBanner streak={streakData} />
             </div>
           )}
 
           {pendingMemory && (
-            <div className="mx-4 sm:mx-8 mt-3">
+            <div className="mx-2.5 sm:mx-8 mt-2.5 sm:mt-3">
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -316,7 +316,7 @@ export default function Home() {
           )}
 
           {flashback && (
-            <div className="mx-4 sm:mx-8 mt-3">
+            <div className="mx-2.5 sm:mx-8 mt-2.5 sm:mt-3">
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -346,7 +346,7 @@ export default function Home() {
         </div>
 
         {/* Calendar Card */}
-        <motion.div layout className="flex-1 calendar-card mx-4 sm:mx-8 mt-[14px] sm:mt-[18px] mb-8 flex flex-col min-h-[360px] md:min-h-[650px]">
+        <motion.div layout className="flex-1 calendar-card mx-2.5 sm:mx-8 mt-3 sm:mt-[18px] mb-20 sm:mb-8 flex flex-col min-h-[360px] md:min-h-[650px]">
           <div className="flex-1 h-full min-h-[350px] md:min-h-[600px]">
             {(isLoading || isSessionLoading) ? (
               <div className="flex items-center justify-center h-full">
@@ -411,13 +411,13 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {/* Floating action buttons — two clearly separate buttons */}
-        <div className="fixed bottom-5 sm:bottom-6 right-4 sm:right-8 z-50 flex items-center gap-3">
+        {/* Floating action buttons */}
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-auto sm:right-8 z-50 flex items-center gap-2.5 sm:gap-3">
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsReminderModalOpen(true)}
-            className="flex items-center gap-2 text-sm sm:text-[15px] px-4 sm:px-5 py-3 sm:py-[14px] rounded-2xl font-semibold shadow-lg"
+            className="flex items-center gap-1.5 sm:gap-2 text-[13px] sm:text-[15px] px-3.5 sm:px-5 py-2.5 sm:py-[14px] rounded-2xl font-semibold shadow-lg"
             style={{
               background: "var(--card-bg)",
               border: "1.5px solid var(--card-border)",
@@ -425,17 +425,17 @@ export default function Home() {
             }}
           >
             <span>🔔</span>
-            New reminder
+            <span className="hidden xs:inline">New</span> Reminder
           </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsModalOpen(true)}
-            className="btn-accent text-sm sm:text-[15px] px-4 sm:px-[22px] py-3 sm:py-[14px]"
+            className="btn-accent text-[13px] sm:text-[15px] px-3.5 sm:px-[22px] py-2.5 sm:py-[14px]"
           >
-            <PlusIcon size={18} />
-            New event
+            <PlusIcon size={16} />
+            <span className="hidden xs:inline">New</span> Event
           </motion.button>
         </div>
 

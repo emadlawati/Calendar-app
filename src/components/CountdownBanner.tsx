@@ -62,7 +62,7 @@ export default function CountdownBanner({
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-4 sm:mx-8 rounded-3xl flex flex-col gap-4 sm:gap-5 px-4 sm:px-[26px] py-4 sm:py-5 relative overflow-hidden shadow-xl"
+      className="mx-2.5 sm:mx-8 rounded-2xl sm:rounded-3xl flex flex-col gap-3 sm:gap-5 px-3.5 sm:px-[26px] py-3.5 sm:py-5 relative overflow-hidden shadow-xl"
       style={{
         background: "linear-gradient(135deg, #6b3a1f 0%, #8a4a22 100%)",
         boxShadow: "0 14px 30px -14px rgba(60, 30, 10, 0.5)",
@@ -88,37 +88,37 @@ export default function CountdownBanner({
           <>
             {/* Day counter square */}
             <div
-              className="w-16 h-16 rounded-[18px] flex flex-col items-center justify-center border shrink-0"
+              className="w-12 h-12 sm:w-16 sm:h-16 rounded-[14px] sm:rounded-[18px] flex flex-col items-center justify-center border shrink-0"
               style={{
                 background: "rgba(252, 232, 200, 0.15)",
                 borderColor: "rgba(252, 232, 200, 0.3)",
               }}
             >
               <span
-                className="text-[26px] leading-none"
+                className="text-[20px] sm:text-[26px] leading-none"
                 style={{ fontFamily: "var(--font-caprasimo), cursive" }}
               >
                 {daysLeft === 0 ? "!" : daysLeft}
               </span>
-              <span className="text-[9.5px] tracking-[0.08em] opacity-75">
+              <span className="text-[8px] sm:text-[9.5px] tracking-[0.08em] opacity-75">
                 {daysLeft === 0 ? "TODAY" : daysLeft === 1 ? "DAY" : "DAYS"}
               </span>
             </div>
 
             <div className="min-w-0">
-              <p className="text-[11.5px] uppercase tracking-wider opacity-75 mb-1">
+              <p className="text-[10px] sm:text-[11.5px] uppercase tracking-wider opacity-75 mb-0.5 sm:mb-1">
                 {daysLeft === 0 ? "It's happening today!" : daysLeft === 1 ? "Tomorrow" : "Up next together"}
               </p>
               <p
-                className="text-[22px] leading-tight truncate"
+                className="text-[17px] sm:text-[22px] leading-tight truncate"
                 style={{ fontFamily: "var(--font-caprasimo), cursive" }}
               >
                 {nextEvent.title}
               </p>
-              <p className="text-[12.5px] opacity-80 mt-0.5">
+              <p className="text-[11px] sm:text-[12.5px] opacity-80 mt-0.5">
                 {new Date(nextEvent.date).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
                 {nextEvent.allDay ? " · All day" : ` @ ${nextEvent.time}`}
-                {category && ` · ${category.emoji} ${category.label}`}
+                {category && <span className="hidden sm:inline"> · {category.emoji} {category.label}</span>}
               </p>
             </div>
           </>
@@ -136,47 +136,47 @@ export default function CountdownBanner({
       </div>
 
       {/* Right: action tiles */}
-      <div className="flex gap-3 relative z-10 shrink-0">
+      <div className="flex gap-2 sm:gap-3 relative z-10 shrink-0">
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.96 }}
           onClick={onOpenNotes}
-          className="w-16 flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-[14px] border transition-all"
+          className="w-[52px] sm:w-16 flex flex-col items-center gap-1 sm:gap-1.5 py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-xl sm:rounded-[14px] border transition-all"
           style={{
             background: "rgba(252, 232, 200, 0.12)",
             borderColor: "rgba(252, 232, 200, 0.2)",
           }}
         >
-          <NoteIcon size={18} />
-          <span className="text-[11px] opacity-90">Notes</span>
+          <NoteIcon size={16} />
+          <span className="text-[10px] sm:text-[11px] opacity-90">Notes</span>
         </motion.button>
 
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.96 }}
           onClick={onOpenBucket}
-          className="w-16 flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-[14px] border transition-all"
+          className="w-[52px] sm:w-16 flex flex-col items-center gap-1 sm:gap-1.5 py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-xl sm:rounded-[14px] border transition-all"
           style={{
             background: "rgba(252, 232, 200, 0.12)",
             borderColor: "rgba(252, 232, 200, 0.2)",
           }}
         >
-          <TargetIcon size={18} />
-          <span className="text-[11px] opacity-90">Bucket</span>
+          <TargetIcon size={16} />
+          <span className="text-[10px] sm:text-[11px] opacity-90">Bucket</span>
         </motion.button>
 
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.96 }}
           onClick={onToggleArchive}
-          className="w-16 flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-[14px] border transition-all"
+          className="w-[52px] sm:w-16 flex flex-col items-center gap-1 sm:gap-1.5 py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-xl sm:rounded-[14px] border transition-all"
           style={{
             background: showArchived ? "rgba(252, 232, 200, 0.3)" : "rgba(252, 232, 200, 0.12)",
             borderColor: showArchived ? "rgba(252, 232, 200, 0.4)" : "rgba(252, 232, 200, 0.2)",
           }}
         >
-          <ArchiveIcon size={18} />
-          <span className="text-[11px] opacity-90">{showArchived ? "All" : "Archive"}</span>
+          <ArchiveIcon size={16} />
+          <span className="text-[10px] sm:text-[11px] opacity-90">{showArchived ? "All" : "Archive"}</span>
         </motion.button>
       </div>
 

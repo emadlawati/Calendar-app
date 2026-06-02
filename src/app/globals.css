@@ -404,44 +404,89 @@ input:focus, textarea:focus {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Responsive */
+/* Responsive — mobile */
 @media (max-width: 640px) {
+  /* Toolbar: compact horizontal layout */
   .calendar-custom .rbc-toolbar {
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
+    padding: 10px 12px;
+    gap: 4px;
+    flex-wrap: nowrap;
   }
   .calendar-custom .rbc-toolbar .rbc-toolbar-label {
-    font-size: 15px;
-    order: -1;
-    width: 100%;
+    font-size: 16px;
+    flex: 1;
     text-align: center;
+    order: 0;
   }
   .calendar-custom .rbc-toolbar .rbc-btn-group {
     display: flex;
-    width: 100%;
-    justify-content: center;
+    gap: 2px;
+  }
+  .calendar-custom .rbc-toolbar .rbc-btn-group:first-child {
+    order: -1;
   }
   .calendar-custom .rbc-toolbar .rbc-btn-group:last-child {
-    margin-top: 2px;
+    order: 1;
   }
   .calendar-custom .rbc-toolbar button {
-    font-size: 11.5px;
-    padding: 5px 10px;
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  /* Calendar card tighter radius */
+  .calendar-card {
+    border-radius: 18px;
+  }
+
+  /* Month grid — taller rows, better readability */
+  .calendar-custom .rbc-month-row {
+    min-height: 64px;
+  }
+  .calendar-custom .rbc-date-cell {
+    font-size: 12px;
+    padding: 3px 5px;
+  }
+  .calendar-custom .rbc-header {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    padding: 8px 0;
+  }
+  .calendar-custom .rbc-event-content {
+    font-size: 10.5px;
+    padding: 2px 5px;
+    gap: 4px;
+  }
+
+  /* Week/Day views — tighter on mobile */
+  .calendar-custom .rbc-time-content .rbc-timeslot-group {
+    min-height: 40px;
+  }
+
+  /* Modal — full-screen on mobile */
+  .modal-shell {
+    border-radius: 20px;
+    max-height: 90vh;
+  }
+
+  /* Floating buttons safe area */
+  .calendar-custom {
+    min-height: 340px;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 380px) {
+  .calendar-custom .rbc-toolbar button {
+    font-size: 10px;
+    padding: 5px 6px;
+  }
+  .calendar-custom .rbc-toolbar .rbc-toolbar-label {
+    font-size: 14px;
   }
   .calendar-custom .rbc-month-row {
     min-height: 56px;
   }
   .calendar-custom .rbc-date-cell {
     font-size: 11px;
-    padding: 2px 4px;
-  }
-  .calendar-custom .rbc-header {
-    font-size: 10px;
-    letter-spacing: 0.08em;
-  }
-  .calendar-custom .rbc-event-content {
-    font-size: 10px;
-    padding: 2px 4px;
   }
 }
