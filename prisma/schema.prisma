@@ -135,3 +135,15 @@ model Reminder {
   googleEventIdHusband  String?
   createdAt             DateTime @default(now())
 }
+
+model DailyHighlight {
+  id        String   @id @default(uuid())
+  date      String   // "YYYY-MM-DD" in Muscat timezone
+  note      String?
+  photos    String?  // JSON array of URLs
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date])
+}

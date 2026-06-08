@@ -124,3 +124,13 @@ export interface Reminder {
   sent1h: boolean;
   createdAt: string;
 }
+
+export interface DailyHighlight {
+  id: string;
+  date: string;        // "YYYY-MM-DD"
+  note: string | null;
+  photos: string | null; // JSON array of URLs
+  createdBy: User;
+  createdAt: string;
+  updatedAt: string;
+}

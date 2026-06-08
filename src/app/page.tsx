@@ -18,9 +18,10 @@ import { useSession } from "@/components/SessionProvider";
 import { triggerConfetti } from "@/lib/confetti";
 import { getCategoryById } from "@/lib/categories";
 import { CategoryIcons, PlusIcon } from "@/components/icons";
-import type { CalendarEvent, StickyNote, SpecialDateWithCountdown, StreakData, PendingMemory, Reminder } from "@/lib/types";
+import type { CalendarEvent, StickyNote, SpecialDateWithCountdown, StreakData, PendingMemory, Reminder, DailyHighlight } from "@/lib/types";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
 import ReminderModal from "@/components/ReminderModal";
+import DailyHighlightModal from "@/components/DailyHighlightModal";
 
 const TIMEZONE = "+04:00";
 
@@ -31,6 +32,8 @@ interface CalendarViewEvent extends CalendarEvent {
   start: Date;
   end: Date;
   isReminder?: boolean;
+  isHighlight?: boolean;
+  highlightDate?: string;
 }
 
 export default function Home() {
@@ -54,6 +57,10 @@ export default function Home() {
   const [flashback, setFlashback] = useState<{ memory: { id: string; journal: string | null; photos: string | null; event: { id: string; title: string; category: string | null } }; yearsAgo: number } | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [highlights, setHighlights] = useState<DailyHighlight[]>([]);
+  const [isHighlightModalOpen, setIsHighlightModalOpen] = useState(false);
+  const [highlightInitialDate, setHighlightInitialDate] = useState<string | undefined>(undefined);
+  const [highlightEditing, setHighlightEditing] = useState<DailyHighlight | null>(null);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -158,6 +165,18 @@ export default function Home() {
     fetchReminders();
   }, [fetchReminders]);
 
+  // Fetch highlights
+  const fetchHighlights = useCallback(async () => {
+    fetch("/api/highlights")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setHighlights(data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchHighlights();
+  }, [fetchHighlights]);
+
   const dismissNote = async (id: string) => {
     setFlyingNotes((prev) => prev.filter((n) => n.id !== id));
     await fetch(`/api/notes/${id}`, { method: "PATCH" }).catch(() => {});
@@ -175,6 +194,14 @@ export default function Home() {
   };
 
   const handleSelectEvent = (event: CalendarViewEvent) => {
+    // Highlights — open highlight modal for that date
+    if (event.isHighlight) {
+      const existing = highlights.find((h) => h.date === event.highlightDate) ?? null;
+      setHighlightEditing(existing);
+      setHighlightInitialDate(event.highlightDate);
+      setIsHighlightModalOpen(true);
+      return;
+    }
     // Reminders are not full calendar events — skip the details modal
     if (event.isReminder) return;
     setSelectedEvent(event);
@@ -182,6 +209,26 @@ export default function Home() {
   };
 
   const eventStyleGetter = (event: CalendarViewEvent) => {
+    if (event.isHighlight) {
+      return {
+        style: {
+          backgroundColor: "#fff8e1",
+          color: "#7c5c00",
+          borderLeft: "3px solid #f9a825",
+          borderRadius: "8px",
+          padding: "4px 7px 4px 6px",
+          fontSize: "11.5px",
+          fontWeight: 500,
+          display: "flex" as const,
+          alignItems: "center" as const,
+          gap: "6px",
+          overflow: "hidden" as const,
+          textOverflow: "ellipsis" as const,
+          whiteSpace: "nowrap" as const,
+          cursor: "pointer",
+        },
+      };
+    }
     if (event.isReminder) {
       return {
         style: {
@@ -250,7 +297,34 @@ export default function Home() {
     };
   });
 
-  const allCalendarEvents = [...events, ...reminderEvents];
+  // Map highlights to calendar events (show as all-day chips)
+  const highlightEvents: CalendarViewEvent[] = highlights.map((h) => {
+    const [y, m, d] = h.date.split("-").map(Number);
+    const dayStart = new Date(y, m - 1, d, 0, 0, 0);
+    const dayEnd = new Date(y, m - 1, d, 0, 30, 0); // 30 min block so it shows
+    const noteSnippet = h.note ? h.note.slice(0, 30) + (h.note.length > 30 ? "…" : "") : "Today's highlight";
+    return {
+      id: `highlight-${h.id}`,
+      title: noteSnippet,
+      notes: h.note,
+      date: h.date,
+      time: "00:00",
+      endTime: null,
+      category: null,
+      allDay: true,
+      createdBy: h.createdBy,
+      status: "accepted" as const,
+      archived: false,
+      createdAt: h.createdAt,
+      updatedAt: h.updatedAt,
+      start: dayStart,
+      end: dayEnd,
+      isHighlight: true,
+      highlightDate: h.date,
+    };
+  });
+
+  const allCalendarEvents = [...events, ...reminderEvents, ...highlightEvents];
 
   return (
     <AnimatePresence mode="wait">
@@ -370,6 +444,22 @@ export default function Home() {
                 style={{ height: "100%" }}
                 components={{
                   event: ({ event }: { event: CalendarViewEvent }) => {
+                    if (event.isHighlight) {
+                      const h = highlights.find((hl) => hl.date === event.highlightDate);
+                      const hasPhotos = h?.photos && JSON.parse(h.photos).length > 0;
+                      return (
+                        <motion.div
+                          initial={{ scale: 0.9, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          whileHover={{ scale: 1.03 }}
+                          className="flex items-center gap-1.5"
+                        >
+                          <span style={{ fontSize: 10 }}>⭐</span>
+                          <span className="truncate">{event.title}</span>
+                          {hasPhotos && <span style={{ fontSize: 9, opacity: 0.75 }}>📷</span>}
+                        </motion.div>
+                      );
+                    }
                     if (event.isReminder) {
                       return (
                         <motion.div
@@ -412,30 +502,52 @@ export default function Home() {
         </motion.div>
 
         {/* Floating action buttons */}
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-auto sm:right-8 z-50 flex items-center gap-2.5 sm:gap-3">
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-auto sm:right-8 z-50 flex items-center gap-2 sm:gap-2.5">
+          {/* Reminder — icon + label */}
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsReminderModalOpen(true)}
-            className="flex items-center gap-1.5 sm:gap-2 text-[13px] sm:text-[15px] px-3.5 sm:px-5 py-2.5 sm:py-[14px] rounded-2xl font-semibold shadow-lg"
+            className="flex items-center gap-1 sm:gap-1.5 text-[12px] sm:text-[14px] px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-semibold shadow-md"
             style={{
               background: "var(--card-bg)",
               border: "1.5px solid var(--card-border)",
-              color: "var(--text)",
+              color: "var(--text-soft)",
             }}
           >
-            <span>🔔</span>
-            <span className="hidden xs:inline">New</span> Reminder
+            <span className="text-sm">🔔</span>
+            <span className="hidden sm:inline">Reminder</span>
           </motion.button>
 
+          {/* Highlight */}
+          <motion.button
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              setHighlightEditing(null);
+              setHighlightInitialDate(undefined);
+              setIsHighlightModalOpen(true);
+            }}
+            className="flex items-center gap-1 sm:gap-1.5 text-[12px] sm:text-[14px] px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-semibold shadow-md"
+            style={{
+              background: "var(--card-bg)",
+              border: "1.5px solid var(--card-border)",
+              color: "var(--text-soft)",
+            }}
+          >
+            <span className="text-sm">⭐</span>
+            <span className="hidden sm:inline">Highlight</span>
+          </motion.button>
+
+          {/* New Event — primary */}
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsModalOpen(true)}
-            className="btn-accent text-[13px] sm:text-[15px] px-3.5 sm:px-[22px] py-2.5 sm:py-[14px]"
+            className="btn-accent text-[13px] sm:text-[15px] px-4 sm:px-[22px] py-2.5 sm:py-[14px]"
           >
             <PlusIcon size={16} />
-            <span className="hidden xs:inline">New</span> Event
+            <span className="hidden sm:inline">New </span>Event
           </motion.button>
         </div>
 
@@ -490,6 +602,14 @@ export default function Home() {
           onClose={() => setIsReminderModalOpen(false)}
           onSuccess={fetchReminders}
           onToast={setToastMessage}
+        />
+
+        <DailyHighlightModal
+          isOpen={isHighlightModalOpen}
+          onClose={() => { setIsHighlightModalOpen(false); setHighlightEditing(null); }}
+          onSuccess={() => { fetchHighlights(); setToastMessage("⭐ Highlight saved!"); }}
+          initialDate={highlightInitialDate}
+          existing={highlightEditing}
         />
 
         {/* Flying Notes */}
