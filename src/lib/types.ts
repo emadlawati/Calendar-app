@@ -9,6 +9,7 @@ export interface CalendarEvent {
   title: string;
   notes: string | null;
   date: string;
+  endDate?: string | null;
   time: string;
   endTime: string | null;
   category: string | null;
@@ -22,6 +23,7 @@ export interface CalendarEvent {
   seriesId?: string | null;
   isRecurring?: boolean;
   isRecurringInstance?: boolean;
+  specialDateId?: string | null;
   createdAt: string;
   updatedAt: string;
   start?: Date;
@@ -31,18 +33,21 @@ export interface CalendarEvent {
 export interface CreateEventPayload {
   title: string;
   date: string;
+  endDate?: string;
   time: string;
   endTime?: string;
   notes: string;
   category?: string;
   allDay?: boolean;
   createdBy: User;
+  specialDateId?: string | null;
 }
 
 export interface ActionPayload {
   action: "accept" | "adjust" | "delete" | "archive" | "unarchive";
   eventId: string;
   date?: string;
+  endDate?: string | null;
   time?: string;
   title?: string;
   notes?: string | null;

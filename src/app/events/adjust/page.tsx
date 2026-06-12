@@ -16,6 +16,7 @@ function AdjustEventForm() {
   const currentUser = (urlUser || sessionUser) as "Wife" | "Husband";
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [time, setTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
@@ -41,6 +42,7 @@ function AdjustEventForm() {
         setEvent(data);
         setTitle(data.title || "");
         setDate(data.date ? data.date.split("T")[0] : "");
+        setEndDate(data.endDate ? data.endDate.split("T")[0] : "");
         setTime(data.time || "");
         setEndTime(data.endTime || "");
         setNotes(data.notes || "");
@@ -65,6 +67,7 @@ function AdjustEventForm() {
         body: JSON.stringify({
           action: 'adjust',
           date,
+          endDate: endDate && endDate !== date ? endDate : null,
           time,
           title,
           notes,
@@ -122,7 +125,8 @@ function AdjustEventForm() {
     );
   }
 
-  const originalDate = new Date(event.date).toLocaleDateString();
+  const originalDate = new Date(event.date).toLocaleDateString()
+    + (event.endDate ? ` → ${new Date(event.endDate).toLocaleDateString()}` : "");
   const proposedBy = event.createdBy;
 
   return (
@@ -195,15 +199,27 @@ function AdjustEventForm() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">New Date</label>
-                <input
-                  required
-                  type="date"
-                  value={date}
-                  onChange={e => setDate(e.target.value)}
-                  className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
-                />
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">New Date</label>
+                  <input
+                    required
+                    type="date"
+                    value={date}
+                    onChange={e => setDate(e.target.value)}
+                    className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">End Date <span className="opacity-50">(optional)</span></label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={date}
+                    onChange={e => setEndDate(e.target.value)}
+                    className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-4">

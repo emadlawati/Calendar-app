@@ -81,7 +81,7 @@ export async function GET(request: Request) {
         <div style="background:#fff;padding:24px;border-radius:24px;margin:20px 0;border:1px solid #ffeedb;">
           <p style="margin:0;font-size:13px;color:#5d4037;opacity:0.7;">${cat.emoji} ${cat.label}</p>
           <h2 style="margin:6px 0;color:#5d4037;">${evt.title}</h2>
-          <p style="margin:5px 0;">🕐 ${evt.allDay ? "All day" : `@ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`}</p>
+          <p style="margin:5px 0;">🕐 ${evt.allDay ? "All day" : `@ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`}${evt.endDate ? ` · until ${formatDate(evt.endDate.toISOString().split("T")[0])} 🧳` : ""}</p>
           ${evt.notes ? `<p style="margin:14px 0 0;font-style:italic;">"${evt.notes}"</p>` : ""}
         </div>
         ${openBtn("Open Calendar 🐾")}
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
         <div style="background:#fff;padding:24px;border-radius:24px;margin:20px 0;border:1px solid #ffeedb;">
           <p style="margin:0;font-size:13px;color:#5d4037;opacity:0.7;">${cat.emoji} ${cat.label}</p>
           <h2 style="margin:6px 0;color:#5d4037;">${evt.title}</h2>
-          <p style="margin:5px 0;">📅 ${formatDate(tomorrowStr)} @ ${evt.allDay ? "All day" : evt.time}</p>
+          <p style="margin:5px 0;">📅 ${formatDate(tomorrowStr)} @ ${evt.allDay ? "All day" : evt.time}${evt.endDate ? ` · until ${formatDate(evt.endDate.toISOString().split("T")[0])} 🧳` : ""}</p>
           ${evt.notes ? `<p style="margin:14px 0 0;font-style:italic;">"${evt.notes}"</p>` : ""}
         </div>
         ${openBtn("Open Calendar 🐾")}
@@ -144,7 +144,8 @@ export async function GET(request: Request) {
     } else {
       const rows = weekEvents.map((evt) => {
         const cat = getCategoryById(evt.category);
-        const dStr = new Date(evt.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+        const dStr = new Date(evt.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+          + (evt.endDate ? ` – ${new Date(evt.endDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}` : "");
         return `<div style="padding:12px 0;border-bottom:1px solid #f5e6d8;">
           <p style="margin:0;font-size:13px;opacity:0.7;">${cat.emoji} ${dStr} ${evt.allDay ? "· All day" : `@ ${evt.time}`}</p>
           <p style="margin:4px 0 0;font-weight:600;font-size:15px;">${evt.title}</p>

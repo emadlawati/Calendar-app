@@ -36,24 +36,29 @@ export default function CountdownBanner({
   specialDates = [],
   onDeleteSpecialDate,
 }: CountdownBannerProps) {
-  const { nextEvent, daysLeft } = useMemo(() => {
+  const { nextEvent, daysLeft, isOngoing } = useMemo(() => {
     const today = getGulfToday();
 
     const upcoming = events
       .filter((e) => {
         if (e.archived) return false;
-        const eventDate = getGulfDate(e.date);
-        return eventDate >= today;
+        // Keep events whose span hasn't finished yet (endDate for multi-day)
+        const spanEnd = getGulfDate(e.endDate || e.date);
+        return spanEnd >= today;
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     if (upcoming.length > 0) {
       const next = upcoming[0];
       const eventDate = getGulfDate(next.date);
+      // Multi-day event already started — it's happening now
+      if (eventDate <= today && next.endDate) {
+        return { nextEvent: next, daysLeft: 0, isOngoing: true };
+      }
       const diffMs = eventDate.getTime() - today.getTime();
-      return { nextEvent: next, daysLeft: Math.ceil(diffMs / (1000 * 60 * 60 * 24)) };
+      return { nextEvent: next, daysLeft: Math.ceil(diffMs / (1000 * 60 * 60 * 24)), isOngoing: false };
     }
-    return { nextEvent: null, daysLeft: null };
+    return { nextEvent: null, daysLeft: null, isOngoing: false };
   }, [events]);
 
   const category = nextEvent ? getCategoryById(nextEvent.category) : null;
@@ -98,16 +103,16 @@ export default function CountdownBanner({
                 className="text-[20px] sm:text-[26px] leading-none"
                 style={{ fontFamily: "var(--font-caprasimo), cursive" }}
               >
-                {daysLeft === 0 ? "!" : daysLeft}
+                {isOngoing ? "✈️" : daysLeft === 0 ? "!" : daysLeft}
               </span>
               <span className="text-[8px] sm:text-[9.5px] tracking-[0.08em] opacity-75">
-                {daysLeft === 0 ? "TODAY" : daysLeft === 1 ? "DAY" : "DAYS"}
+                {isOngoing ? "NOW" : daysLeft === 0 ? "TODAY" : daysLeft === 1 ? "DAY" : "DAYS"}
               </span>
             </div>
 
             <div className="min-w-0">
               <p className="text-[10px] sm:text-[11.5px] uppercase tracking-wider opacity-75 mb-0.5 sm:mb-1">
-                {daysLeft === 0 ? "It's happening today!" : daysLeft === 1 ? "Tomorrow" : "Up next together"}
+                {isOngoing ? "Happening now!" : daysLeft === 0 ? "It's happening today!" : daysLeft === 1 ? "Tomorrow" : "Up next together"}
               </p>
               <p
                 className="text-[17px] sm:text-[22px] leading-tight truncate"
@@ -117,6 +122,7 @@ export default function CountdownBanner({
               </p>
               <p className="text-[11px] sm:text-[12.5px] opacity-80 mt-0.5">
                 {new Date(nextEvent.date).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
+                {nextEvent.endDate && ` → ${new Date(nextEvent.endDate).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}`}
                 {nextEvent.allDay ? " · All day" : ` @ ${nextEvent.time}`}
                 {category && <span className="hidden sm:inline"> · {category.emoji} {category.label}</span>}
               </p>

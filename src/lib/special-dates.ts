@@ -5,6 +5,7 @@ export interface UpcomingSpecial {
   id: string;
   title: string;
   emoji: string | null;
+  kind: string;
   date: Date;
   daysLeft: number;
   type: "annual" | "one-time";
@@ -49,6 +50,7 @@ export async function getUpcomingSpecialDates(): Promise<UpcomingSpecial[]> {
       id: d.id,
       title: d.title,
       emoji: d.emoji,
+      kind: d.kind,
       date: new Date(d.date),
       daysLeft,
       type: d.type as "annual" | "one-time",
@@ -68,6 +70,7 @@ export async function seedSpecialDates(): Promise<void> {
       title: `\u{1F382} Budoor's Birthday`,
       date: new Date(2000, parseInt(m) - 1, parseInt(d)),
       type: "annual",
+      kind: "birthday",
       emoji: "\u{1F382}",
       createdBy: "Wife",
     });
@@ -79,6 +82,7 @@ export async function seedSpecialDates(): Promise<void> {
       title: `\u{1F382} Imad's Birthday`,
       date: new Date(2000, parseInt(m) - 1, parseInt(d)),
       type: "annual",
+      kind: "birthday",
       emoji: "\u{1F382}",
       createdBy: "Husband",
     });
@@ -96,6 +100,7 @@ export async function seedSpecialDates(): Promise<void> {
       title: "\u{1F48D} Anniversary",
       date: new Date(2000, parseInt(m) - 1, parseInt(d)),
       type: "annual",
+      kind: "anniversary",
       emoji: "\u{1F48D}",
       createdBy: "Wife",
     });
@@ -125,6 +130,7 @@ async function addMilestones(month: number, day: number): Promise<void> {
         title: `\u{1F389} ${label}`,
         date: milestoneDate,
         type: "one-time",
+        kind: "milestone",
         emoji: "\u{1F389}",
         createdBy: "Wife",
       },

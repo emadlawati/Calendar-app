@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "./SessionProvider";
 import { getDisplayName } from "@/lib/names";
 import { EVENT_CATEGORIES, getCategoryById } from "@/lib/categories";
 import { CategoryIcons, CalendarIcon, XIcon, SendIcon, SunIcon, TargetIcon, HeartIcon, CheckIcon } from "@/components/icons";
 import RecurrenceSelector, { type RecurrenceOption } from "./RecurrenceSelector";
-import type { CreateEventPayload, BucketItem } from "@/lib/types";
+import type { CreateEventPayload, BucketItem, SpecialDateData } from "@/lib/types";
 
 interface EventModalProps {
   isOpen: boolean;
@@ -21,6 +21,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
   const currentUser = user!;
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(selectedDate ? selectedDate.toISOString().split('T')[0] : "");
+  const [endDate, setEndDate] = useState("");
   const [time, setTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
@@ -32,6 +33,8 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
   const [bucketItems, setBucketItems] = useState<BucketItem[]>([]);
   const [bucketLoading, setBucketLoading] = useState(false);
   const [recurrence, setRecurrence] = useState<RecurrenceOption>("once");
+  const [specialDateId, setSpecialDateId] = useState<string | null>(null);
+  const [specialDates, setSpecialDates] = useState<SpecialDateData[]>([]);
 
   const partner = currentUser === "Wife" ? "Husband" : "Wife";
   const partnerDisplay = getDisplayName(partner);
@@ -54,20 +57,43 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
     setShowBucketPicker(false);
   };
 
+  // Fetch special dates when modal opens
+  const loadSpecialDates = () => {
+    fetch("/api/special-dates")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setSpecialDates(data);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    if (isOpen) loadSpecialDates();
+  }, [isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setError("");
+
+    // Multi-day validation (only for one-off events)
+    if (recurrence === "once" && endDate && endDate < date) {
+      setError("End date can't be before the start date.");
+      return;
+    }
+
+    setIsSubmitting(true);
 
     const payload: CreateEventPayload = {
       title,
       date,
+      endDate: recurrence === "once" && endDate && endDate !== date ? endDate : undefined,
       time: allDay ? "00:00" : time,
       endTime: allDay ? "23:59" : (endTime || undefined),
       notes,
       category,
       allDay,
       createdBy: currentUser,
+      specialDateId: specialDateId || undefined,
     };
 
     try {
@@ -234,6 +260,30 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                     <RecurrenceSelector value={recurrence} onChange={setRecurrence} />
                   </div>
 
+                  {/* Special date link — for one-off events only */}
+                  {recurrence === "once" && specialDates.length > 0 && (
+                    <div>
+                      <label className="field-label">Link to special date?</label>
+                      <select
+                        value={specialDateId || ""}
+                        onChange={(e) => setSpecialDateId(e.target.value || null)}
+                        className="w-full px-3 py-2.5 rounded-xl text-[13px] font-medium outline-none border transition-colors"
+                        style={{
+                          background: specialDateId ? "var(--accent-soft)" : "var(--input-bg)",
+                          borderColor: specialDateId ? "var(--accent)" : "var(--input-border)",
+                          color: specialDateId ? "var(--accent)" : "var(--text)",
+                        }}
+                      >
+                        <option value="">None</option>
+                        {specialDates.map((sd) => (
+                          <option key={sd.id} value={sd.id}>
+                            {sd.emoji} {sd.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {/* When */}
                   <div>
                     <label className="field-label">When?</label>
@@ -265,6 +315,22 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                         />
                         <span className="text-[11.5px] self-center" style={{ color: "var(--text-very)" }}>
                           optional end
+                        </span>
+                      </div>
+                    )}
+
+                    {/* End date — multi-day events (one-off only) */}
+                    {recurrence === "once" && (
+                      <div className="flex gap-2 mt-2 items-center">
+                        <input
+                          type="date"
+                          value={endDate}
+                          min={date}
+                          onChange={e => setEndDate(e.target.value)}
+                          className="flex-1"
+                        />
+                        <span className="text-[11.5px] self-center whitespace-nowrap" style={{ color: "var(--text-very)" }}>
+                          end date · optional 🧳
                         </span>
                       </div>
                     )}

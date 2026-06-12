@@ -12,6 +12,7 @@ model CalendarEvent {
   title               String
   notes               String?
   date                DateTime
+  endDate             DateTime?
   time                String
   endTime             String?
   category            String?
@@ -25,10 +26,15 @@ model CalendarEvent {
   series              RecurringSeries? @relation(fields: [seriesId], references: [id])
   isRecurring         Boolean  @default(false)
   isRecurringInstance Boolean  @default(false)
+  specialDateId       String?
+  specialDate         SpecialDate?    @relation(fields: [specialDateId], references: [id])
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   memory              Memory?
+
+  @@index([date])
+  @@index([status, archived, date])
 }
 
 model GoogleCalendarToken {
@@ -117,9 +123,12 @@ model SpecialDate {
   title     String
   date      DateTime
   type      String   @default("annual")
+  kind      String   @default("other") // "birthday" | "anniversary" | "milestone" | "other"
   emoji     String?
   createdBy String
   createdAt DateTime @default(now())
+
+  events    CalendarEvent[]
 }
 
 model Reminder {
@@ -134,6 +143,8 @@ model Reminder {
   googleEventIdWife     String?
   googleEventIdHusband  String?
   createdAt             DateTime @default(now())
+
+  @@index([date])
 }
 
 model DailyHighlight {

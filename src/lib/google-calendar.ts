@@ -154,6 +154,7 @@ export async function createCalendarEvent(
   event: {
     title: string;
     date: string;     // YYYY-MM-DD
+    endDate?: string | null; // YYYY-MM-DD — last day for multi-day events
     time: string;     // HH:mm
     endTime: string | null;
     notes: string | null;
@@ -178,16 +179,18 @@ export async function createCalendarEvent(
             ? `From Couples Calendar 🐾\n\n${event.category ? `Category: ${event.category}\n` : ""}Notes: ${event.notes}`
             : `From Couples Calendar 🐾${event.category ? `\n\nCategory: ${event.category}` : ""}`,
           start: { date: event.date },
-          end: { date: nextDay(event.date) },
+          // Google's end date is exclusive — +1 day past the last day
+          end: { date: nextDay(event.endDate ?? event.date) },
         },
       });
       return response.data.id || null;
     }
 
+    const endDay = event.endDate ?? event.date;
     const startDateTime = `${event.date}T${event.time}:00`;
     const end = event.endTime
-      ? `${event.date}T${event.endTime}:00`
-      : `${event.date}T${addOneHour(event.time)}:00`;
+      ? `${endDay}T${event.endTime}:00`
+      : `${endDay}T${addOneHour(event.time)}:00`;
       const response = await calendar.events.insert({
       calendarId: 'primary',
       requestBody: {
@@ -222,6 +225,7 @@ export async function updateCalendarEvent(
   event: {
     title: string;
     date: string;     // YYYY-MM-DD
+    endDate?: string | null; // YYYY-MM-DD — last day for multi-day events
     time: string;     // HH:mm
     endTime: string | null;
     notes: string | null;
@@ -246,15 +250,16 @@ export async function updateCalendarEvent(
             ? `From Couples Calendar 🐾\n\n${event.category ? `Category: ${event.category}\n` : ""}Notes: ${event.notes}`
             : `From Couples Calendar 🐾${event.category ? `\n\nCategory: ${event.category}` : ""}`,
           start: { date: event.date },
-          end: { date: nextDay(event.date) },
+          end: { date: nextDay(event.endDate ?? event.date) },
         },
       });
       return true;
     }
 
+    const endDay = event.endDate ?? event.date;
     const end = event.endTime
-      ? `${event.date}T${event.endTime}:00`
-      : `${event.date}T${addOneHour(event.time)}:00`;
+      ? `${endDay}T${event.endTime}:00`
+      : `${endDay}T${addOneHour(event.time)}:00`;
 
     await calendar.events.update({
       calendarId: 'primary',

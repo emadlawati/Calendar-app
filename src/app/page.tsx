@@ -71,10 +71,16 @@ export default function Home() {
       if (Array.isArray(data)) {
         setEvents(data.map((event: CalendarEvent) => {
           const datePart = new Date(event.date).toISOString().split('T')[0];
+          const endDatePart = event.endDate
+            ? new Date(event.endDate).toISOString().split('T')[0]
+            : datePart;
           const start = new Date(`${datePart}T${event.time}:00${TIMEZONE}`);
           let end: Date;
           if (event.endTime) {
-            end = new Date(`${datePart}T${event.endTime}:00${TIMEZONE}`);
+            end = new Date(`${endDatePart}T${event.endTime}:00${TIMEZONE}`);
+          } else if (endDatePart !== datePart) {
+            // Multi-day without explicit end time — end at same clock time on the last day
+            end = new Date(`${endDatePart}T${event.time}:00${TIMEZONE}`);
           } else {
             end = new Date(start.getTime() + 60 * 60 * 1000);
           }

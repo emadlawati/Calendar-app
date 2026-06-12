@@ -6,15 +6,28 @@ import { createCalendarEvent } from '@/lib/google-calendar';
 import { getRequestUser } from '@/lib/auth';
 import { getDisplayName } from '@/lib/names';
 import { getCategoryById } from '@/lib/categories';
+import { renderThemedEmail, getTheme } from '@/lib/email-themes';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, date, time, endTime, notes, category, allDay, createdBy: bodyCreatedBy } = body;
+    const { title, date, time, endTime, notes, category, allDay, createdBy: bodyCreatedBy, specialDateId } = body;
+    let { endDate } = body;
 
     const createdBy = await getRequestUser(bodyCreatedBy);
     if (!createdBy) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Normalize endDate: same day → null; earlier day → reject
+    if (endDate) {
+      const startDay = new Date(date).toISOString().split("T")[0];
+      const endDay = new Date(endDate).toISOString().split("T")[0];
+      if (endDay === startDay) {
+        endDate = null;
+      } else if (endDay < startDay) {
+        return NextResponse.json({ success: false, error: "End date must be after start date" }, { status: 400 });
+      }
     }
 
     // Save event to database
@@ -22,25 +35,30 @@ export async function POST(request: Request) {
       data: {
         title,
         date: new Date(date),
+        endDate: endDate ? new Date(endDate) : null,
         time,
         endTime: endTime || null,
         notes,
         category: category || "other",
         allDay: allDay || false,
         createdBy,
-        status: "pending"
+        status: "pending",
+        specialDateId: specialDateId || null,
       }
     });
 
     // Sync to the creator's Google Calendar immediately
     const dateStr = new Date(date).toISOString().split('T')[0];
+    const endDateStr = endDate ? new Date(endDate).toISOString().split('T')[0] : null;
     const creatorGoogleEventId = await createCalendarEvent(createdBy, {
       title,
       date: dateStr,
+      endDate: endDateStr,
       time,
       endTime: endTime || null,
       notes: notes || null,
       category: category || "other",
+      allDay: allDay || false,
     });
 
     if (creatorGoogleEventId) {
@@ -66,33 +84,36 @@ export async function POST(request: Request) {
     // Send Email via Resend
     if (partnerEmail && process.env.RESEND_API_KEY !== "re_...") {
       try {
+        // Fetch linked special date for themed emails
+        const specialDate = specialDateId
+          ? await prisma.specialDate.findUnique({ where: { id: specialDateId } })
+          : null;
+
+        const themeKind = specialDate?.kind || null;
+        const themedSubject = specialDate
+          ? `${specialDate.emoji || "🐾"} ${specialDate.title}: ${title}`
+          : `${cat.emoji} New Plan from ${displayName}: ${title}!`;
+        const themedH1 = specialDate
+          ? `${getTheme(themeKind).greeting(displayName, title)}`
+          : `${cat.emoji} ${displayName} wants to plan something with you 🐾`;
+        const cardHtml = `
+          <p style="margin: 0; font-size: 14px; opacity: 0.8;">${cat.label} — The Plan:</p>
+          <h2 style="margin: 5px 0;">${title}</h2>
+          <p style="margin: 5px 0;">📅 ${new Date(date).toLocaleDateString()}${endDate ? ` → ${new Date(endDate).toLocaleDateString()}` : ""}${allDay ? " · All day" : ` @ ${time}`}</p>
+          ${notes ? `<p style="margin: 15px 0; font-style: italic;">"Meow Notes: ${notes}"</p>` : ""}`;
+        const html = renderThemedEmail(themeKind, {
+          h1: themedH1,
+          cardHtml,
+          acceptLink: `${baseUrl}/api/events/action?id=${newEvent.id}&action=accept&user=${partnerName}`,
+          adjustLink: adjustUrl,
+          baseUrl,
+        });
+
         await resend.emails.send({
           from: 'Calendar 🐾 <noreply@yaminami.uk>',
           to: partnerEmail,
-          subject: `${cat.emoji} New Plan from ${displayName}: ${title}!`,
-          html: `
-            <div style="font-family: sans-serif; background-color: #fdfbf7; padding: 40px; border-radius: 32px; color: #5d4037; border: 2px solid #d7ccc8;">
-              <h1 style="color: #5d4037; font-size: 24px;">${cat.emoji} ${displayName} wants to plan something with you 🐾</h1>
-               
-              <div style="background-color: #ffffff; padding: 24px; border-radius: 24px; margin: 20px 0; border: 1px solid #ffeedb;">
-                <p style="margin: 0; font-size: 14px; color: #5d4037; opacity: 0.8;">${cat.label} — The Plan:</p>
-                <h2 style="margin: 5px 0; color: #5d4037;">${title}</h2>
-                <p style="margin: 5px 0;">📅 ${new Date(date).toLocaleDateString()} @ ${time}</p>
-                ${notes ? `<p style="margin: 15px 0; font-style: italic; color: #5d4037;">"Meow Notes: ${notes}"</p>` : ''}
-              </div>
-
-              <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <a href="${baseUrl}/api/events/action?id=${newEvent.id}&action=accept&user=${partnerName}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
-                  Meow Accept 🧶
-                </a>
-                <a href="${adjustUrl}" style="background-color: #d7ccc8; color: #ffffff; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block; margin-left: 10px;">
-                  Propose Adjustment 🐾
-                </a>
-              </div>
-
-              <p style="margin-top: 30px; font-size: 12px; opacity: 0.6;">Sent with love from your shared calendar app.</p>
-            </div>
-          `
+          subject: themedSubject,
+          html,
         });
       } catch (emailError) {
         console.error("Email failed but event was saved:", emailError);

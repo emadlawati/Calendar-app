@@ -9,10 +9,18 @@ import { getCategoryById } from '@/lib/categories';
 import { recalculateStreaks } from '@/lib/streaks';
 import { getBadgeById } from '@/lib/achievements';
 
+/** "Mar 6" or "Mar 6 → Mar 8" for multi-day events */
+function formatDateRange(date: Date, endDate: Date | null): string {
+  const opts: Intl.DateTimeFormatOptions = { weekday: "long", month: "long", day: "numeric" };
+  const startStr = date.toLocaleDateString("en-US", opts);
+  if (!endDate) return startStr;
+  return `${startStr} → ${endDate.toLocaleDateString("en-US", opts)}`;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { action, date, time, title, notes: adjustNotes, endTime, category: adjustCategory, allDay, user: bodyUser, eventId } = body;
+    const { action, date, time, title, notes: adjustNotes, endTime, category: adjustCategory, allDay, user: bodyUser, eventId, endDate } = body;
 
     const user = await getRequestUser(bodyUser);
     if (!user) {
@@ -40,10 +48,12 @@ export async function POST(request: Request) {
         const googleEventId = await createCalendarEvent(user, {
           title: acceptedEvent.title,
           date: dateStr,
+          endDate: acceptedEvent.endDate ? acceptedEvent.endDate.toISOString().split('T')[0] : null,
           time: acceptedEvent.time,
           endTime: acceptedEvent.endTime,
           notes: acceptedEvent.notes,
           category: acceptedEvent.category,
+          allDay: acceptedEvent.allDay,
         });
 
         if (googleEventId) {
@@ -67,7 +77,6 @@ export async function POST(request: Request) {
           : process.env.HUSBAND_EMAIL;
         const accepterDisplay = getDisplayName(user);
         const cat = getCategoryById(acceptedEvent.category);
-        const dateStr = acceptedEvent.date.toISOString().split("T")[0];
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
         if (creatorEmail && process.env.RESEND_API_KEY !== "re_...") {
@@ -81,7 +90,7 @@ export async function POST(request: Request) {
                 <div style="background-color: #ffffff; padding: 24px; border-radius: 24px; margin: 20px 0; border: 1px solid #ffeedb;">
                   <p style="margin: 0; font-size: 14px; color: #5d4037; opacity: 0.8;">${cat.emoji} ${cat.label}</p>
                   <h2 style="margin: 5px 0; color: #5d4037;">${acceptedEvent.title}</h2>
-                  <p style="margin: 5px 0;">📅 ${new Date(dateStr).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} @ ${acceptedEvent.time}</p>
+                  <p style="margin: 5px 0;">📅 ${formatDateRange(acceptedEvent.date, acceptedEvent.endDate)}${acceptedEvent.allDay ? " · All day" : ` @ ${acceptedEvent.time}`}</p>
                   ${acceptedEvent.notes ? `<p style="margin: 15px 0; font-style: italic;">"${acceptedEvent.notes}"</p>` : ""}
                 </div>
                 <a href="${baseUrl}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
@@ -118,12 +127,20 @@ export async function POST(request: Request) {
       const updatedAllDay = allDay !== undefined ? allDay : existingEvent.allDay;
       const updatedDate = new Date(date || existingEvent.date);
       const updatedTime = time || existingEvent.time;
+      // endDate: undefined = keep, null = clear, string = set
+      let updatedEndDate = endDate !== undefined
+        ? (endDate ? new Date(endDate) : null)
+        : existingEvent.endDate;
+      if (updatedEndDate && updatedEndDate <= updatedDate) {
+        updatedEndDate = null; // same day or earlier — collapse to single-day
+      }
 
       await prisma.calendarEvent.update({
         where: { id: eventId },
         data: {
           status: 'adjusted',
           date: updatedDate,
+          endDate: updatedEndDate,
           time: updatedTime,
           title: updatedTitle,
           notes: updatedNotes,
@@ -134,6 +151,7 @@ export async function POST(request: Request) {
       });
 
       const dateStr = updatedDate.toISOString().split('T')[0];
+      const endDateStr = updatedEndDate ? updatedEndDate.toISOString().split('T')[0] : null;
       const creator = existingEvent.createdBy;
 
       // Update Google Calendar for the original creator's event
@@ -141,6 +159,7 @@ export async function POST(request: Request) {
         updateCalendarEvent(existingEvent.creatorGoogleEventId, creator, {
           title: updatedTitle,
           date: dateStr,
+          endDate: endDateStr,
           time: updatedTime,
           endTime: updatedEndTime,
           notes: updatedNotes,
@@ -159,6 +178,7 @@ export async function POST(request: Request) {
         updateCalendarEvent(existingEvent.googleEventId, accepter, {
           title: updatedTitle,
           date: dateStr,
+          endDate: endDateStr,
           time: updatedTime,
           endTime: updatedEndTime,
           notes: updatedNotes,
@@ -200,6 +220,13 @@ export async function POST(request: Request) {
           }
           if (endTime !== undefined && endTime !== existingEvent.endTime) {
             changes.push(`<li>⏰ End Time: <strong>${existingEvent.endTime || 'not set'}</strong> → <strong style="color:#e91e63;">${endTime || 'not set'}</strong></li>`);
+          }
+          const oldEnd = existingEvent.endDate ? existingEvent.endDate.getTime() : null;
+          const newEnd = updatedEndDate ? updatedEndDate.getTime() : null;
+          if (oldEnd !== newEnd) {
+            changes.push(`<li>📆 ${updatedEndDate
+              ? `Now spans <strong style="color:#e91e63;">${formatDateRange(updatedDate, updatedEndDate)}</strong>`
+              : `No longer multi-day — single day <strong style="color:#e91e63;">${updatedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</strong>`}</li>`);
           }
 
           const changesHtml = changes.length > 0 
@@ -256,6 +283,13 @@ export async function POST(request: Request) {
       const updatedDate = date ? new Date(date) : existingEvent.date;
       const updatedTime = time || existingEvent.time;
       const updatedAllDay = allDay !== undefined ? allDay : existingEvent.allDay;
+      // endDate: undefined = keep, null = clear, string = set
+      let updatedEndDate = endDate !== undefined
+        ? (endDate ? new Date(endDate) : null)
+        : existingEvent.endDate;
+      if (updatedEndDate && updatedEndDate <= updatedDate) {
+        updatedEndDate = null;
+      }
 
       // Update the event — keep status as 'accepted'
       await prisma.calendarEvent.update({
@@ -263,6 +297,7 @@ export async function POST(request: Request) {
         data: {
           title: updatedTitle,
           date: updatedDate,
+          endDate: updatedEndDate,
           time: updatedTime,
           endTime: updatedEndTime,
           notes: updatedNotes,
@@ -272,18 +307,19 @@ export async function POST(request: Request) {
       });
 
       const dateStr = updatedDate.toISOString().split('T')[0];
+      const endDateStr = updatedEndDate ? updatedEndDate.toISOString().split('T')[0] : null;
 
       // Sync Google Calendar for both creator and accepter
       if (existingEvent.creatorGoogleEventId) {
         updateCalendarEvent(existingEvent.creatorGoogleEventId, existingEvent.createdBy, {
-          title: updatedTitle, date: dateStr, time: updatedTime,
+          title: updatedTitle, date: dateStr, endDate: endDateStr, time: updatedTime,
           endTime: updatedEndTime, notes: updatedNotes, category: updatedCategory, allDay: updatedAllDay,
         }).catch((err: unknown) => console.error("Creator GCal edit failed:", err));
       }
       if (existingEvent.googleEventId) {
         const partner = existingEvent.createdBy === "Wife" ? "Husband" : "Wife";
         updateCalendarEvent(existingEvent.googleEventId, partner, {
-          title: updatedTitle, date: dateStr, time: updatedTime,
+          title: updatedTitle, date: dateStr, endDate: endDateStr, time: updatedTime,
           endTime: updatedEndTime, notes: updatedNotes, category: updatedCategory, allDay: updatedAllDay,
         }).catch((err: unknown) => console.error("Partner GCal edit failed:", err));
       }
@@ -292,7 +328,7 @@ export async function POST(request: Request) {
       const editorDisplay = getDisplayName(user);
       const cat = getCategoryById(updatedCategory);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-      const formattedDate = updatedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      const formattedDate = formatDateRange(updatedDate, updatedEndDate);
 
       const emailRecipients: string[] = [];
       if (process.env.WIFE_EMAIL) emailRecipients.push(process.env.WIFE_EMAIL);
@@ -424,10 +460,12 @@ export async function GET(request: Request) {
       const googleEventId = await createCalendarEvent(acceptedBy, {
         title: acceptedEvent.title,
         date: dateStr,
+        endDate: acceptedEvent.endDate ? acceptedEvent.endDate.toISOString().split('T')[0] : null,
         time: acceptedEvent.time,
         endTime: acceptedEvent.endTime,
         notes: acceptedEvent.notes,
         category: acceptedEvent.category,
+        allDay: acceptedEvent.allDay,
       });
       
       if (googleEventId) {
@@ -449,7 +487,6 @@ export async function GET(request: Request) {
         : process.env.HUSBAND_EMAIL;
       const accepterDisplay = getDisplayName(acceptedBy as "Wife" | "Husband");
       const cat = getCategoryById(acceptedEvent.category);
-      const dateStr = acceptedEvent.date.toISOString().split("T")[0];
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
       if (creatorEmail && process.env.RESEND_API_KEY !== "re_...") {
@@ -463,7 +500,7 @@ export async function GET(request: Request) {
               <div style="background-color: #ffffff; padding: 24px; border-radius: 24px; margin: 20px 0; border: 1px solid #ffeedb;">
                 <p style="margin: 0; font-size: 14px; color: #5d4037; opacity: 0.8;">${cat.emoji} ${cat.label}</p>
                 <h2 style="margin: 5px 0; color: #5d4037;">${acceptedEvent.title}</h2>
-                <p style="margin: 5px 0;">📅 ${new Date(dateStr).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} @ ${acceptedEvent.time}</p>
+                <p style="margin: 5px 0;">📅 ${formatDateRange(acceptedEvent.date, acceptedEvent.endDate)}${acceptedEvent.allDay ? " · All day" : ` @ ${acceptedEvent.time}`}</p>
                 ${acceptedEvent.notes ? `<p style="margin: 15px 0; font-style: italic;">"${acceptedEvent.notes}"</p>` : ""}
               </div>
               <a href="${baseUrl}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">

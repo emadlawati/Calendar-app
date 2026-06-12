@@ -5,6 +5,11 @@ import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const items = await prisma.bucketItem.findMany({
       orderBy: { createdAt: "desc" },
     });

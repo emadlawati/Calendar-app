@@ -31,6 +31,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDate, setEditDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
   const [editTime, setEditTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
   const [editNotes, setEditNotes] = useState("");
@@ -49,6 +50,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
     if (isEditing && event) {
       setEditTitle(event.title);
       setEditDate((event.date as string).split("T")[0]);
+      setEditEndDate(event.endDate ? (event.endDate as string).split("T")[0] : "");
       setEditTime(event.time || "");
       setEditEndTime(event.endTime || "");
       setEditNotes(event.notes || "");
@@ -62,7 +64,10 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
   const isPending = event.status === "pending";
   const isAccepted = event.status === "accepted";
   const datePart = (event.date as string).split("T")[0];
+  const endDatePart = event.endDate ? (event.endDate as string).split("T")[0] : null;
   const eventStart = new Date(`${datePart}T${event.time || "00:00"}:00+04:00`);
+  const eventSpanEnd = endDatePart ? new Date(`${endDatePart}T23:59:59+04:00`) : null;
+  const isOngoing = !!eventSpanEnd && eventStart <= new Date() && new Date() <= eventSpanEnd && event.status === "accepted";
   const hasStarted = eventStart <= new Date() && event.status === "accepted";
   const cat = getCategoryById(event.category);
   const Icon = CategoryIcons[cat.id];
@@ -96,8 +101,12 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSavingEdit(true);
     setEditError("");
+    if (editEndDate && editEndDate < editDate) {
+      setEditError("End date can't be before the start date.");
+      return;
+    }
+    setIsSavingEdit(true);
     try {
       const res = await fetch('/api/events/action', {
         method: 'POST',
@@ -109,6 +118,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
           user: currentUser,
           title: editTitle,
           date: editDate,
+          endDate: editEndDate && editEndDate !== editDate ? editEndDate : null,
           time: editTime,
           endTime: editEndTime || null,
           notes: editNotes || null,
@@ -203,9 +213,15 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                   </div>
                 </div>
 
-                <div>
-                  <label className="field-label">End Time <span className="opacity-50 font-normal">(optional)</span></label>
-                  <input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="field-label">End Time <span className="opacity-50 font-normal">(optional)</span></label>
+                    <input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="field-label">End Date <span className="opacity-50 font-normal">(optional)</span></label>
+                    <input type="date" value={editEndDate} min={editDate} onChange={(e) => setEditEndDate(e.target.value)} />
+                  </div>
                 </div>
 
                 <div>
@@ -277,9 +293,14 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                       <p className="text-[10px] uppercase tracking-wider font-semibold opacity-50">When</p>
                       <span>
                         {new Date(event.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                        {event.endDate && ` → ${new Date(event.endDate).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}`}
                         {event.allDay ? " · All day" : ` @ ${event.time}`}
                       </span>
-                      {event.status === "accepted" && !hasStarted && (() => {
+                      {isOngoing ? (
+                        <p className="text-[11px] mt-0.5 font-medium" style={{ color: "var(--accent)" }}>
+                          Happening now 🎉
+                        </p>
+                      ) : event.status === "accepted" && !hasStarted && (() => {
                         const daysUntil = Math.ceil((eventStart.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                         return (
                           <p className="text-[11px] mt-0.5 font-medium" style={{ color: "var(--accent)" }}>

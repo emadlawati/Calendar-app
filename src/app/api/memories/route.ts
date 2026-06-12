@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getRequestUser } from "@/lib/auth";
+import { getRequestUser, getCurrentUser } from "@/lib/auth";
 import resend from "@/lib/resend";
 import { getDisplayName } from "@/lib/names";
 import { getCategoryById } from "@/lib/categories";
 
 export async function GET(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
 
