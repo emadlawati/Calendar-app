@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import resend from "@/lib/resend";
 import { getCurrentUser } from "@/lib/auth";
 import { getDisplayName } from "@/lib/names";
+import { sendPushToUser } from "@/lib/webpush";
 
 export async function POST() {
   try {
@@ -22,6 +23,13 @@ export async function POST() {
 
     const displayName = getDisplayName(user);
     const partnerDisplayName = getDisplayName(partner);
+
+    // Push notification to partner
+    sendPushToUser(partner, {
+      title: `💕 ${displayName} is thinking of you!`,
+      body: "Just a little reminder that you're loved 🐾",
+      url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/`,
+    });
 
     await resend.emails.send({
       from: "Calendar 🐾 <noreply@yaminami.uk>",

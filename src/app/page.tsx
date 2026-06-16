@@ -20,6 +20,7 @@ import { getCategoryById } from "@/lib/categories";
 import { CategoryIcons, PlusIcon } from "@/components/icons";
 import type { CalendarEvent, StickyNote, SpecialDateWithCountdown, StreakData, PendingMemory, Reminder, DailyHighlight } from "@/lib/types";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
+import PushPrompt from "@/components/PushPrompt";
 import ReminderModal from "@/components/ReminderModal";
 import DailyHighlightModal from "@/components/DailyHighlightModal";
 
@@ -644,6 +645,8 @@ export default function Home() {
           isVisible={toastMessage !== null}
           onClose={() => setToastMessage(null)}
         />
+
+        <PushPrompt />
       </motion.main>
     </AnimatePresence>
   );

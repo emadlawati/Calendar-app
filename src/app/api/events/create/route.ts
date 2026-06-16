@@ -7,6 +7,7 @@ import { getRequestUser } from '@/lib/auth';
 import { getDisplayName } from '@/lib/names';
 import { getCategoryById } from '@/lib/categories';
 import { renderThemedEmail, getTheme } from '@/lib/email-themes';
+import { sendPushToUser } from '@/lib/webpush';
 
 export async function POST(request: Request) {
   try {
@@ -119,6 +120,13 @@ export async function POST(request: Request) {
         console.error("Email failed but event was saved:", emailError);
       }
     }
+
+    // Push notification to partner
+    sendPushToUser(partnerName, {
+      title: `${cat.emoji} New Plan!`,
+      body: `${displayName} invited you: ${title}`,
+      url: `${baseUrl}/`,
+    });
 
     return NextResponse.json({ 
       success: true, 

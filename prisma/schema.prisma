@@ -158,3 +158,11 @@ model DailyHighlight {
 
   @@unique([date])
 }
+
+model PushSubscription {
+  id      String   @id @default(uuid())
+  userId  String   // "Wife" or "Husband"
+  endpoint String  @unique
+  keys    String   // JSON: { p256dh, auth }
+  createdAt DateTime @default(now())
+}

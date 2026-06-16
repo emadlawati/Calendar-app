@@ -8,6 +8,7 @@ import { getDisplayName } from '@/lib/names';
 import { getCategoryById } from '@/lib/categories';
 import { recalculateStreaks } from '@/lib/streaks';
 import { getBadgeById } from '@/lib/achievements';
+import { sendPushToUser } from '@/lib/webpush';
 
 /** "Mar 6" or "Mar 6 → Mar 8" for multi-day events */
 function formatDateRange(date: Date, endDate: Date | null): string {
@@ -69,6 +70,18 @@ export async function POST(request: Request) {
       // Recalculate streaks after accepting
       const streakResult = await recalculateStreaks();
       const newBadges = streakResult.newUnlocks.map((b) => ({ id: b.id, label: b.label, emoji: b.emoji }));
+
+      // Push notification to creator
+      if (acceptedEvent) {
+        const accepterDisplay = getDisplayName(user);
+        const cat = getCategoryById(acceptedEvent.category);
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+        sendPushToUser(acceptedEvent.createdBy, {
+          title: `${cat.emoji} Plan Accepted!`,
+          body: `${accepterDisplay} accepted: ${acceptedEvent.title}`,
+          url: `${baseUrl}/`,
+        });
+      }
 
       // Notify the original creator that their plan was accepted
       if (acceptedEvent) {
