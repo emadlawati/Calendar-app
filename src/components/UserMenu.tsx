@@ -7,6 +7,7 @@ import { useSession } from "./SessionProvider";
 import { getDisplayName } from "@/lib/names";
 import { CoffeeIcon, HeartIcon } from "@/components/icons";
 import ThemeToggle from "./ThemeToggle";
+import BirthdayInviteButton from "./BirthdayInviteButton";
 import type { LevelResult } from "@/lib/level";
 
 interface GoogleStatus {
@@ -190,6 +191,9 @@ export default function UserMenu({
             <span style={{ color: "#c14a33" }}><HeartIcon size={14} /></span>
             <span className="text-xs sm:text-sm font-medium">Send note</span>
           </motion.button>
+
+          {/* Birthday slideshow invite */}
+          <BirthdayInviteButton />
 
           {/* Level pill */}
           {levelData && (
@@ -399,6 +403,19 @@ export default function UserMenu({
                 >
                   <span className="text-base">🕰️</span>
                   <span className="text-[13px] font-medium">Timeline</span>
+                </Link>
+
+                <Link
+                  href="/birthday"
+                  className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
+                  style={{
+                    background: "var(--card-bg)",
+                    borderColor: "var(--card-border)",
+                    color: "var(--text)",
+                  }}
+                >
+                  <span className="text-base">🎂</span>
+                  <span className="text-[13px] font-medium">Slideshow</span>
                 </Link>
               </div>
 

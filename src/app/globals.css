@@ -404,6 +404,15 @@ input:focus, textarea:focus {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Floating hearts animation */
+@keyframes float {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+  20% { opacity: 0.3; }
+  80% { opacity: 0.3; }
+  100% { transform: translateY(-120px) rotate(15deg); opacity: 0; }
+}
+.animate-float { animation: float 8s ease-in-out infinite; }
+
 /* Responsive — mobile */
 @media (max-width: 640px) {
   /* Toolbar: compact horizontal layout */
