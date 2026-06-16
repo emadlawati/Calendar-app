@@ -5,6 +5,7 @@ const PUBLIC_PREFIXES = [
   "/api/auth",
   "/api/cron",
   "/events/adjust",
+  "/birthday",
   "/_next",
   "/favicon.ico",
 ];
