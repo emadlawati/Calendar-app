@@ -6,8 +6,12 @@ const PUBLIC_PREFIXES = [
   "/api/cron",
   "/events/adjust",
   "/birthday",
+  "/birthday/",
   "/_next",
   "/favicon.ico",
+  "/manifest.json",
+  "/sw.js",
+  "/icons/",
 ];
 
 export function middleware(request: NextRequest) {
@@ -33,7 +37,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Run middleware on all routes except static files
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons/|birthday/).*)",
   ],
 };
