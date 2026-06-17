@@ -1,13 +1,17 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, BellOff, X } from "lucide-react";
+import { Bell } from "lucide-react";
 import usePushNotifications from "@/lib/usePushNotifications";
 
 export default function PushPrompt() {
-  const { state, subscribe, unsubscribe } = usePushNotifications();
+  const { state, subscribe } = usePushNotifications();
 
-  if (state === "unsupported" || state === "subscribed") return null;
+  // Don't show anything while checking SW status
+  if (state === "loading" || state === "unsupported") return null;
+
+  // Already subscribed — all good, nothing to show
+  if (state === "subscribed") return null;
 
   return (
     <AnimatePresence>
@@ -15,7 +19,7 @@ export default function PushPrompt() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 30 }}
-        className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-8 sm:w-72 z-[90] note-card p-4"
+        className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-8 sm:w-80 z-[90] note-card p-4"
       >
         <div className="flex items-start gap-3">
           <div
@@ -32,14 +36,19 @@ export default function PushPrompt() {
             </p>
             <p className="text-[11px] mb-2" style={{ color: "var(--text-soft)" }}>
               {state === "denied"
-                ? "Re-enable in browser settings."
-                : "New plans, reminders, and nudges — straight to your phone."}
+                ? "Re-enable in browser settings → Site Settings → Notifications."
+                : "Tap below to allow push notifications on this device."}
             </p>
             {state !== "denied" && (
               <motion.button
                 whileTap={{ scale: 0.96 }}
                 onClick={subscribe}
                 className="chip-pill text-xs font-semibold"
+                style={{
+                  background: "var(--accent)",
+                  color: "var(--on-accent)",
+                  borderColor: "var(--accent)",
+                }}
               >
                 Enable notifications
               </motion.button>
