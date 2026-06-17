@@ -6,14 +6,15 @@ import { computeScore, computeLevel } from "@/lib/level";
 /** Lightweight level endpoint used by UserMenu — COUNT queries only */
 export async function GET() {
   try {
-    const [totalEvents, totalMemories, completedBucketItems, totalNotes] = await Promise.all([
+    const [totalEvents, totalMemories, completedBucketItems, totalNotes, totalHighlights] = await Promise.all([
       prisma.calendarEvent.count({ where: { status: "accepted", archived: false } }),
       prisma.memory.count(),
       prisma.bucketItem.count({ where: { completed: true } }),
       prisma.stickyNote.count(),
+      prisma.dailyHighlight.count(),
     ]);
 
-    const score = computeScore(totalEvents, totalMemories, completedBucketItems, totalNotes);
+    const score = computeScore(totalEvents, totalMemories, completedBucketItems, totalNotes, totalHighlights);
     const levelResult = computeLevel(score);
 
     return NextResponse.json(levelResult);
