@@ -1,3 +1,3 @@
-fix: debug push panel with test notification button + real-time state log
+fix: sw.js rewritten as plain JS — remove TypeScript syntax browser cant parse
 
 Co-authored-by: CommandCodeBot <noreply@commandcode.ai>
