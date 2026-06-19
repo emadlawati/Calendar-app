@@ -1,3 +1,3 @@
-fix: push prompt auto-hides after subscribe, clean single-prompt design
+fix: prompt shows 'local-only' state and tells user to add VAPID keys to Vercel for background delivery
 
 Co-authored-by: CommandCodeBot <noreply@commandcode.ai>
