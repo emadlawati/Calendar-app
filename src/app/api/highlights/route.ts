@@ -57,11 +57,11 @@ export async function POST(request: Request) {
       : "No note";
 
     // Push notification
-    sendPushToUser(partner, {
+    await sendPushToUser(partner, {
       title: `⭐ New Highlight!`,
       body: `${displayName} added a highlight for ${dateStr}: "${preview}"`,
       url: `${baseUrl}/`,
-    });
+    }).catch(() => {});
 
     // Email notification
     if (partnerEmail && process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== "re_...") {

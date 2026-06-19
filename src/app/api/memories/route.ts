@@ -4,6 +4,8 @@ import { getRequestUser, getCurrentUser } from "@/lib/auth";
 import resend from "@/lib/resend";
 import { getDisplayName } from "@/lib/names";
 import { getCategoryById } from "@/lib/categories";
+import { sendPushToUser } from "@/lib/webpush";
+import type { User } from "@/lib/types";
 
 export async function GET(request: Request) {
   try {
@@ -84,6 +86,14 @@ export async function POST(request: Request) {
           `,
         }).catch((e: unknown) => console.error("Memory notification failed:", e));
       }
+
+      // Push notification to partner
+      const partner = user === "Wife" ? "Husband" as User : "Wife" as User;
+      await sendPushToUser(partner, {
+        title: `📸 New Memory!`,
+        body: `${getDisplayName(user)} saved a memory for ${memory.event.title}`,
+        url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/memories`,
+      }).catch(() => {});
     }
 
     return NextResponse.json(memory, { status: 201 });
