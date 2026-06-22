@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HeartIcon, XIcon, SendIcon } from "@/components/icons";
 import { getDisplayName } from "@/lib/names";
 import { useSession } from "./SessionProvider";
+import DoodleCanvas, { type DoodleCanvasHandle } from "./DoodleCanvas";
 import type { StickyNote } from "@/lib/types";
 
 const PRESETS = [
@@ -23,11 +24,14 @@ interface NoteDrawerProps {
 export default function NoteDrawer({ isOpen, onClose }: NoteDrawerProps) {
   const { user } = useSession();
   const [activeTab, setActiveTab] = useState<"send" | "sent">("send");
+  const [mode, setMode] = useState<"write" | "draw">("write");
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [sentNotes, setSentNotes] = useState<StickyNote[]>([]);
   const [loadingSent, setLoadingSent] = useState(false);
+  const [drawHint, setDrawHint] = useState("");
+  const doodleRef = useRef<DoodleCanvasHandle>(null);
 
   useEffect(() => {
     if (activeTab === "sent" && isOpen) {
@@ -64,6 +68,42 @@ export default function NoteDrawer({ isOpen, onClose }: NoteDrawerProps) {
         }, 1600);
       }
     } catch { /* ignore */ }
+    setIsSending(false);
+  };
+
+  const handleSendDoodle = async () => {
+    if (!doodleRef.current || isSending) return;
+    if (doodleRef.current.isEmpty()) { setDrawHint("Draw something first ✏️"); return; }
+    setDrawHint("");
+    setIsSending(true);
+    try {
+      const blob = await doodleRef.current.exportBlob();
+      if (!blob) throw new Error("export failed");
+      const form = new FormData();
+      form.append("file", blob, "doodle.png");
+      const up = await fetch("/api/upload", { method: "POST", body: form, credentials: "same-origin" });
+      if (!up.ok) throw new Error("upload failed");
+      const { url } = await up.json();
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ content: content.trim(), doodle: url }),
+      });
+      if (res.ok) {
+        setSent(true);
+        setTimeout(() => {
+          setSent(false);
+          setContent("");
+          doodleRef.current?.clear();
+          onClose();
+        }, 1600);
+      } else {
+        setDrawHint("Couldn't send. Try again.");
+      }
+    } catch {
+      setDrawHint("Couldn't send. Try again.");
+    }
     setIsSending(false);
   };
 
@@ -134,44 +174,85 @@ export default function NoteDrawer({ isOpen, onClose }: NoteDrawerProps) {
                 </motion.div>
               ) : (
                 <>
-                  <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="say something cute…"
-                    className="w-full rounded-xl p-3 text-[13.5px] resize-none outline-none mb-3"
-                    style={{
-                      minHeight: 80,
-                      background: "var(--input-bg)",
-                      border: "1.5px solid var(--input-border)",
-                      color: "var(--text)",
-                      fontFamily: "var(--font-outfit), sans-serif",
-                    }}
-                  />
-
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {PRESETS.map((preset) => (
+                  {/* Write / Draw toggle */}
+                  <div className="flex gap-1 mb-3 p-1 rounded-xl" style={{ background: "var(--input-bg)" }}>
+                    {(["write", "draw"] as const).map((m) => (
                       <button
-                        key={preset}
-                        onClick={() => setContent(preset)}
-                        className="chip-pill"
+                        key={m}
+                        onClick={() => { setMode(m); setDrawHint(""); }}
+                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                        style={{
+                          background: mode === m ? "var(--card-bg)" : "transparent",
+                          color: mode === m ? "var(--accent)" : "var(--text-soft)",
+                          boxShadow: mode === m ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                        }}
                       >
-                        {preset}
+                        {m === "write" ? "✍️ Write" : "🎨 Draw"}
                       </button>
                     ))}
                   </div>
 
-                  <button
-                    onClick={handleSend}
-                    disabled={!content.trim() || isSending}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold disabled:opacity-40 transition-all"
-                    style={{
-                      background: "var(--accent)",
-                      color: "var(--on-accent)",
-                    }}
-                  >
-                    <SendIcon size={14} />
-                    {isSending ? "Sending..." : "Send note"}
-                  </button>
+                  {mode === "write" ? (
+                    <>
+                      <textarea
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        placeholder="say something cute…"
+                        className="w-full rounded-xl p-3 text-[13.5px] resize-none outline-none mb-3"
+                        style={{
+                          minHeight: 80,
+                          background: "var(--input-bg)",
+                          border: "1.5px solid var(--input-border)",
+                          color: "var(--text)",
+                          fontFamily: "var(--font-outfit), sans-serif",
+                        }}
+                      />
+
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {PRESETS.map((preset) => (
+                          <button key={preset} onClick={() => setContent(preset)} className="chip-pill">
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={handleSend}
+                        disabled={!content.trim() || isSending}
+                        className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold disabled:opacity-40 transition-all"
+                        style={{ background: "var(--accent)", color: "var(--on-accent)" }}
+                      >
+                        <SendIcon size={14} />
+                        {isSending ? "Sending..." : "Send note"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[11px] mb-2" style={{ color: "var(--text-soft)" }}>
+                        Draw a little something — it&apos;ll fly onto {partnerDisplay}&apos;s screen 🎨
+                      </p>
+                      <DoodleCanvas ref={doodleRef} />
+                      <input
+                        type="text"
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        placeholder="add a caption (optional)"
+                        maxLength={120}
+                        className="mt-2.5 mb-2"
+                        style={{ fontSize: 12.5 }}
+                      />
+                      {drawHint && <p className="text-xs mb-2" style={{ color: "#c14a33" }}>{drawHint}</p>}
+                      <button
+                        onClick={handleSendDoodle}
+                        disabled={isSending}
+                        className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold disabled:opacity-40 transition-all"
+                        style={{ background: "var(--accent)", color: "var(--on-accent)" }}
+                      >
+                        <SendIcon size={14} />
+                        {isSending ? "Sending..." : "Send doodle 🎨"}
+                      </button>
+                    </>
+                  )}
                 </>
               )
             ) : (
@@ -189,7 +270,13 @@ export default function NoteDrawer({ isOpen, onClose }: NoteDrawerProps) {
                       className="p-3 rounded-xl"
                       style={{ background: "var(--input-bg)", border: "1px solid var(--divider)" }}
                     >
-                      <p className="text-[13px] leading-snug" style={{ color: "var(--text)" }}>{note.content}</p>
+                      {note.doodle && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={note.doodle} alt="Doodle" className="w-full rounded-lg mb-2" style={{ border: "1px solid var(--divider)" }} />
+                      )}
+                      {note.content && (
+                        <p className="text-[13px] leading-snug" style={{ color: "var(--text)" }}>{note.content}</p>
+                      )}
                       <div className="flex items-center justify-between mt-1.5">
                         <p className="text-[10px]" style={{ color: "var(--text-very)" }}>
                           {new Date(note.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}

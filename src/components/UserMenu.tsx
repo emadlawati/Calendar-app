@@ -248,6 +248,18 @@ export default function UserMenu({
             <span className="text-xs sm:text-sm font-medium">🕰️ Timeline</span>
           </Link>
 
+          {/* Gratitude jar link */}
+          <Link href="/gratitude"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-colors hover:opacity-80"
+            style={{
+              background: "var(--card-bg)",
+              borderColor: "var(--card-border)",
+              color: "var(--text)",
+            }}
+          >
+            <span className="text-xs sm:text-sm font-medium">🫙 Gratitude</span>
+          </Link>
+
           {/* Google Connect */}
           {googleStatus && !googleStatus.connected && (
             <motion.button
@@ -416,6 +428,19 @@ export default function UserMenu({
                 >
                   <span className="text-base">🎂</span>
                   <span className="text-[13px] font-medium">Slideshow</span>
+                </Link>
+
+                <Link
+                  href="/gratitude"
+                  className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
+                  style={{
+                    background: "var(--card-bg)",
+                    borderColor: "var(--card-border)",
+                    color: "var(--text)",
+                  }}
+                >
+                  <span className="text-base">🫙</span>
+                  <span className="text-[13px] font-medium">Gratitude</span>
                 </Link>
               </div>
 

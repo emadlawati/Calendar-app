@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { startOfDay } from "date-fns";
+import { getDisplayName } from "@/lib/names";
 
 export interface UpcomingSpecial {
   id: string;
@@ -67,7 +68,7 @@ export async function seedSpecialDates(): Promise<void> {
   if (process.env.NEXT_PUBLIC_BUDOOR_BIRTHDAY) {
     const [m, d] = process.env.NEXT_PUBLIC_BUDOOR_BIRTHDAY.split("-");
     specialDates.push({
-      title: `\u{1F382} Budoor's Birthday`,
+      title: `\u{1F382} ${getDisplayName("Wife")}'s Birthday`,
       date: new Date(2000, parseInt(m) - 1, parseInt(d)),
       type: "annual",
       kind: "birthday",
@@ -79,7 +80,7 @@ export async function seedSpecialDates(): Promise<void> {
   if (process.env.NEXT_PUBLIC_IMAD_BIRTHDAY) {
     const [m, d] = process.env.NEXT_PUBLIC_IMAD_BIRTHDAY.split("-");
     specialDates.push({
-      title: `\u{1F382} Imad's Birthday`,
+      title: `\u{1F382} ${getDisplayName("Husband")}'s Birthday`,
       date: new Date(2000, parseInt(m) - 1, parseInt(d)),
       type: "annual",
       kind: "birthday",

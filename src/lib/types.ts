@@ -60,6 +60,7 @@ export interface ActionPayload {
 export interface StickyNote {
   id: string;
   content: string;
+  doodle?: string | null;
   createdBy: User;
   read: boolean;
   readAt: string | null;
@@ -138,4 +139,31 @@ export interface DailyHighlight {
   createdBy: User;
   createdAt: string;
   updatedAt: string;
+}
+
+export type CommentTarget = "memory" | "highlight";
+
+export interface Comment {
+  id: string;
+  targetType: CommentTarget;
+  targetId: string;
+  content: string;
+  createdBy: User;
+  createdAt: string;
+}
+
+export interface Reaction {
+  id: string;
+  targetType: CommentTarget;
+  targetId: string;
+  emoji: string;
+  createdBy: User;
+  createdAt: string;
+}
+
+export interface Gratitude {
+  id: string;
+  content: string;
+  createdBy: User;
+  createdAt: string;
 }

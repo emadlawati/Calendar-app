@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getDisplayName } from "@/lib/names";
+import { sendPushToUser } from "@/lib/webpush";
+import type { User } from "@/lib/types";
 
 export async function GET(request: Request) {
   try {
@@ -54,14 +57,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const { content } = await request.json();
-    if (!content) {
-      return NextResponse.json({ success: false, error: "content required" }, { status: 400 });
+    const { content, doodle } = await request.json();
+    const text = typeof content === "string" ? content.trim() : "";
+    const doodleUrl = typeof doodle === "string" && doodle ? doodle : null;
+    if (!text && !doodleUrl) {
+      return NextResponse.json({ success: false, error: "content or doodle required" }, { status: 400 });
     }
 
     const note = await prisma.stickyNote.create({
-      data: { content, createdBy: user },
+      data: { content: text, doodle: doodleUrl, createdBy: user },
     });
+
+    // A doodle is a little surprise — give the partner a gentle push
+    if (doodleUrl) {
+      const partner: User = user === "Wife" ? "Husband" : "Wife";
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+      sendPushToUser(partner, {
+        title: "🎨 New Doodle!",
+        body: `${getDisplayName(user)} drew you something${text ? `: "${text}"` : " 💌"}`,
+        url: `${baseUrl}/`,
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ success: true, note });
   } catch (error) {

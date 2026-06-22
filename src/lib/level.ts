@@ -34,7 +34,8 @@ export interface LevelResult {
 
 /**
  * Score formula:
- *   totalEvents * 3 + totalMemories * 5 + completedBucketItems * 4 + totalNotes + totalHighlights * 3
+ *   totalEvents * 3 + totalMemories * 5 + completedBucketItems * 4 + totalNotes
+ *   + totalHighlights * 3 + totalComments + totalGratitude * 2
  */
 export function computeScore(
   totalEvents: number,
@@ -42,8 +43,18 @@ export function computeScore(
   completedBucketItems: number,
   totalNotes: number,
   totalHighlights: number = 0,
+  totalComments: number = 0,
+  totalGratitude: number = 0,
 ): number {
-  return totalEvents * 3 + totalMemories * 5 + completedBucketItems * 4 + totalNotes + totalHighlights * 3;
+  return (
+    totalEvents * 3 +
+    totalMemories * 5 +
+    completedBucketItems * 4 +
+    totalNotes +
+    totalHighlights * 3 +
+    totalComments +
+    totalGratitude * 2
+  );
 }
 
 export function computeLevel(score: number): LevelResult {

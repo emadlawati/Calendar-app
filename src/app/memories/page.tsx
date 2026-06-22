@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import MemoryCard from "@/components/MemoryCard";
+import MemoryViewModal from "@/components/MemoryViewModal";
+import HighlightViewModal from "@/components/HighlightViewModal";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import DailyHighlightModal from "@/components/DailyHighlightModal";
@@ -52,6 +54,10 @@ export default function MemoriesPage() {
   const [highlightsLoading, setHighlightsLoading] = useState(false);
   const [isHighlightModalOpen, setIsHighlightModalOpen] = useState(false);
   const [editingHighlight, setEditingHighlight] = useState<DailyHighlight | null>(null);
+
+  // Read-only view modals
+  const [viewMemory, setViewMemory] = useState<Memory | null>(null);
+  const [viewHighlight, setViewHighlight] = useState<DailyHighlight | null>(null);
 
   const fetchMemories = () => {
     setLoading(true);
@@ -268,6 +274,7 @@ export default function MemoriesPage() {
                 <MemoryCard
                   key={m.id}
                   memory={m}
+                  onView={(mem) => setViewMemory(mem)}
                   onEdit={handleEdit}
                   onDelete={(mem) => setDeleteTarget(mem)}
                 />
@@ -307,7 +314,7 @@ export default function MemoriesPage() {
                       borderColor: "var(--card-border)",
                       boxShadow: "var(--card-shadow)",
                     }}
-                    onClick={() => { setEditingHighlight(h); setIsHighlightModalOpen(true); }}
+                    onClick={() => setViewHighlight(h)}
                   >
                     {/* First photo */}
                     {photoParsed.length > 0 && (
@@ -466,6 +473,22 @@ export default function MemoriesPage() {
         onClose={() => { setIsHighlightModalOpen(false); setEditingHighlight(null); }}
         onSuccess={() => { fetchHighlights(); setEditingHighlight(null); }}
         existing={editingHighlight}
+      />
+
+      <MemoryViewModal
+        isOpen={!!viewMemory}
+        onClose={() => setViewMemory(null)}
+        memory={viewMemory}
+        onEdit={(mem) => handleEdit(mem)}
+        onDeleted={() => { fetchMemories(); fetch("/api/memories/stats").then((r) => r.json()).then(setStats); }}
+      />
+
+      <HighlightViewModal
+        isOpen={!!viewHighlight}
+        onClose={() => setViewHighlight(null)}
+        highlight={viewHighlight}
+        onEdit={(h) => { setEditingHighlight(h); setIsHighlightModalOpen(true); }}
+        onDeleted={fetchHighlights}
       />
     </motion.main>
   );

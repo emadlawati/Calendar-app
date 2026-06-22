@@ -17,12 +17,14 @@ import Toast from "@/components/Toast";
 import { useSession } from "@/components/SessionProvider";
 import { triggerConfetti } from "@/lib/confetti";
 import { getCategoryById } from "@/lib/categories";
+import { getDisplayName } from "@/lib/names";
 import { CategoryIcons, PlusIcon } from "@/components/icons";
 import type { CalendarEvent, StickyNote, SpecialDateWithCountdown, StreakData, PendingMemory, Reminder, DailyHighlight } from "@/lib/types";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
 import PushPrompt from "@/components/PushPrompt";
 import ReminderModal from "@/components/ReminderModal";
 import DailyHighlightModal from "@/components/DailyHighlightModal";
+import HighlightViewModal from "@/components/HighlightViewModal";
 
 const TIMEZONE = "+04:00";
 
@@ -62,6 +64,7 @@ export default function Home() {
   const [isHighlightModalOpen, setIsHighlightModalOpen] = useState(false);
   const [highlightInitialDate, setHighlightInitialDate] = useState<string | undefined>(undefined);
   const [highlightEditing, setHighlightEditing] = useState<DailyHighlight | null>(null);
+  const [viewHighlight, setViewHighlight] = useState<DailyHighlight | null>(null);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -201,12 +204,10 @@ export default function Home() {
   };
 
   const handleSelectEvent = (event: CalendarViewEvent) => {
-    // Highlights — open highlight modal for that date
+    // Highlights — open the read-only view modal for that date
     if (event.isHighlight) {
       const existing = highlights.find((h) => h.date === event.highlightDate) ?? null;
-      setHighlightEditing(existing);
-      setHighlightInitialDate(event.highlightDate);
-      setIsHighlightModalOpen(true);
+      if (existing) setViewHighlight(existing);
       return;
     }
     // Reminders are not full calendar events — skip the details modal
@@ -619,6 +620,14 @@ export default function Home() {
           existing={highlightEditing}
         />
 
+        <HighlightViewModal
+          isOpen={!!viewHighlight}
+          onClose={() => setViewHighlight(null)}
+          highlight={viewHighlight}
+          onEdit={(h) => { setHighlightEditing(h); setHighlightInitialDate(h.date); setIsHighlightModalOpen(true); }}
+          onDeleted={fetchHighlights}
+        />
+
         {/* Flying Notes */}
         <AnimatePresence>
           {flyingNotes.map((note, index) => (
@@ -632,9 +641,15 @@ export default function Home() {
               className="fixed z-50 w-64 note-card p-4 cursor-pointer"
               onClick={() => dismissNote(note.id)}
             >
-              <p className="text-sm" style={{ color: "var(--text)" }}>{note.content}</p>
+              {note.doodle && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={note.doodle} alt="Doodle" className="w-full rounded-xl mb-2" style={{ border: "1px solid var(--divider)" }} />
+              )}
+              {note.content && (
+                <p className="text-sm" style={{ color: "var(--text)" }}>{note.content}</p>
+              )}
               <p className="text-[10px] mt-1.5" style={{ color: "var(--text-soft)" }}>
-                — {note.createdBy === "Wife" ? "Budoor" : "Imad"} 💌
+                — {getDisplayName(note.createdBy)} {note.doodle ? "🎨" : "💌"}
               </p>
             </motion.div>
           ))}

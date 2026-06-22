@@ -51,6 +51,7 @@ model GoogleCalendarToken {
 model StickyNote {
   id        String    @id @default(uuid())
   content   String
+  doodle    String?   // URL of a drawing, when this note is a doodle
   createdBy String
   read      Boolean   @default(false)
   readAt    DateTime?
@@ -165,4 +166,36 @@ model PushSubscription {
   endpoint String  @unique
   keys    String   // JSON: { p256dh, auth }
   createdAt DateTime @default(now())
+}
+
+model Comment {
+  id         String   @id @default(uuid())
+  targetType String   // "memory" | "highlight"
+  targetId   String
+  content    String
+  createdBy  String   // "Wife" | "Husband"
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+}
+
+model Reaction {
+  id         String   @id @default(uuid())
+  targetType String   // "memory" | "highlight"
+  targetId   String
+  emoji      String
+  createdBy  String   // "Wife" | "Husband"
+  createdAt  DateTime @default(now())
+
+  @@unique([targetType, targetId, createdBy, emoji])
+  @@index([targetType, targetId])
+}
+
+model Gratitude {
+  id        String   @id @default(uuid())
+  content   String
+  createdBy String   // "Wife" | "Husband"
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
