@@ -7,7 +7,7 @@ import { getCategoryById } from "@/lib/categories";
 
 export async function GET() {
   try {
-    const [events, memories, bucketItems, notes, streakData, totalHighlights, totalComments, totalGratitude] = await Promise.all([
+    const [events, memories, bucketItems, streakData, totalHighlights, totalComments] = await Promise.all([
       prisma.calendarEvent.findMany({
         where: { status: "accepted", archived: false },
         orderBy: { date: "asc" },
@@ -17,17 +17,14 @@ export async function GET() {
         select: { photos: true, event: { select: { category: true } } },
       }),
       prisma.bucketItem.findMany({ select: { completed: true } }),
-      prisma.stickyNote.findMany({ select: { id: true } }),
       getStreakData(),
       prisma.dailyHighlight.count(),
       prisma.comment.count(),
-      prisma.gratitude.count(),
     ]);
 
     // Counts
     const totalEvents = events.length;
     const totalMemories = memories.length;
-    const totalNotes = notes.length;
     const completedBucketItems = bucketItems.filter((b) => b.completed).length;
     const totalBucketItems = bucketItems.length;
 
@@ -76,14 +73,13 @@ export async function GET() {
     const firstEventDate = events[0]?.date?.toISOString().split("T")[0] ?? null;
 
     // Level
-    const score = computeScore(totalEvents, totalMemories, completedBucketItems, totalNotes, totalHighlights, totalComments, totalGratitude);
+    const score = computeScore(totalEvents, totalMemories, completedBucketItems, totalHighlights, totalComments);
     const levelResult = computeLevel(score);
 
     return NextResponse.json({
       totalEvents,
       totalMemories,
       totalPhotos,
-      totalNotes,
       completedBucketItems,
       totalBucketItems,
       favoriteCategory,

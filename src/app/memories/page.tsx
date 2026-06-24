@@ -11,13 +11,14 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import DailyHighlightModal from "@/components/DailyHighlightModal";
 import { ArrowLeft, Plus, X } from "lucide-react";
 import { getCategoryById } from "@/lib/categories";
-import type { CalendarEvent, PendingMemory, DailyHighlight } from "@/lib/types";
+import type { CalendarEvent, PendingMemory, DailyHighlight, User } from "@/lib/types";
 
 interface Memory {
   id: string;
   journal: string | null;
   photos: string | null;
   createdAt: string;
+  createdBy: User;
   event: {
     title: string;
     date: string;

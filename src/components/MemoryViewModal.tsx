@@ -6,12 +6,14 @@ import { X, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { getCategoryById } from "@/lib/categories";
 import ReactionBar from "./ReactionBar";
 import CommentThread from "./CommentThread";
+import type { User } from "@/lib/types";
 
 interface Memory {
   id: string;
   journal: string | null;
   photos: string | null;
   createdAt: string;
+  createdBy: User;
   event: { title: string; date: string; category: string | null };
 }
 
@@ -126,11 +128,11 @@ export default function MemoryViewModal({ isOpen, onClose, memory, onEdit, onDel
 
               {/* Reactions */}
               <div className="mb-1">
-                <ReactionBar targetType="memory" targetId={memory.id} />
+                <ReactionBar targetType="memory" targetId={memory.id} ownerId={memory.createdBy} />
               </div>
 
               {/* Comments */}
-              <CommentThread targetType="memory" targetId={memory.id} defaultOpen />
+              <CommentThread targetType="memory" targetId={memory.id} ownerId={memory.createdBy} defaultOpen />
 
               {/* Actions */}
               <div className="flex gap-2.5 mt-5">

@@ -57,15 +57,6 @@ export interface ActionPayload {
   user?: User;
 }
 
-export interface StickyNote {
-  id: string;
-  content: string;
-  doodle?: string | null;
-  createdBy: User;
-  read: boolean;
-  readAt: string | null;
-  createdAt: string;
-}
 
 export interface BucketItem {
   id: string;
@@ -161,9 +152,3 @@ export interface Reaction {
   createdAt: string;
 }
 
-export interface Gratitude {
-  id: string;
-  content: string;
-  createdBy: User;
-  createdAt: string;
-}

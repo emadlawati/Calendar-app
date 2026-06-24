@@ -39,23 +39,22 @@ export async function POST(request: Request) {
     const user = await getRequestUser(body.createdBy);
 
     const photos = Array.isArray(body.photos) ? JSON.stringify(body.photos) : null;
+    const creator = user ?? "Husband";
 
-    // Upsert so that stale-state saves (both partners seeing the same
-    // pending banner before either has saved) don't crash with a unique
-    // constraint error. Last write wins on journal/photos.
+    // One memory per person per event — upsert on the (eventId, createdBy) pair,
+    // so each partner keeps their own memory for the same event.
     const memory = await prisma.memory.upsert({
-      where: { eventId: body.eventId },
+      where: { eventId_createdBy: { eventId: body.eventId, createdBy: creator } },
       create: {
         eventId: body.eventId,
         rating: 5,
         journal: body.journal || null,
         photos,
-        createdBy: user ?? "Husband",
+        createdBy: creator,
       },
       update: {
         journal: body.journal || null,
         photos,
-        createdBy: user ?? "Husband",
       },
       include: { event: true },
     });

@@ -4,6 +4,7 @@ import { getCurrentUser, getRequestUser } from "@/lib/auth";
 import { getDisplayName } from "@/lib/names";
 import { sendPushToUser } from "@/lib/webpush";
 import { REACTION_EMOJIS } from "@/lib/reactions";
+import { getTargetOwner } from "@/lib/content-target";
 import type { CommentTarget, User } from "@/lib/types";
 
 const VALID_TARGETS: CommentTarget[] = ["memory", "highlight"];
@@ -47,6 +48,13 @@ export async function POST(request: Request) {
     }
     if (!emoji || !REACTION_EMOJIS.includes(emoji)) {
       return NextResponse.json({ error: "Invalid emoji" }, { status: 400 });
+    }
+
+    // Only the partner (non-owner) may react to a memory/highlight
+    const ownerId = await getTargetOwner(targetType, targetId);
+    if (!ownerId) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (ownerId === user) {
+      return NextResponse.json({ error: "You can only react to your partner's posts" }, { status: 403 });
     }
 
     const existing = await prisma.reaction.findUnique({

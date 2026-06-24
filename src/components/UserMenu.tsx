@@ -34,11 +34,7 @@ function CloseIcon({ size = 22 }: { size?: number }) {
   );
 }
 
-export default function UserMenu({
-  onSendNote,
-}: {
-  onSendNote: () => void;
-}) {
+export default function UserMenu() {
   const { user, logout } = useSession();
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
   const [levelData, setLevelData] = useState<LevelResult | null>(null);
@@ -176,22 +172,6 @@ export default function UserMenu({
             </div>
           </div>
 
-          {/* Send note pill */}
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={onSendNote}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-colors"
-            style={{
-              background: "var(--card-bg)",
-              borderColor: "var(--card-border)",
-              color: "var(--text)",
-            }}
-          >
-            <span style={{ color: "#c14a33" }}><HeartIcon size={14} /></span>
-            <span className="text-xs sm:text-sm font-medium">Send note</span>
-          </motion.button>
-
           {/* Birthday slideshow invite */}
           <BirthdayInviteButton />
 
@@ -246,18 +226,6 @@ export default function UserMenu({
             }}
           >
             <span className="text-xs sm:text-sm font-medium">🕰️ Timeline</span>
-          </Link>
-
-          {/* Gratitude jar link */}
-          <Link href="/gratitude"
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-colors hover:opacity-80"
-            style={{
-              background: "var(--card-bg)",
-              borderColor: "var(--card-border)",
-              color: "var(--text)",
-            }}
-          >
-            <span className="text-xs sm:text-sm font-medium">🫙 Gratitude</span>
           </Link>
 
           {/* Google Connect */}
@@ -364,20 +332,6 @@ export default function UserMenu({
 
               {/* Navigation grid */}
               <div className="grid grid-cols-2 gap-2 mb-3">
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => { onSendNote(); setMobileMenuOpen(false); }}
-                  className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
-                  style={{
-                    background: "var(--card-bg)",
-                    borderColor: "var(--card-border)",
-                    color: "var(--text)",
-                  }}
-                >
-                  <span style={{ color: "#c14a33" }}><HeartIcon size={16} /></span>
-                  <span className="text-[13px] font-medium">Send note</span>
-                </motion.button>
-
                 <Link
                   href="/memories"
                   className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
@@ -428,19 +382,6 @@ export default function UserMenu({
                 >
                   <span className="text-base">🎂</span>
                   <span className="text-[13px] font-medium">Slideshow</span>
-                </Link>
-
-                <Link
-                  href="/gratitude"
-                  className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
-                  style={{
-                    background: "var(--card-bg)",
-                    borderColor: "var(--card-border)",
-                    color: "var(--text)",
-                  }}
-                >
-                  <span className="text-base">🫙</span>
-                  <span className="text-[13px] font-medium">Gratitude</span>
                 </Link>
               </div>
 

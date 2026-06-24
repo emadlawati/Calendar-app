@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 
 const TZ = "Asia/Muscat";
 
@@ -13,14 +14,17 @@ function getGulfNow(): Date {
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json(null);
     const now = getGulfNow();
 
-    // Fetch candidates: accepted, unarchived, no memory, date not in the future
+    // Candidates: accepted, unarchived, in the past, and the CURRENT USER
+    // hasn't saved their own memory for it yet (the partner may have).
     const candidates = await prisma.calendarEvent.findMany({
       where: {
         status: "accepted",
         archived: false,
-        memory: null,
+        memories: { none: { createdBy: user } },
         date: { lte: new Date() },
       },
       orderBy: { date: "desc" },

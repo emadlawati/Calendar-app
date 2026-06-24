@@ -3,12 +3,14 @@
 import { motion } from "framer-motion";
 import { Pencil, Trash2, MessageCircle } from "lucide-react";
 import { getCategoryById } from "@/lib/categories";
+import type { User } from "@/lib/types";
 
 interface Memory {
   id: string;
   journal: string | null;
   photos: string | null;
   createdAt: string;
+  createdBy: User;
   event: {
     title: string;
     date: string;

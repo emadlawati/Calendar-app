@@ -29,8 +29,9 @@ export async function POST(request: Request) {
 
     const photosStr = Array.isArray(photos) && photos.length > 0 ? JSON.stringify(photos) : null;
 
+    // One highlight per person per day — upsert on the (date, createdBy) pair
     const highlight = await prisma.dailyHighlight.upsert({
-      where: { date },
+      where: { date_createdBy: { date, createdBy: user } },
       create: {
         date,
         note: note || null,
@@ -40,7 +41,6 @@ export async function POST(request: Request) {
       update: {
         note: note || null,
         photos: photosStr,
-        createdBy: user,
       },
     });
 

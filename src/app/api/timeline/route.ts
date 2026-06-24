@@ -8,17 +8,20 @@ export async function GET() {
       where: { status: "accepted", archived: false },
       orderBy: { date: "asc" },
       include: {
-        memory: {
+        memories: {
           select: { id: true, journal: true, photos: true },
+          orderBy: { createdAt: "asc" },
         },
       },
     });
 
     const result = events.map((e) => {
+      // Timeline is the shared story — surface the first memory either partner saved
+      const mem = e.memories[0] ?? null;
       let memoryFirstPhoto: string | null = null;
-      if (e.memory?.photos) {
+      if (mem?.photos) {
         try {
-          const arr = JSON.parse(e.memory.photos) as string[];
+          const arr = JSON.parse(mem.photos) as string[];
           memoryFirstPhoto = arr[0] ?? null;
         } catch { /* ignore */ }
       }
@@ -31,8 +34,8 @@ export async function GET() {
         category: e.category,
         allDay: e.allDay,
         notes: e.notes,
-        memoryId: e.memory?.id ?? null,
-        memoryJournal: e.memory?.journal ?? null,
+        memoryId: mem?.id ?? null,
+        memoryJournal: mem?.journal ?? null,
         memoryFirstPhoto,
       };
     });

@@ -117,11 +117,11 @@ export default function HighlightViewModal({ isOpen, onClose, highlight, onEdit,
 
               {/* Reactions */}
               <div className="mb-1">
-                <ReactionBar targetType="highlight" targetId={highlight.id} />
+                <ReactionBar targetType="highlight" targetId={highlight.id} ownerId={highlight.createdBy} />
               </div>
 
               {/* Comments */}
-              <CommentThread targetType="highlight" targetId={highlight.id} defaultOpen />
+              <CommentThread targetType="highlight" targetId={highlight.id} ownerId={highlight.createdBy} defaultOpen />
 
               {/* Actions */}
               <div className="flex gap-2.5 mt-5">

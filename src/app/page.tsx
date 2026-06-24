@@ -11,15 +11,13 @@ import EventModal from "@/components/EventModal";
 import DetailsModal from "@/components/DetailsModal";
 import CountdownBanner from "@/components/CountdownBanner";
 import StreakBanner from "@/components/StreakBanner";
-import NoteDrawer from "@/components/NoteDrawer";
 import BucketListDrawer from "@/components/BucketListDrawer";
 import Toast from "@/components/Toast";
 import { useSession } from "@/components/SessionProvider";
 import { triggerConfetti } from "@/lib/confetti";
 import { getCategoryById } from "@/lib/categories";
-import { getDisplayName } from "@/lib/names";
 import { CategoryIcons, PlusIcon } from "@/components/icons";
-import type { CalendarEvent, StickyNote, SpecialDateWithCountdown, StreakData, PendingMemory, Reminder, DailyHighlight } from "@/lib/types";
+import type { CalendarEvent, SpecialDateWithCountdown, StreakData, PendingMemory, Reminder, DailyHighlight } from "@/lib/types";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
 import PushPrompt from "@/components/PushPrompt";
 import ReminderModal from "@/components/ReminderModal";
@@ -37,6 +35,7 @@ interface CalendarViewEvent extends CalendarEvent {
   isReminder?: boolean;
   isHighlight?: boolean;
   highlightDate?: string;
+  highlightId?: string;
 }
 
 export default function Home() {
@@ -50,9 +49,7 @@ export default function Home() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [view, setView] = useState<View>(Views.MONTH);
   const [showArchived, setShowArchived] = useState(false);
-  const [isNoteDrawerOpen, setIsNoteDrawerOpen] = useState(false);
   const [isBucketDrawerOpen, setIsBucketDrawerOpen] = useState(false);
-  const [flyingNotes, setFlyingNotes] = useState<StickyNote[]>([]);
   const [specialDates, setSpecialDates] = useState<SpecialDateWithCountdown[]>([]);
   const [streakData, setStreakData] = useState<StreakData | null>(null);
   const [pendingMemory, setPendingMemory] = useState<PendingMemory | null>(null);
@@ -114,16 +111,6 @@ export default function Home() {
       window.history.replaceState({}, '', '/');
     }
   }, [fetchEvents]);
-
-  // Fetch unread flying notes
-  useEffect(() => {
-    fetch("/api/notes")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) setFlyingNotes(data);
-      })
-      .catch(() => {});
-  }, []);
 
   // Fetch streaks
   useEffect(() => {
@@ -187,11 +174,6 @@ export default function Home() {
     fetchHighlights();
   }, [fetchHighlights]);
 
-  const dismissNote = async (id: string) => {
-    setFlyingNotes((prev) => prev.filter((n) => n.id !== id));
-    await fetch(`/api/notes/${id}`, { method: "PATCH" }).catch(() => {});
-  };
-
   useEffect(() => {
     const handler = (e: CustomEvent) => setToastMessage(`💕 ${e.detail}`);
     window.addEventListener("nudge-sent", handler as EventListener);
@@ -204,9 +186,9 @@ export default function Home() {
   };
 
   const handleSelectEvent = (event: CalendarViewEvent) => {
-    // Highlights — open the read-only view modal for that date
+    // Highlights — open the read-only view modal for that specific highlight
     if (event.isHighlight) {
-      const existing = highlights.find((h) => h.date === event.highlightDate) ?? null;
+      const existing = highlights.find((h) => h.id === event.highlightId) ?? null;
       if (existing) setViewHighlight(existing);
       return;
     }
@@ -329,6 +311,7 @@ export default function Home() {
       end: dayEnd,
       isHighlight: true,
       highlightDate: h.date,
+      highlightId: h.id,
     };
   });
 
@@ -342,13 +325,12 @@ export default function Home() {
         className="min-h-screen flex flex-col max-w-6xl mx-auto relative"
       >
         {/* Header */}
-        <UserMenu onSendNote={() => setIsNoteDrawerOpen(true)} />
+        <UserMenu />
 
         {/* Countdown Banner */}
         <div className="mt-3 sm:mt-5">
           <CountdownBanner
             events={events}
-            onOpenNotes={() => setIsNoteDrawerOpen(true)}
             onOpenBucket={() => setIsBucketDrawerOpen(true)}
             onToggleArchive={() => setShowArchived(!showArchived)}
             showArchived={showArchived}
@@ -588,11 +570,6 @@ export default function Home() {
           }}
         />
 
-        <NoteDrawer
-          isOpen={isNoteDrawerOpen}
-          onClose={() => setIsNoteDrawerOpen(false)}
-        />
-
         <BucketListDrawer
           isOpen={isBucketDrawerOpen}
           onClose={() => setIsBucketDrawerOpen(false)}
@@ -627,33 +604,6 @@ export default function Home() {
           onEdit={(h) => { setHighlightEditing(h); setHighlightInitialDate(h.date); setIsHighlightModalOpen(true); }}
           onDeleted={fetchHighlights}
         />
-
-        {/* Flying Notes */}
-        <AnimatePresence>
-          {flyingNotes.map((note, index) => (
-            <motion.div
-              key={note.id}
-              initial={{ opacity: 0, y: -60, x: 20 }}
-              animate={{ opacity: 1, y: [0, -15, 0], rotate: [-3, 2, 0] }}
-              exit={{ opacity: 0, x: 100 }}
-              transition={{ delay: index * 0.25, y: { duration: 2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" } }}
-              style={{ top: `${90 + index * 110}px`, right: "16px" }}
-              className="fixed z-50 w-64 note-card p-4 cursor-pointer"
-              onClick={() => dismissNote(note.id)}
-            >
-              {note.doodle && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={note.doodle} alt="Doodle" className="w-full rounded-xl mb-2" style={{ border: "1px solid var(--divider)" }} />
-              )}
-              {note.content && (
-                <p className="text-sm" style={{ color: "var(--text)" }}>{note.content}</p>
-              )}
-              <p className="text-[10px] mt-1.5" style={{ color: "var(--text-soft)" }}>
-                — {getDisplayName(note.createdBy)} {note.doodle ? "🎨" : "💌"}
-              </p>
-            </motion.div>
-          ))}
-        </AnimatePresence>
 
         <Toast
           message={toastMessage || ""}

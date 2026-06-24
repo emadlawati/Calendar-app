@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { NoteIcon, TargetIcon, ArchiveIcon } from "@/components/icons";
+import { TargetIcon, ArchiveIcon } from "@/components/icons";
 import { getCategoryById } from "@/lib/categories";
 import type { CalendarEvent, SpecialDateWithCountdown } from "@/lib/types";
 import SpecialDateCarousel from "./SpecialDateCarousel";
@@ -19,7 +19,6 @@ function getGulfToday(): Date {
 
 interface CountdownBannerProps {
   events: CalendarEvent[];
-  onOpenNotes: () => void;
   onOpenBucket: () => void;
   onToggleArchive: () => void;
   showArchived: boolean;
@@ -29,7 +28,6 @@ interface CountdownBannerProps {
 
 export default function CountdownBanner({
   events,
-  onOpenNotes,
   onOpenBucket,
   onToggleArchive,
   showArchived,
@@ -143,20 +141,6 @@ export default function CountdownBanner({
 
       {/* Right: action tiles */}
       <div className="flex gap-2 sm:gap-3 relative z-10 shrink-0">
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.96 }}
-          onClick={onOpenNotes}
-          className="w-[52px] sm:w-16 flex flex-col items-center gap-1 sm:gap-1.5 py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-xl sm:rounded-[14px] border transition-all"
-          style={{
-            background: "rgba(252, 232, 200, 0.12)",
-            borderColor: "rgba(252, 232, 200, 0.2)",
-          }}
-        >
-          <NoteIcon size={16} />
-          <span className="text-[10px] sm:text-[11px] opacity-90">Notes</span>
-        </motion.button>
-
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.96 }}

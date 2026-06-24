@@ -5,13 +5,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, Send, Trash2 } from "lucide-react";
 import { useSession } from "./SessionProvider";
 import { getDisplayName } from "@/lib/names";
-import type { Comment, CommentTarget } from "@/lib/types";
+import type { Comment, CommentTarget, User } from "@/lib/types";
 
 interface Props {
   targetType: CommentTarget;
   targetId: string;
   /** Render expanded immediately (e.g. inside a modal). Default collapsed. */
   defaultOpen?: boolean;
+  /** Creator of the content. Only the partner (non-owner) may comment. */
+  ownerId?: User | null;
 }
 
 function relativeTime(iso: string): string {
@@ -26,8 +28,9 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export default function CommentThread({ targetType, targetId, defaultOpen = false }: Props) {
+export default function CommentThread({ targetType, targetId, defaultOpen = false, ownerId }: Props) {
   const { user } = useSession();
+  const canInteract = !ownerId || user !== ownerId;
   const [open, setOpen] = useState(defaultOpen);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -127,7 +130,7 @@ export default function CommentThread({ targetType, targetId, defaultOpen = fals
                 <p className="text-xs py-1" style={{ color: "var(--text-very)" }}>Loading…</p>
               ) : comments.length === 0 ? (
                 <p className="text-xs py-1" style={{ color: "var(--text-very)" }}>
-                  No comments yet — be the first 💬
+                  {canInteract ? "No comments yet — be the first 💬" : "No comments yet"}
                 </p>
               ) : (
                 comments.map((c) => (
@@ -165,31 +168,33 @@ export default function CommentThread({ targetType, targetId, defaultOpen = fals
               )}
             </div>
 
-            <form onSubmit={submit} className="flex items-center gap-2 mt-2.5">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Add a comment…"
-                className="flex-1"
-                style={{ fontSize: 12.5 }}
-                maxLength={500}
-              />
-              <motion.button
-                type="submit"
-                whileTap={{ scale: 0.92 }}
-                disabled={!input.trim() || submitting}
-                aria-label="Send comment"
-                className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
-                style={{
-                  background: !input.trim() || submitting ? "var(--input-bg)" : "var(--accent)",
-                  color: !input.trim() || submitting ? "var(--text-very)" : "var(--on-accent)",
-                  border: "1px solid var(--divider)",
-                }}
-              >
-                <Send size={14} />
-              </motion.button>
-            </form>
+            {canInteract && (
+              <form onSubmit={submit} className="flex items-center gap-2 mt-2.5">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Add a comment…"
+                  className="flex-1"
+                  style={{ fontSize: 12.5 }}
+                  maxLength={500}
+                />
+                <motion.button
+                  type="submit"
+                  whileTap={{ scale: 0.92 }}
+                  disabled={!input.trim() || submitting}
+                  aria-label="Send comment"
+                  className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{
+                    background: !input.trim() || submitting ? "var(--input-bg)" : "var(--accent)",
+                    color: !input.trim() || submitting ? "var(--text-very)" : "var(--on-accent)",
+                    border: "1px solid var(--divider)",
+                  }}
+                >
+                  <Send size={14} />
+                </motion.button>
+              </form>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

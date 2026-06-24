@@ -6,15 +6,18 @@ import { SmilePlus } from "lucide-react";
 import { useSession } from "./SessionProvider";
 import { getDisplayName } from "@/lib/names";
 import { REACTION_EMOJIS } from "@/lib/reactions";
-import type { Reaction, CommentTarget } from "@/lib/types";
+import type { Reaction, CommentTarget, User } from "@/lib/types";
 
 interface Props {
   targetType: CommentTarget;
   targetId: string;
+  /** Creator of the content. Only the partner (non-owner) may react. */
+  ownerId?: User | null;
 }
 
-export default function ReactionBar({ targetType, targetId }: Props) {
+export default function ReactionBar({ targetType, targetId, ownerId }: Props) {
   const { user } = useSession();
+  const canInteract = !ownerId || user !== ownerId;
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [picker, setPicker] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -39,7 +42,7 @@ export default function ReactionBar({ targetType, targetId }: Props) {
   }, [load]);
 
   const toggle = async (emoji: string) => {
-    if (!user || busy) return;
+    if (!user || busy || !canInteract) return;
     setBusy(true);
     setPicker(false);
     try {
@@ -77,14 +80,15 @@ export default function ReactionBar({ targetType, targetId }: Props) {
         <motion.button
           key={g.emoji}
           type="button"
-          whileTap={{ scale: 0.9 }}
-          onClick={() => toggle(g.emoji)}
+          whileTap={canInteract ? { scale: 0.9 } : undefined}
+          onClick={canInteract ? () => toggle(g.emoji) : undefined}
           title={g.who}
           className="flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors"
           style={{
             background: g.mine ? "var(--accent-soft)" : "var(--input-bg)",
             border: `1px solid ${g.mine ? "var(--accent)" : "var(--divider)"}`,
             color: "var(--text)",
+            cursor: canInteract ? "pointer" : "default",
           }}
         >
           <span style={{ fontSize: 13 }}>{g.emoji}</span>
@@ -92,21 +96,28 @@ export default function ReactionBar({ targetType, targetId }: Props) {
         </motion.button>
       ))}
 
-      {/* Add-reaction button */}
-      <motion.button
-        type="button"
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setPicker((p) => !p)}
-        aria-label="Add reaction"
-        className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
-        style={{ background: "var(--input-bg)", border: "1px solid var(--divider)", color: "var(--text-soft)" }}
-      >
-        <SmilePlus size={14} />
-      </motion.button>
+      {/* Owner viewing their own content with no reactions yet */}
+      {!canInteract && groups.length === 0 && (
+        <span className="text-[11px]" style={{ color: "var(--text-very)" }}>No reactions yet</span>
+      )}
+
+      {/* Add-reaction button — only the partner can react */}
+      {canInteract && (
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setPicker((p) => !p)}
+          aria-label="Add reaction"
+          className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+          style={{ background: "var(--input-bg)", border: "1px solid var(--divider)", color: "var(--text-soft)" }}
+        >
+          <SmilePlus size={14} />
+        </motion.button>
+      )}
 
       {/* Emoji picker popover */}
       <AnimatePresence>
-        {picker && (
+        {canInteract && picker && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setPicker(false)} />
             <motion.div

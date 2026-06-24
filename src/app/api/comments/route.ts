@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getCurrentUser, getRequestUser } from "@/lib/auth";
 import { getDisplayName } from "@/lib/names";
 import { sendPushToUser } from "@/lib/webpush";
+import { getTargetOwner } from "@/lib/content-target";
 import resend from "@/lib/resend";
 import type { CommentTarget, User } from "@/lib/types";
 
@@ -47,6 +48,13 @@ export async function POST(request: Request) {
     }
     if (!content) {
       return NextResponse.json({ error: "Comment cannot be empty" }, { status: 400 });
+    }
+
+    // Only the partner (non-owner) may comment on a memory/highlight
+    const ownerId = await getTargetOwner(targetType, targetId);
+    if (!ownerId) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (ownerId === user) {
+      return NextResponse.json({ error: "You can only comment on your partner's posts" }, { status: 403 });
     }
 
     const comment = await prisma.comment.create({
