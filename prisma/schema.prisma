@@ -48,6 +48,18 @@ model GoogleCalendarToken {
   updatedAt    DateTime @updatedAt
 }
 
+model Note {
+  id        String    @id @default(uuid())
+  content   String
+  kind      String    @default("note") // "note" | "gratitude"
+  createdBy String    // "Wife" | "Husband"
+  read      Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
+}
+
 model BucketItem {
   id        String   @id @default(uuid())
   title     String

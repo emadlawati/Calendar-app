@@ -216,6 +216,18 @@ export default function UserMenu() {
             <span className="text-xs sm:text-sm font-medium">📊 Stats</span>
           </Link>
 
+          {/* Notes link */}
+          <Link href="/notes"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-colors hover:opacity-80"
+            style={{
+              background: "var(--card-bg)",
+              borderColor: "var(--card-border)",
+              color: "var(--text)",
+            }}
+          >
+            <span className="text-xs sm:text-sm font-medium">💌 Notes</span>
+          </Link>
+
           {/* Timeline link */}
           <Link href="/timeline"
             className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-colors hover:opacity-80"
@@ -332,6 +344,19 @@ export default function UserMenu() {
 
               {/* Navigation grid */}
               <div className="grid grid-cols-2 gap-2 mb-3">
+                <Link
+                  href="/notes"
+                  className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
+                  style={{
+                    background: "var(--card-bg)",
+                    borderColor: "var(--card-border)",
+                    color: "var(--text)",
+                  }}
+                >
+                  <span className="text-base">💌</span>
+                  <span className="text-[13px] font-medium">Notes</span>
+                </Link>
+
                 <Link
                   href="/memories"
                   className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"

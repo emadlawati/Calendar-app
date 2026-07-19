@@ -7,7 +7,7 @@ import { getCategoryById } from "@/lib/categories";
 
 export async function GET() {
   try {
-    const [events, memories, bucketItems, streakData, totalHighlights, totalComments] = await Promise.all([
+    const [events, memories, bucketItems, streakData, totalHighlights, totalComments, totalNotes] = await Promise.all([
       prisma.calendarEvent.findMany({
         where: { status: "accepted", archived: false },
         orderBy: { date: "asc" },
@@ -20,6 +20,7 @@ export async function GET() {
       getStreakData(),
       prisma.dailyHighlight.count(),
       prisma.comment.count(),
+      prisma.note.count(),
     ]);
 
     // Counts
@@ -73,13 +74,14 @@ export async function GET() {
     const firstEventDate = events[0]?.date?.toISOString().split("T")[0] ?? null;
 
     // Level
-    const score = computeScore(totalEvents, totalMemories, completedBucketItems, totalHighlights, totalComments);
+    const score = computeScore(totalEvents, totalMemories, completedBucketItems, totalHighlights, totalComments, totalNotes);
     const levelResult = computeLevel(score);
 
     return NextResponse.json({
       totalEvents,
       totalMemories,
       totalPhotos,
+      totalNotes,
       completedBucketItems,
       totalBucketItems,
       favoriteCategory,

@@ -10,6 +10,7 @@ interface StatsData {
   totalEvents: number;
   totalMemories: number;
   totalPhotos: number;
+  totalNotes: number;
   completedBucketItems: number;
   totalBucketItems: number;
   favoriteCategory: { id: string; label: string; emoji: string; count: number } | null;
@@ -131,6 +132,7 @@ export default function StatsPage() {
               { label: "Dates", value: stats.totalEvents, emoji: "📅" },
               { label: "Memories", value: stats.totalMemories, emoji: "📸" },
               { label: "Photos", value: stats.totalPhotos, emoji: "🖼️" },
+              { label: "Notes sent", value: stats.totalNotes, emoji: "💌" },
             ].map((s) => (
               <motion.div
                 key={s.label}

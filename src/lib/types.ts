@@ -132,6 +132,19 @@ export interface DailyHighlight {
   updatedAt: string;
 }
 
+export type NoteKind = "note" | "gratitude";
+
+/** A message to your partner — either a plain note or an appreciation. */
+export interface Note {
+  id: string;
+  content: string;
+  kind: NoteKind;
+  createdBy: User;
+  read: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
 export type CommentTarget = "memory" | "highlight";
 
 export interface Comment {
