@@ -44,7 +44,7 @@ export interface CreateEventPayload {
 }
 
 export interface ActionPayload {
-  action: "accept" | "adjust" | "delete" | "archive" | "unarchive";
+  action: "accept" | "adjust" | "edit" | "delete" | "archive" | "unarchive";
   eventId: string;
   date?: string;
   endDate?: string | null;
@@ -54,6 +54,8 @@ export interface ActionPayload {
   endTime?: string | null;
   category?: string | null;
   allDay?: boolean;
+  /** undefined = keep, null = unlink, string = link to that special date */
+  specialDateId?: string | null;
   user?: User;
 }
 

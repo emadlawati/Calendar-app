@@ -7,7 +7,8 @@ import { getDisplayName } from "@/lib/names";
 import { EVENT_CATEGORIES, getCategoryById } from "@/lib/categories";
 import { CategoryIcons, CalendarIcon, XIcon, SendIcon, SunIcon, TargetIcon, HeartIcon, CheckIcon } from "@/components/icons";
 import RecurrenceSelector, { type RecurrenceOption } from "./RecurrenceSelector";
-import type { CreateEventPayload, BucketItem, SpecialDateData } from "@/lib/types";
+import { specialDateLabel, linkableSpecialDates } from "@/lib/special-date-display";
+import type { CreateEventPayload, BucketItem, SpecialDateWithCountdown } from "@/lib/types";
 
 interface EventModalProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
   const [bucketLoading, setBucketLoading] = useState(false);
   const [recurrence, setRecurrence] = useState<RecurrenceOption>("once");
   const [specialDateId, setSpecialDateId] = useState<string | null>(null);
-  const [specialDates, setSpecialDates] = useState<SpecialDateData[]>([]);
+  const [specialDates, setSpecialDates] = useState<SpecialDateWithCountdown[]>([]);
 
   const partner = currentUser === "Wife" ? "Husband" : "Wife";
   const partnerDisplay = getDisplayName(partner);
@@ -62,7 +63,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
     fetch("/api/special-dates")
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) setSpecialDates(data);
+        if (Array.isArray(data)) setSpecialDates(linkableSpecialDates(data));
       })
       .catch(() => {});
   };
@@ -263,7 +264,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                   {/* Special date link — for one-off events only */}
                   {recurrence === "once" && specialDates.length > 0 && (
                     <div>
-                      <label className="field-label">Link to special date?</label>
+                      <label className="field-label">Link to an anniversary? 💍</label>
                       <select
                         value={specialDateId || ""}
                         onChange={(e) => setSpecialDateId(e.target.value || null)}
@@ -277,7 +278,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                         <option value="">None</option>
                         {specialDates.map((sd) => (
                           <option key={sd.id} value={sd.id}>
-                            {sd.emoji} {sd.title}
+                            {specialDateLabel(sd)}
                           </option>
                         ))}
                       </select>

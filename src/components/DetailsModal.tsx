@@ -11,7 +11,8 @@ import { triggerConfetti } from "@/lib/confetti";
 import { getCategoryById, EVENT_CATEGORIES } from "@/lib/categories";
 import { getDisplayName } from "@/lib/names";
 import { CategoryIcons, CalendarIcon, XIcon, SendIcon, CheckIcon, ArchiveIcon } from "@/components/icons";
-import type { CalendarEvent } from "@/lib/types";
+import { specialDateLabel, linkableSpecialDates } from "@/lib/special-date-display";
+import type { CalendarEvent, SpecialDateWithCountdown } from "@/lib/types";
 
 interface DetailsModalProps {
   isOpen: boolean;
@@ -36,6 +37,8 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
   const [editEndTime, setEditEndTime] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editCategory, setEditCategory] = useState("other");
+  const [editSpecialDateId, setEditSpecialDateId] = useState<string | null>(null);
+  const [specialDates, setSpecialDates] = useState<SpecialDateWithCountdown[]>([]);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState("");
 
@@ -55,8 +58,19 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
       setEditEndTime(event.endTime || "");
       setEditNotes(event.notes || "");
       setEditCategory(event.category || "other");
+      setEditSpecialDateId(event.specialDateId || null);
     }
   }, [isEditing, event]);
+
+  // Load anniversaries/birthdays once the modal is open, so both the view
+  // badge and the edit picker can resolve the linked date.
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch("/api/special-dates", { credentials: "same-origin" })
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setSpecialDates(data); })
+      .catch(() => {});
+  }, [isOpen]);
 
   if (!event) return null;
 
@@ -71,6 +85,9 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
   const hasStarted = eventStart <= new Date() && event.status === "accepted";
   const cat = getCategoryById(event.category);
   const Icon = CategoryIcons[cat.id];
+  const linkedSpecialDate = event.specialDateId
+    ? specialDates.find((sd) => sd.id === event.specialDateId) ?? null
+    : null;
 
   const handleAction = async (action: string) => {
     try {
@@ -123,6 +140,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
           endTime: editEndTime || null,
           notes: editNotes || null,
           category: editCategory,
+          specialDateId: editSpecialDateId,
         }),
       });
       if (!res.ok) throw new Error("Save failed");
@@ -202,6 +220,29 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                   </div>
                 </div>
 
+                {linkableSpecialDates(specialDates).length > 0 && (
+                  <div>
+                    <label className="field-label">Link to an anniversary? 💍</label>
+                    <select
+                      value={editSpecialDateId || ""}
+                      onChange={(e) => setEditSpecialDateId(e.target.value || null)}
+                      className="w-full px-3 py-2.5 rounded-xl text-[13px] font-medium outline-none border transition-colors"
+                      style={{
+                        background: editSpecialDateId ? "var(--accent-soft)" : "var(--input-bg)",
+                        borderColor: editSpecialDateId ? "var(--accent)" : "var(--input-border)",
+                        color: editSpecialDateId ? "var(--accent)" : "var(--text)",
+                      }}
+                    >
+                      <option value="">None</option>
+                      {linkableSpecialDates(specialDates).map((sd) => (
+                        <option key={sd.id} value={sd.id}>
+                          {specialDateLabel(sd)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="field-label">Date</label>
@@ -278,6 +319,12 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                     <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ml-1.5"
                       style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
                       recurring
+                    </span>
+                  )}
+                  {linkedSpecialDate && (
+                    <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wider ml-1.5"
+                      style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
+                      {specialDateLabel(linkedSpecialDate)}
                     </span>
                   )}
                 </div>

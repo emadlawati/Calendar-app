@@ -21,7 +21,7 @@ function formatDateRange(date: Date, endDate: Date | null): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { action, date, time, title, notes: adjustNotes, endTime, category: adjustCategory, allDay, user: bodyUser, eventId, endDate } = body;
+    const { action, date, time, title, notes: adjustNotes, endTime, category: adjustCategory, allDay, user: bodyUser, eventId, endDate, specialDateId } = body;
 
     const user = await getRequestUser(bodyUser);
     if (!user) {
@@ -303,6 +303,10 @@ export async function POST(request: Request) {
       if (updatedEndDate && updatedEndDate <= updatedDate) {
         updatedEndDate = null;
       }
+      // specialDateId: undefined = keep, null = unlink, string = link
+      const updatedSpecialDateId = specialDateId !== undefined
+        ? (specialDateId || null)
+        : existingEvent.specialDateId;
 
       // Update the event — keep status as 'accepted'
       await prisma.calendarEvent.update({
@@ -316,6 +320,7 @@ export async function POST(request: Request) {
           notes: updatedNotes,
           category: updatedCategory,
           allDay: updatedAllDay,
+          specialDateId: updatedSpecialDateId,
         },
       });
 
