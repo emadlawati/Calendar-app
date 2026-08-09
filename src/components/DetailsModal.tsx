@@ -79,7 +79,6 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
 
   const isPartner = event.createdBy !== currentUser;
   const isPending = event.status === "pending";
-  const isAccepted = event.status === "accepted";
   const datePart = (event.date as string).split("T")[0];
   const endDatePart = event.endDate ? (event.endDate as string).split("T")[0] : null;
   const eventStart = new Date(`${datePart}T${event.time || "00:00"}:00+04:00`);
@@ -250,7 +249,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
 
                 <div>
                   <label className="field-label">Who is this for?</label>
-                  <div className="grid grid-cols-4 gap-1.5">
+                  <div className="grid grid-cols-5 gap-1.5">
                     {PEOPLE.map((p) => (
                       <button
                         key={p.id}
@@ -428,17 +427,16 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                   </span>
 
                   <div className="flex items-center gap-1">
-                    {/* Edit button — only for accepted events */}
-                    {isAccepted && (
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="p-2"
-                        style={{ color: "var(--text-soft)" }}
-                        title="Edit event"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                    )}
+                    {/* Edit — available on any event, whatever its status */}
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="p-2"
+                      style={{ color: "var(--text-soft)" }}
+                      title="Edit event"
+                      aria-label="Edit event"
+                    >
+                      <Pencil size={15} />
+                    </button>
                     <button onClick={() => handleAction(event.archived ? 'unarchive' : 'archive')}
                       className="p-2 text-xs font-bold uppercase tracking-wider"
                       style={{ color: "var(--text-soft)" }}>

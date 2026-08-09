@@ -291,7 +291,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                   {/* Who is this for? */}
                   <div>
                     <label className="field-label">Who is this for?</label>
-                    <div className="grid grid-cols-4 gap-1.5">
+                    <div className="grid grid-cols-5 gap-1.5">
                       {PEOPLE.map((p) => (
                         <button
                           key={p.id}
