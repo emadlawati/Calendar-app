@@ -91,6 +91,8 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
     ? specialDates.find((sd) => sd.id === event.specialDateId) ?? null
     : null;
   const linkedPerson = getPersonById(event.personTag);
+  // Part of a repeating series — accepting one occurrence accepts them all
+  const isRecurring = !!event.seriesId || !!event.isRecurringInstance;
 
   const handleAction = async (action: string) => {
     try {
@@ -458,8 +460,9 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                       onClick={() => handleAction('accept')}
                       className="py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
                       style={{ background: cat.color, color: cat.textColor }}
+                      title={isRecurring ? "Accepts every occurrence in this series" : undefined}
                     >
-                      <CheckIcon size={16} /> Accept
+                      <CheckIcon size={16} /> {isRecurring ? "Accept all" : "Accept"}
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -471,6 +474,11 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                       <SendIcon size={14} /> Adjust
                     </motion.button>
                   </div>
+                )}
+                {isPartner && isPending && isRecurring && (
+                  <p className="text-[11px] text-center mt-2" style={{ color: "var(--text-soft)" }}>
+                    🔁 Accepting will accept every occurrence in this series
+                  </p>
                 )}
 
                 {/* Save / Edit Memory button for past events */}

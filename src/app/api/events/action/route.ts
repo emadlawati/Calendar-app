@@ -18,6 +18,30 @@ function formatDateRange(date: Date, endDate: Date | null): string {
   return `${startStr} → ${endDate.toLocaleDateString("en-US", opts)}`;
 }
 
+/**
+ * Accepting one occurrence of a recurring series accepts the whole series —
+ * you shouldn't have to tap "accept" 52 times for a weekly plan.
+ * Returns the clicked event plus how many occurrences were flipped to accepted.
+ */
+async function acceptEventOrSeries(eventId: string) {
+  const event = await prisma.calendarEvent.findUnique({ where: { id: eventId } });
+  if (!event) return { event: null, acceptedCount: 0 };
+
+  if (event.seriesId) {
+    const res = await prisma.calendarEvent.updateMany({
+      where: { seriesId: event.seriesId, status: { not: "accepted" } },
+      data: { status: "accepted" },
+    });
+    return { event, acceptedCount: res.count };
+  }
+
+  await prisma.calendarEvent.update({
+    where: { id: eventId },
+    data: { status: "accepted" },
+  });
+  return { event, acceptedCount: 1 };
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -33,15 +57,9 @@ export async function POST(request: Request) {
     }
 
     if (action === 'accept') {
-      // Fetch the event to get details for Google Calendar sync
-      const acceptedEvent = await prisma.calendarEvent.findUnique({
-        where: { id: eventId }
-      });
-
-      await prisma.calendarEvent.update({
-        where: { id: eventId },
-        data: { status: 'accepted' }
-      });
+      // One tap accepts every occurrence when this is a recurring instance
+      const { event: acceptedEvent, acceptedCount } = await acceptEventOrSeries(eventId);
+      const isSeries = !!acceptedEvent?.seriesId && acceptedCount > 1;
 
       // Sync to Google Calendar for the user who accepted
       if (acceptedEvent && user) {
@@ -78,7 +96,9 @@ export async function POST(request: Request) {
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
         sendPushToUser(acceptedEvent.createdBy, {
           title: `${cat.emoji} Plan Accepted!`,
-          body: `${accepterDisplay} accepted: ${acceptedEvent.title}`,
+          body: isSeries
+            ? `${accepterDisplay} accepted all ${acceptedCount} occurrences of: ${acceptedEvent.title}`
+            : `${accepterDisplay} accepted: ${acceptedEvent.title}`,
           url: `${baseUrl}/`,
         });
       }
@@ -104,6 +124,7 @@ export async function POST(request: Request) {
                   <p style="margin: 0; font-size: 14px; color: #5d4037; opacity: 0.8;">${cat.emoji} ${cat.label}</p>
                   <h2 style="margin: 5px 0; color: #5d4037;">${acceptedEvent.title}</h2>
                   <p style="margin: 5px 0;">📅 ${formatDateRange(acceptedEvent.date, acceptedEvent.endDate)}${acceptedEvent.allDay ? " · All day" : ` @ ${acceptedEvent.time}`}</p>
+                  ${isSeries ? `<p style="margin: 5px 0; color: #5d4037;">🔁 All ${acceptedCount} occurrences accepted</p>` : ""}
                   ${acceptedEvent.notes ? `<p style="margin: 15px 0; font-style: italic;">"${acceptedEvent.notes}"</p>` : ""}
                 </div>
                 <a href="${baseUrl}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
@@ -118,7 +139,8 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         success: true,
-        message: "Event accepted",
+        message: isSeries ? `Accepted all ${acceptedCount} occurrences` : "Event accepted",
+        acceptedCount,
         newBadges: newBadges.length > 0 ? newBadges : undefined,
       });
     }
@@ -467,15 +489,9 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL('/', request.url));
     }
 
-    // Fetch the event to get details for Google Calendar sync
-    const acceptedEvent = await prisma.calendarEvent.findUnique({
-      where: { id: eventId }
-    });
-
-    await prisma.calendarEvent.update({
-      where: { id: eventId },
-      data: { status: 'accepted' }
-    });
+    // One click accepts every occurrence when this is a recurring instance
+    const { event: acceptedEvent, acceptedCount } = await acceptEventOrSeries(eventId);
+    const isSeries = !!acceptedEvent?.seriesId && acceptedCount > 1;
 
     // Sync to Google Calendar for the person who accepted via email link
       if (acceptedEvent && acceptedBy) {
@@ -524,6 +540,7 @@ export async function GET(request: Request) {
                 <p style="margin: 0; font-size: 14px; color: #5d4037; opacity: 0.8;">${cat.emoji} ${cat.label}</p>
                 <h2 style="margin: 5px 0; color: #5d4037;">${acceptedEvent.title}</h2>
                 <p style="margin: 5px 0;">📅 ${formatDateRange(acceptedEvent.date, acceptedEvent.endDate)}${acceptedEvent.allDay ? " · All day" : ` @ ${acceptedEvent.time}`}</p>
+                ${isSeries ? `<p style="margin: 5px 0; color: #5d4037;">🔁 All ${acceptedCount} occurrences accepted</p>` : ""}
                 ${acceptedEvent.notes ? `<p style="margin: 15px 0; font-style: italic;">"${acceptedEvent.notes}"</p>` : ""}
               </div>
               <a href="${baseUrl}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
