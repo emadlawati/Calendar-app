@@ -8,6 +8,7 @@ import { EVENT_CATEGORIES, getCategoryById } from "@/lib/categories";
 import { CategoryIcons, CalendarIcon, XIcon, SendIcon, SunIcon, TargetIcon, HeartIcon, CheckIcon } from "@/components/icons";
 import RecurrenceSelector, { type RecurrenceOption } from "./RecurrenceSelector";
 import { specialDateLabel, linkableSpecialDates } from "@/lib/special-date-display";
+import { PEOPLE } from "@/lib/people";
 import type { CreateEventPayload, BucketItem, SpecialDateWithCountdown } from "@/lib/types";
 
 interface EventModalProps {
@@ -35,6 +36,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
   const [bucketLoading, setBucketLoading] = useState(false);
   const [recurrence, setRecurrence] = useState<RecurrenceOption>("once");
   const [specialDateId, setSpecialDateId] = useState<string | null>(null);
+  const [personTag, setPersonTag] = useState<string | null>(null);
   const [specialDates, setSpecialDates] = useState<SpecialDateWithCountdown[]>([]);
 
   const partner = currentUser === "Wife" ? "Husband" : "Wife";
@@ -95,6 +97,7 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
       allDay,
       createdBy: currentUser,
       specialDateId: specialDateId || undefined,
+      personTag: personTag || undefined,
     };
 
     try {
@@ -284,6 +287,29 @@ export default function EventModal({ isOpen, onClose, onSuccess, selectedDate }:
                       </select>
                     </div>
                   )}
+
+                  {/* Who is this for? */}
+                  <div>
+                    <label className="field-label">Who is this for?</label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {PEOPLE.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setPersonTag(personTag === p.id ? null : p.id)}
+                          className="flex flex-col items-center gap-0.5 py-2 rounded-xl text-xs font-medium border-2 transition-all"
+                          style={{
+                            borderColor: personTag === p.id ? "var(--accent)" : "var(--divider)",
+                            background: personTag === p.id ? "var(--accent-soft)" : "var(--input-bg)",
+                            color: "var(--text)",
+                          }}
+                        >
+                          <span className="text-base">{p.emoji}</span>
+                          <span className="text-[9px] leading-tight opacity-70 truncate max-w-full">{p.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
                   {/* When */}
                   <div>

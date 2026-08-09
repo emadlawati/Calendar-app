@@ -12,6 +12,7 @@ import { getCategoryById, EVENT_CATEGORIES } from "@/lib/categories";
 import { getDisplayName } from "@/lib/names";
 import { CategoryIcons, CalendarIcon, XIcon, SendIcon, CheckIcon, ArchiveIcon } from "@/components/icons";
 import { specialDateLabel, linkableSpecialDates } from "@/lib/special-date-display";
+import { PEOPLE, getPersonById } from "@/lib/people";
 import type { CalendarEvent, SpecialDateWithCountdown } from "@/lib/types";
 
 interface DetailsModalProps {
@@ -38,6 +39,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
   const [editNotes, setEditNotes] = useState("");
   const [editCategory, setEditCategory] = useState("other");
   const [editSpecialDateId, setEditSpecialDateId] = useState<string | null>(null);
+  const [editPersonTag, setEditPersonTag] = useState<string | null>(null);
   const [specialDates, setSpecialDates] = useState<SpecialDateWithCountdown[]>([]);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState("");
@@ -59,6 +61,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
       setEditNotes(event.notes || "");
       setEditCategory(event.category || "other");
       setEditSpecialDateId(event.specialDateId || null);
+      setEditPersonTag(event.personTag || null);
     }
   }, [isEditing, event]);
 
@@ -88,6 +91,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
   const linkedSpecialDate = event.specialDateId
     ? specialDates.find((sd) => sd.id === event.specialDateId) ?? null
     : null;
+  const linkedPerson = getPersonById(event.personTag);
 
   const handleAction = async (action: string) => {
     try {
@@ -141,6 +145,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
           notes: editNotes || null,
           category: editCategory,
           specialDateId: editSpecialDateId,
+          personTag: editPersonTag,
         }),
       });
       if (!res.ok) throw new Error("Save failed");
@@ -243,6 +248,28 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                   </div>
                 )}
 
+                <div>
+                  <label className="field-label">Who is this for?</label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {PEOPLE.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setEditPersonTag(editPersonTag === p.id ? null : p.id)}
+                        className="flex flex-col items-center gap-0.5 py-2 rounded-xl text-xs font-medium border-2 transition-all"
+                        style={{
+                          borderColor: editPersonTag === p.id ? "var(--accent)" : "var(--divider)",
+                          background: editPersonTag === p.id ? "var(--accent-soft)" : "var(--input-bg)",
+                          color: "var(--text)",
+                        }}
+                      >
+                        <span className="text-base">{p.emoji}</span>
+                        <span className="text-[9px] leading-tight opacity-70 truncate max-w-full">{p.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="field-label">Date</label>
@@ -325,6 +352,12 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                     <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wider ml-1.5"
                       style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
                       {specialDateLabel(linkedSpecialDate)}
+                    </span>
+                  )}
+                  {linkedPerson && (
+                    <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wider ml-1.5"
+                      style={{ background: linkedPerson.color, color: linkedPerson.textColor }}>
+                      {linkedPerson.emoji} {linkedPerson.label}
                     </span>
                   )}
                 </div>

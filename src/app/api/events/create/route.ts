@@ -12,7 +12,7 @@ import { sendPushToUser } from '@/lib/webpush';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, date, time, endTime, notes, category, allDay, createdBy: bodyCreatedBy, specialDateId } = body;
+    const { title, date, time, endTime, notes, category, allDay, createdBy: bodyCreatedBy, specialDateId, personTag } = body;
     let { endDate } = body;
 
     const createdBy = await getRequestUser(bodyCreatedBy);
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
         endTime: endTime || null,
         notes,
         category: category || "other",
+        personTag: personTag || null,
         allDay: allDay || false,
         createdBy,
         status: "pending",

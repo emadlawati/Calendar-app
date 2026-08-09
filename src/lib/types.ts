@@ -13,6 +13,8 @@ export interface CalendarEvent {
   time: string;
   endTime: string | null;
   category: string | null;
+  /** Who the event is about: "family" | "wife" | "husband" | "child" */
+  personTag?: string | null;
   allDay: boolean;
   createdBy: User;
   status: EventStatus;
@@ -38,6 +40,7 @@ export interface CreateEventPayload {
   endTime?: string;
   notes: string;
   category?: string;
+  personTag?: string | null;
   allDay?: boolean;
   createdBy: User;
   specialDateId?: string | null;
@@ -56,6 +59,8 @@ export interface ActionPayload {
   allDay?: boolean;
   /** undefined = keep, null = unlink, string = link to that special date */
   specialDateId?: string | null;
+  /** undefined = keep, null = clear, string = tag that person */
+  personTag?: string | null;
   user?: User;
 }
 

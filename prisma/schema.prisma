@@ -16,6 +16,7 @@ model CalendarEvent {
   time                String
   endTime             String?
   category            String?
+  personTag           String?  // "family" | "wife" | "husband" | "child"
   allDay              Boolean  @default(false)
   createdBy           String
   status              String   @default("pending")

@@ -202,16 +202,43 @@ export function CatCasualIcon({ size = 20, ...props }: IconProps) {
   );
 }
 
+export function CatOutingIcon({ size = 20, ...props }: IconProps) {
+  return (
+    <svg {...icon({ size, ...props })}>
+      <path d="M5 17h14l-1.5-6.5A2 2 0 0 0 15.6 9H8.4a2 2 0 0 0-1.9 1.5L5 17z" />
+      <circle cx="7.5" cy="17.5" r="1.5" />
+      <circle cx="16.5" cy="17.5" r="1.5" />
+    </svg>
+  );
+}
+
+export function CatAppointmentIcon({ size = 20, ...props }: IconProps) {
+  return (
+    <svg {...icon({ size, ...props })}>
+      <rect x="5" y="4" width="14" height="17" rx="2" />
+      <path d="M9 4h6" />
+      <polyline points="9 13 11 15 15 11" />
+    </svg>
+  );
+}
+
 export function CatOtherIcon({ size = 20, ...props }: IconProps) {
   return <PawIcon size={size} {...props} />;
 }
 
 export const CategoryIcons: Record<string, React.FC<IconProps>> = {
+  betime: CatRomanticIcon,
+  outings: CatOutingIcon,
+  occasions: CatSpecialIcon,
+  social: CatCasualIcon,
+  errands: CatChoresIcon,
+  appointments: CatAppointmentIcon,
+  other: CatOtherIcon,
+  // Legacy ids — kept so any un-migrated row still renders an icon
   romantic: CatRomanticIcon,
   datenight: CatDateIcon,
   adventure: CatAdventureIcon,
   special: CatSpecialIcon,
   chores: CatChoresIcon,
   casual: CatCasualIcon,
-  other: CatOtherIcon,
 };

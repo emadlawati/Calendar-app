@@ -16,6 +16,8 @@ import Toast from "@/components/Toast";
 import { useSession } from "@/components/SessionProvider";
 import { triggerConfetti } from "@/lib/confetti";
 import { getCategoryById } from "@/lib/categories";
+import { PEOPLE } from "@/lib/people";
+import { specialDateLabel, linkableSpecialDates } from "@/lib/special-date-display";
 import { CategoryIcons, PlusIcon } from "@/components/icons";
 import type { CalendarEvent, SpecialDateWithCountdown, StreakData, PendingMemory, Reminder, DailyHighlight } from "@/lib/types";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
@@ -62,6 +64,9 @@ export default function Home() {
   const [highlightInitialDate, setHighlightInitialDate] = useState<string | undefined>(undefined);
   const [highlightEditing, setHighlightEditing] = useState<DailyHighlight | null>(null);
   const [viewHighlight, setViewHighlight] = useState<DailyHighlight | null>(null);
+  // Filters: show only events tagged to a person and/or linked to an occasion
+  const [filterPerson, setFilterPerson] = useState<string | null>(null);
+  const [filterOccasion, setFilterOccasion] = useState<string | null>(null);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -315,7 +320,19 @@ export default function Home() {
     };
   });
 
-  const allCalendarEvents = [...events, ...reminderEvents, ...highlightEvents];
+  // When a filter is on, show only matching events — reminders and highlights
+  // carry no person/occasion tags, so they'd just be noise.
+  const isFiltering = filterPerson !== null || filterOccasion !== null;
+  const filteredEvents = events.filter((e) => {
+    if (filterPerson && e.personTag !== filterPerson) return false;
+    if (filterOccasion === "__any__") return !!e.specialDateId;
+    if (filterOccasion && e.specialDateId !== filterOccasion) return false;
+    return true;
+  });
+
+  const allCalendarEvents = isFiltering
+    ? filteredEvents
+    : [...events, ...reminderEvents, ...highlightEvents];
 
   return (
     <AnimatePresence mode="wait">
@@ -406,6 +423,64 @@ export default function Home() {
                 </motion.a>
               </motion.div>
             </div>
+          )}
+        </div>
+
+        {/* Filters */}
+        <div className="mx-2.5 sm:mx-8 mt-3 sm:mt-4 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-semibold mr-0.5" style={{ color: "var(--text-soft)" }}>
+            Show:
+          </span>
+
+          {/* Person chips */}
+          {PEOPLE.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setFilterPerson(filterPerson === p.id ? null : p.id)}
+              className="chip-pill text-xs"
+              style={{
+                background: filterPerson === p.id ? "var(--accent)" : "var(--chip-bg)",
+                color: filterPerson === p.id ? "var(--on-accent)" : "var(--chip-text)",
+                borderColor: filterPerson === p.id ? "var(--accent)" : "var(--chip-border)",
+              }}
+            >
+              {p.emoji} {p.label}
+            </button>
+          ))}
+
+          {/* Occasion select */}
+          <select
+            value={filterOccasion ?? ""}
+            onChange={(e) => setFilterOccasion(e.target.value || null)}
+            aria-label="Filter by occasion"
+            className="rounded-full px-3 py-[5px] text-[11.5px] outline-none border cursor-pointer"
+            style={{
+              background: filterOccasion ? "var(--accent)" : "var(--chip-bg)",
+              color: filterOccasion ? "var(--on-accent)" : "var(--chip-text)",
+              borderColor: filterOccasion ? "var(--accent)" : "var(--chip-border)",
+            }}
+          >
+            <option value="">Any occasion</option>
+            <option value="__any__">🎗️ Linked to any occasion</option>
+            {linkableSpecialDates(specialDates).map((sd) => (
+              <option key={sd.id} value={sd.id}>
+                {specialDateLabel(sd)}
+              </option>
+            ))}
+          </select>
+
+          {isFiltering && (
+            <>
+              <span className="text-[11px]" style={{ color: "var(--text-soft)" }}>
+                {filteredEvents.length} {filteredEvents.length === 1 ? "event" : "events"}
+              </span>
+              <button
+                onClick={() => { setFilterPerson(null); setFilterOccasion(null); }}
+                className="chip-pill text-xs font-semibold"
+              >
+                Clear ✕
+              </button>
+            </>
           )}
         </div>
 
