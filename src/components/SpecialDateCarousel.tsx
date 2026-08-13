@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, X } from "lucide-react";
+import { specialDateLabel } from "@/lib/special-date-display";
 
 interface SpecialDate {
   id: string;
@@ -45,9 +46,8 @@ export default function SpecialDateCarousel({ dates, onDelete }: SpecialDateCaro
                 borderColor: d.daysLeft === 0 ? "rgba(252, 232, 200, 0.5)" : "rgba(252, 232, 200, 0.2)",
               }}
             >
-              <span className="text-sm">{d.emoji}</span>
-              <span className="truncate max-w-[140px]">
-                {d.title}
+              <span className="truncate max-w-[160px]">
+                {specialDateLabel(d)}
               </span>
               <span className="opacity-75 shrink-0">
                 {d.daysLeft === 0 ? "TODAY 🎉" : `in ${d.daysLeft}d`}

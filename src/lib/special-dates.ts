@@ -69,7 +69,7 @@ export async function seedSpecialDates(): Promise<void> {
     const [m, d] = process.env.NEXT_PUBLIC_BUDOOR_BIRTHDAY.split("-");
     specialDates.push({
       title: `\u{1F382} ${getDisplayName("Wife")}'s Birthday`,
-      date: new Date(2000, parseInt(m) - 1, parseInt(d)),
+      date: new Date(Date.UTC(2000, parseInt(m) - 1, parseInt(d))),
       type: "annual",
       kind: "birthday",
       emoji: "\u{1F382}",
@@ -81,11 +81,24 @@ export async function seedSpecialDates(): Promise<void> {
     const [m, d] = process.env.NEXT_PUBLIC_IMAD_BIRTHDAY.split("-");
     specialDates.push({
       title: `\u{1F382} ${getDisplayName("Husband")}'s Birthday`,
-      date: new Date(2000, parseInt(m) - 1, parseInt(d)),
+      date: new Date(Date.UTC(2000, parseInt(m) - 1, parseInt(d))),
       type: "annual",
       kind: "birthday",
       emoji: "\u{1F382}",
       createdBy: "Husband",
+    });
+  }
+
+  if (process.env.NEXT_PUBLIC_CHILD_BIRTHDAY) {
+    const [m, d] = process.env.NEXT_PUBLIC_CHILD_BIRTHDAY.split("-");
+    const childName = process.env.NEXT_PUBLIC_CHILD_NAME || "our little one";
+    specialDates.push({
+      title: `\u{1F382} ${childName}'s Birthday`,
+      date: new Date(Date.UTC(2000, parseInt(m) - 1, parseInt(d))),
+      type: "annual",
+      kind: "birthday",
+      emoji: "\u{1F382}",
+      createdBy: "Wife",
     });
   }
 
@@ -99,7 +112,7 @@ export async function seedSpecialDates(): Promise<void> {
     const [m, d] = anniversaryDate.split("-");
     specialDates.push({
       title: "\u{1F48D} Anniversary",
-      date: new Date(2000, parseInt(m) - 1, parseInt(d)),
+      date: new Date(Date.UTC(2000, parseInt(m) - 1, parseInt(d))),
       type: "annual",
       kind: "anniversary",
       emoji: "\u{1F48D}",
