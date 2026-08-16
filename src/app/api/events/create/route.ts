@@ -8,6 +8,7 @@ import { getDisplayName } from '@/lib/names';
 import { getCategoryById } from '@/lib/categories';
 import { renderThemedEmail, getTheme } from '@/lib/email-themes';
 import { sendPushToUser } from '@/lib/webpush';
+import { getEventNotificationRecipients } from '@/lib/people';
 
 export async function POST(request: Request) {
   try {
@@ -73,18 +74,19 @@ export async function POST(request: Request) {
       console.log(`Google Calendar event created for creator ${createdBy}: ${creatorGoogleEventId}`);
     }
 
-    // Determine the recipient and sender emails
-    const isWife = createdBy === "Wife";
-    const partnerEmail = isWife ? process.env.HUSBAND_EMAIL : process.env.WIFE_EMAIL;
-    const partnerName = isWife ? "Husband" : "Wife";
+    // Who should hear about this: only the other partner, and only if the
+    // event's person-tag actually includes them ("wife"/"husband" tags are
+    // exclusive to that partner; family/couple/child/untagged notify both).
+    const notifyTarget = getEventNotificationRecipients(personTag).find((u) => u !== createdBy) ?? null;
+    const partnerEmail = notifyTarget === "Wife" ? process.env.WIFE_EMAIL : notifyTarget === "Husband" ? process.env.HUSBAND_EMAIL : null;
     const displayName = getDisplayName(createdBy);
     const cat = getCategoryById(category || "other");
-    
+
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const adjustUrl = `${baseUrl}/events/adjust?id=${newEvent.id}&user=${partnerName}`;
-    
+    const adjustUrl = `${baseUrl}/events/adjust?id=${newEvent.id}&user=${notifyTarget}`;
+
     // Send Email via Resend
-    if (partnerEmail && process.env.RESEND_API_KEY !== "re_...") {
+    if (notifyTarget && partnerEmail && process.env.RESEND_API_KEY !== "re_...") {
       try {
         // Fetch linked special date for themed emails
         const specialDate = specialDateId
@@ -106,7 +108,7 @@ export async function POST(request: Request) {
         const html = renderThemedEmail(themeKind, {
           h1: themedH1,
           cardHtml,
-          acceptLink: `${baseUrl}/api/events/action?id=${newEvent.id}&action=accept&user=${partnerName}`,
+          acceptLink: `${baseUrl}/api/events/action?id=${newEvent.id}&action=accept&user=${notifyTarget}`,
           adjustLink: adjustUrl,
           baseUrl,
         });
@@ -122,16 +124,18 @@ export async function POST(request: Request) {
       }
     }
 
-    // Push notification to partner
-    sendPushToUser(partnerName, {
-      title: `${cat.emoji} New Plan!`,
-      body: `${displayName} invited you: ${title}`,
-      url: `${baseUrl}/`,
-    });
+    // Push notification to whoever this event is actually for
+    if (notifyTarget) {
+      sendPushToUser(notifyTarget, {
+        title: `${cat.emoji} New Plan!`,
+        body: `${displayName} invited you: ${title}`,
+        url: `${baseUrl}/`,
+      });
+    }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Event created and invite sent to ${partnerName}`,
+    return NextResponse.json({
+      success: true,
+      message: notifyTarget ? `Event created and invite sent to ${notifyTarget}` : "Event created",
       event: newEvent
     });
   } catch (error) {

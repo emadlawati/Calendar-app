@@ -3,7 +3,8 @@ export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
 import resend from "@/lib/resend";
 import { getCategoryById } from "@/lib/categories";
-import { sendPushToBoth } from "@/lib/webpush";
+import { sendPushToUser } from "@/lib/webpush";
+import { getEventNotificationRecipients } from "@/lib/people";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -43,12 +44,19 @@ export async function GET(request: Request) {
     }
   }
 
-  const recipients = [process.env.WIFE_EMAIL, process.env.HUSBAND_EMAIL].filter(Boolean) as string[];
-  if (recipients.length === 0) {
-    return NextResponse.json({ skipped: "No email recipients configured" });
-  }
-
   const noEmail = process.env.RESEND_API_KEY === "re_..." || !process.env.RESEND_API_KEY;
+
+  const emailFor = (u: "Wife" | "Husband") => (u === "Wife" ? process.env.WIFE_EMAIL : process.env.HUSBAND_EMAIL);
+
+  /** Who should hear about this event: both partners by default, or just
+   *  one if the event is tagged exclusively "wife" or "husband". */
+  function recipientsFor(personTag: string | null) {
+    const users = getEventNotificationRecipients(personTag);
+    return {
+      users,
+      emails: users.map(emailFor).filter(Boolean) as string[],
+    };
+  }
 
   const todayStr = mscDateStr(0);
   const tomorrowStr = mscDateStr(1);
@@ -76,6 +84,8 @@ export async function GET(request: Request) {
   // ── A. Today's reminders ──
   for (const evt of todayEvents) {
     const cat = getCategoryById(evt.category);
+    const { users, emails } = recipientsFor(evt.personTag);
+    if (users.length === 0) continue;
     const html = `
       <div style="${EMAIL_STYLE}">
         <h1 style="color:#5d4037;font-size:24px;">☕ Today's the day!</h1>
@@ -88,25 +98,29 @@ export async function GET(request: Request) {
         ${openBtn("Open Calendar 🐾")}
         <p style="margin-top:30px;font-size:12px;opacity:0.6;">Sent with love from your shared calendar app.</p>
       </div>`;
-    if (!noEmail) {
+    if (!noEmail && emails.length > 0) {
       await resend.emails.send({
         from: "Calendar 🐾 <noreply@yaminami.uk>",
-        to: recipients,
+        to: emails,
         subject: `${cat.emoji} Today: ${evt.title}! ☕`,
         html,
       }).catch((e: unknown) => console.error("Today reminder email failed:", e));
     }
-    await sendPushToBoth({
-      title: `${cat.emoji} Today: ${evt.title}!`,
-      body: evt.allDay ? "All day today" : `Today @ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`,
-      url: `${BASE_URL}/`,
-    }).catch((e: unknown) => console.error("Today reminder push failed:", e));
+    for (const u of users) {
+      await sendPushToUser(u, {
+        title: `${cat.emoji} Today: ${evt.title}!`,
+        body: evt.allDay ? "All day today" : `Today @ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`,
+        url: `${BASE_URL}/`,
+      }).catch((e: unknown) => console.error("Today reminder push failed:", e));
+    }
     results.push(`today:${evt.title}`);
   }
 
   // ── B. Tomorrow's reminders ──
   for (const evt of tomorrowEvents) {
     const cat = getCategoryById(evt.category);
+    const { users, emails } = recipientsFor(evt.personTag);
+    if (users.length === 0) continue;
     const html = `
       <div style="${EMAIL_STYLE}">
         <h1 style="color:#5d4037;font-size:24px;">🗓️ Tomorrow!</h1>
@@ -119,63 +133,22 @@ export async function GET(request: Request) {
         ${openBtn("Open Calendar 🐾")}
         <p style="margin-top:30px;font-size:12px;opacity:0.6;">Sent with love from your shared calendar app.</p>
       </div>`;
-    if (!noEmail) {
+    if (!noEmail && emails.length > 0) {
       await resend.emails.send({
         from: "Calendar 🐾 <noreply@yaminami.uk>",
-        to: recipients,
+        to: emails,
         subject: `${cat.emoji} Tomorrow: ${evt.title} 🗓️`,
         html,
       }).catch((e: unknown) => console.error("Tomorrow reminder email failed:", e));
     }
-    await sendPushToBoth({
-      title: `${cat.emoji} Tomorrow: ${evt.title}`,
-      body: evt.allDay ? "All day tomorrow" : `Tomorrow @ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`,
-      url: `${BASE_URL}/`,
-    }).catch((e: unknown) => console.error("Tomorrow reminder push failed:", e));
+    for (const u of users) {
+      await sendPushToUser(u, {
+        title: `${cat.emoji} Tomorrow: ${evt.title}`,
+        body: evt.allDay ? "All day tomorrow" : `Tomorrow @ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`,
+        url: `${BASE_URL}/`,
+      }).catch((e: unknown) => console.error("Tomorrow reminder push failed:", e));
+    }
     results.push(`tomorrow:${evt.title}`);
-  }
-
-  // ── C. Sunday weekly digest ──
-  const isSunday = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Muscat", weekday: "long" }) === "Sunday";
-  if (isSunday) {
-    const weekEnd = new Date(`${mscDateStr(7)}T23:59:59.999Z`);
-    const weekEvents = await prisma.calendarEvent.findMany({
-      where: {
-        status: "accepted",
-        archived: false,
-        date: { gte: todayStart, lte: weekEnd },
-      },
-      orderBy: { date: "asc" },
-    });
-
-    let bodyHtml: string;
-    if (weekEvents.length === 0) {
-      bodyHtml = `<p style="font-size:16px;margin:20px 0;">Nothing planned this week — time to brew something? ☕</p>
-        <a href="${BASE_URL}" style="background-color:#fce4ec;color:#5d4037;padding:12px 24px;border-radius:20px;text-decoration:none;font-weight:bold;display:inline-block;">Plan something 🐾</a>`;
-    } else {
-      const rows = weekEvents.map((evt) => {
-        const cat = getCategoryById(evt.category);
-        const dStr = new Date(evt.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-          + (evt.endDate ? ` – ${new Date(evt.endDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}` : "");
-        return `<div style="padding:12px 0;border-bottom:1px solid #f5e6d8;">
-          <p style="margin:0;font-size:13px;opacity:0.7;">${cat.emoji} ${dStr} ${evt.allDay ? "· All day" : `@ ${evt.time}`}</p>
-          <p style="margin:4px 0 0;font-weight:600;font-size:15px;">${evt.title}</p>
-        </div>`;
-      }).join("");
-      bodyHtml = `<p style="font-size:15px;margin:0 0 16px;">Here's what you have planned this week:</p>${rows}${openBtn()}`;
-    }
-
-    const html = `<div style="${EMAIL_STYLE}"><h1 style="color:#5d4037;font-size:24px;">☕ Your week ahead</h1>${bodyHtml}<p style="margin-top:30px;font-size:12px;opacity:0.6;">Sent with love from your shared calendar app.</p></div>`;
-
-    if (!noEmail) {
-      await resend.emails.send({
-        from: "Calendar 🐾 <noreply@yaminami.uk>",
-        to: recipients,
-        subject: weekEvents.length ? `☕ This week: ${weekEvents.map((e) => e.title).join(", ")}` : "☕ Nothing planned this week — brew something?",
-        html,
-      }).catch((e: unknown) => console.error("Weekly digest email failed:", e));
-    }
-    results.push(`digest:${weekEvents.length} events`);
   }
 
   return NextResponse.json({ ok: true, sent: results });

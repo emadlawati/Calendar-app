@@ -9,6 +9,7 @@ import { getCategoryById } from '@/lib/categories';
 import { recalculateStreaks } from '@/lib/streaks';
 import { getBadgeById } from '@/lib/achievements';
 import { sendPushToUser } from '@/lib/webpush';
+import { getEventNotificationRecipients } from '@/lib/people';
 
 /** "Mar 6" or "Mar 6 → Mar 8" for multi-day events */
 function formatDateRange(date: Date, endDate: Date | null): string {
@@ -413,15 +414,17 @@ export async function POST(request: Request) {
         }).catch((err: unknown) => console.error("Partner GCal edit failed:", err));
       }
 
-      // Send email to BOTH parties
+      // Notify whoever this event is tagged for (both, unless it's tagged
+      // exclusively to one partner)
       const editorDisplay = getDisplayName(user);
       const cat = getCategoryById(updatedCategory);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       const formattedDate = formatDateRange(updatedDate, updatedEndDate);
 
-      const emailRecipients: string[] = [];
-      if (process.env.WIFE_EMAIL) emailRecipients.push(process.env.WIFE_EMAIL);
-      if (process.env.HUSBAND_EMAIL) emailRecipients.push(process.env.HUSBAND_EMAIL);
+      const notifyUsers = getEventNotificationRecipients(updatedPersonTag);
+      const emailRecipients: string[] = notifyUsers
+        .map((u) => (u === "Wife" ? process.env.WIFE_EMAIL : process.env.HUSBAND_EMAIL))
+        .filter(Boolean) as string[];
 
       if (emailRecipients.length > 0 && process.env.RESEND_API_KEY !== "re_...") {
         const emailHtml = `

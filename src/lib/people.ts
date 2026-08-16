@@ -1,4 +1,5 @@
 import { getDisplayName } from "./names";
+import type { User } from "./types";
 
 /** Who an event is about. Stored on CalendarEvent.personTag. */
 export interface PersonTag {
@@ -22,4 +23,16 @@ export const PEOPLE: PersonTag[] = [
 export function getPersonById(id: string | null | undefined): PersonTag | null {
   if (!id) return null;
   return PEOPLE.find((p) => p.id === id) ?? null;
+}
+
+/**
+ * Who should be notified (push/email) about an event, based on who it's
+ * tagged for. "wife"/"husband" are exclusive — only that partner hears about
+ * it. Everything else (family, couple, child, or untagged) is shared, so
+ * both partners hear about it, same as the app's original behavior.
+ */
+export function getEventNotificationRecipients(personTag: string | null | undefined): User[] {
+  if (personTag === "wife") return ["Wife"];
+  if (personTag === "husband") return ["Husband"];
+  return ["Wife", "Husband"];
 }
