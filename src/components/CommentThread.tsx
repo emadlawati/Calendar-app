@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, Send, Trash2 } from "lucide-react";
+import { ChatIcon, SendIcon, TrashIcon } from "@/components/icons";
 import { useSession } from "./SessionProvider";
 import { getDisplayName } from "@/lib/names";
 import type { Comment, CommentTarget, User } from "@/lib/types";
@@ -112,7 +112,7 @@ export default function CommentThread({ targetType, targetId, defaultOpen = fals
         className="flex items-center gap-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
         style={{ color: "var(--text-soft)" }}
       >
-        <MessageCircle size={13} />
+        <ChatIcon size={13} />
         {label}
       </button>
 
@@ -130,7 +130,7 @@ export default function CommentThread({ targetType, targetId, defaultOpen = fals
                 <p className="text-xs py-1" style={{ color: "var(--text-very)" }}>Loading…</p>
               ) : comments.length === 0 ? (
                 <p className="text-xs py-1" style={{ color: "var(--text-very)" }}>
-                  {canInteract ? "No comments yet — be the first 💬" : "No comments yet"}
+                  {canInteract ? "No comments yet — be the first" : "No comments yet"}
                 </p>
               ) : (
                 comments.map((c) => (
@@ -158,9 +158,9 @@ export default function CommentThread({ targetType, targetId, defaultOpen = fals
                         onClick={() => remove(c.id)}
                         aria-label="Delete comment"
                         className="shrink-0 transition-opacity opacity-0 group-hover:opacity-100 hover:opacity-70"
-                        style={{ color: "#c14a33" }}
+                        style={{ color: "var(--danger)" }}
                       >
-                        <Trash2 size={13} />
+                        <TrashIcon size={13} />
                       </button>
                     )}
                   </div>
@@ -191,7 +191,7 @@ export default function CommentThread({ targetType, targetId, defaultOpen = fals
                     border: "1px solid var(--divider)",
                   }}
                 >
-                  <Send size={14} />
+                  <SendIcon size={14} />
                 </motion.button>
               </form>
             )}

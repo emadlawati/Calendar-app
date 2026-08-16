@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, X } from "lucide-react";
 import { specialDateLabel } from "@/lib/special-date-display";
+import { ChevronDownIcon, XIcon, CelebrateIcon } from "@/components/icons";
 
 interface SpecialDate {
   id: string;
@@ -49,8 +49,10 @@ export default function SpecialDateCarousel({ dates, onDelete }: SpecialDateCaro
               <span className="truncate max-w-[160px]">
                 {specialDateLabel(d)}
               </span>
-              <span className="opacity-75 shrink-0">
-                {d.daysLeft === 0 ? "TODAY 🎉" : `in ${d.daysLeft}d`}
+              <span className="opacity-75 shrink-0 inline-flex items-center gap-1">
+                {d.daysLeft === 0 ? (
+                  <>TODAY <CelebrateIcon size={11} /></>
+                ) : `in ${d.daysLeft}d`}
               </span>
               {onDelete && (
                 <button
@@ -59,7 +61,7 @@ export default function SpecialDateCarousel({ dates, onDelete }: SpecialDateCaro
                   style={{ color: "rgba(252,232,200,0.7)" }}
                   aria-label="Remove"
                 >
-                  <X size={11} />
+                  <XIcon size={11} />
                 </button>
               )}
             </motion.div>
@@ -80,12 +82,12 @@ export default function SpecialDateCarousel({ dates, onDelete }: SpecialDateCaro
             {expanded ? (
               <>
                 <span className="opacity-75">Less</span>
-                <ChevronDown size={12} className="rotate-180" />
+                <ChevronDownIcon size={12} className="rotate-180" />
               </>
             ) : (
               <>
                 <span className="opacity-75">+{sorted.length - 2}</span>
-                <ChevronDown size={12} />
+                <ChevronDownIcon size={12} />
               </>
             )}
           </motion.button>

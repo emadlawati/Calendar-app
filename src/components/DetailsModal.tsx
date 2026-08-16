@@ -1,16 +1,19 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { useSession } from "@/components/SessionProvider";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Pencil } from "lucide-react";
+import Modal from "@/components/Modal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { triggerConfetti } from "@/lib/confetti";
 import { getCategoryById, EVENT_CATEGORIES } from "@/lib/categories";
 import { getDisplayName } from "@/lib/names";
-import { CategoryIcons, CalendarIcon, XIcon, SendIcon, CheckIcon, ArchiveIcon } from "@/components/icons";
+import {
+  CategoryIcons, CalendarIcon, XIcon, SendIcon, CheckIcon, ArchiveIcon,
+  PencilIcon, CameraIcon, CelebrateIcon, PersonIcons,
+} from "@/components/icons";
 import { specialDateLabel, linkableSpecialDates } from "@/lib/special-date-display";
 import { PEOPLE, getPersonById } from "@/lib/people";
 import type { CalendarEvent, SpecialDateWithCountdown } from "@/lib/types";
@@ -159,37 +162,25 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 z-40" style={{ background: "rgba(40, 25, 15, 0.45)", backdropFilter: "blur(6px)" }}
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 12 }}
-            className="fixed inset-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 z-50 md:max-w-sm w-full overflow-y-auto modal-shell p-6"
-          >
-            <button onClick={onClose} className="absolute top-4 right-4" style={{ color: "var(--text-soft)" }}>
-              <XIcon size={20} />
-            </button>
-
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
-                <CalendarIcon size={20} />
-              </div>
-              <h2 className="text-xl" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
-                {isEditing ? "Edit Plan" : "Plan Details"}
-              </h2>
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        width="sm"
+        ariaLabel={isEditing ? "Edit plan" : "Plan details"}
+        title={
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
+              <CalendarIcon size={20} />
             </div>
-
+            <h2 className="heading-font text-xl" style={{ color: "var(--accent)" }}>
+              {isEditing ? "Edit Plan" : "Plan Details"}
+            </h2>
+          </div>
+        }
+      >
+        <div className="mt-1">
             {isEditing ? (
               /* ── Edit Form ── */
               <form onSubmit={handleSaveEdit} className="space-y-4">
@@ -219,8 +210,10 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                           color: "var(--text)",
                         }}
                       >
-                        <span className="text-base">{c.emoji}</span>
-                        <span className="text-[9px] leading-tight opacity-70">{c.label}</span>
+                        <span className="text-base">
+                          {(() => { const CIcon = CategoryIcons[c.id]; return CIcon ? <CIcon size={18} /> : c.emoji; })()}
+                        </span>
+                        <span className="text-[10px] leading-tight opacity-70">{c.label}</span>
                       </button>
                     ))}
                   </div>
@@ -228,7 +221,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
 
                 {linkableSpecialDates(specialDates).length > 0 && (
                   <div>
-                    <label className="field-label">Link to an anniversary? 💍</label>
+                    <label className="field-label">Link to an anniversary?</label>
                     <select
                       value={editSpecialDateId || ""}
                       onChange={(e) => setEditSpecialDateId(e.target.value || null)}
@@ -264,8 +257,10 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                           color: "var(--text)",
                         }}
                       >
-                        <span className="text-base">{p.emoji}</span>
-                        <span className="text-[9px] leading-tight opacity-70 truncate max-w-full">{p.label}</span>
+                        <span className="text-base">
+                          {(() => { const PIcon = PersonIcons[p.id]; return PIcon ? <PIcon size={18} /> : p.emoji; })()}
+                        </span>
+                        <span className="text-[10px] leading-tight opacity-70 truncate max-w-full">{p.label}</span>
                       </button>
                     ))}
                   </div>
@@ -304,7 +299,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                 </div>
 
                 {editError && (
-                  <p className="text-xs rounded-xl py-2 px-3" style={{ color: "#c14a33", background: "rgba(193,74,51,0.08)" }}>
+                  <p className="text-xs rounded-xl py-2 px-3" style={{ color: "var(--danger)", background: "color-mix(in srgb, var(--danger) 8%, transparent)" }}>
                     {editError}
                   </p>
                 )}
@@ -356,9 +351,9 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                     </span>
                   )}
                   {linkedPerson && (
-                    <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wider ml-1.5"
+                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wider ml-1.5"
                       style={{ background: linkedPerson.color, color: linkedPerson.textColor }}>
-                      {linkedPerson.emoji} {linkedPerson.label}
+                      {(() => { const PIcon = PersonIcons[linkedPerson.id]; return PIcon ? <PIcon size={11} /> : linkedPerson.emoji; })()} {linkedPerson.label}
                     </span>
                   )}
                 </div>
@@ -378,14 +373,14 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                         {event.allDay ? " · All day" : ` @ ${event.time}`}
                       </span>
                       {isOngoing ? (
-                        <p className="text-[11px] mt-0.5 font-medium" style={{ color: "var(--accent)" }}>
-                          Happening now 🎉
+                        <p className="text-[11px] mt-0.5 font-medium inline-flex items-center gap-1" style={{ color: "var(--accent)" }}>
+                          Happening now <CelebrateIcon size={11} />
                         </p>
                       ) : event.status === "accepted" && !hasStarted && (() => {
                         const daysUntil = Math.ceil((eventStart.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                         return (
-                          <p className="text-[11px] mt-0.5 font-medium" style={{ color: "var(--accent)" }}>
-                            {daysUntil === 0 ? "Today! 🎉" : daysUntil === 1 ? "Tomorrow 🗓️" : `In ${daysUntil} days 🗓️`}
+                          <p className="text-[11px] mt-0.5 font-medium inline-flex items-center gap-1" style={{ color: "var(--accent)" }}>
+                            {daysUntil === 0 ? (<>Today! <CelebrateIcon size={11} /></>) : daysUntil === 1 ? "Tomorrow" : `In ${daysUntil} days`}
                           </p>
                         );
                       })()}
@@ -422,8 +417,8 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                 <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: "var(--divider)" }}>
                   <span className="text-[10px] px-3 py-1.5 rounded-full font-bold uppercase tracking-wider"
                     style={{
-                      background: event.status === 'accepted' ? 'rgba(106, 180, 120, 0.15)' : "var(--chip-bg)",
-                      color: event.status === 'accepted' ? '#4a7c5c' : "var(--chip-text)",
+                      background: event.status === 'accepted' ? 'color-mix(in srgb, var(--success) 15%, transparent)' : "var(--chip-bg)",
+                      color: event.status === 'accepted' ? 'var(--success)' : "var(--chip-text)",
                     }}>
                     {event.status}
                   </span>
@@ -437,7 +432,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                       title="Edit event"
                       aria-label="Edit event"
                     >
-                      <Pencil size={15} />
+                      <PencilIcon size={15} />
                     </button>
                     <button onClick={() => handleAction(event.archived ? 'unarchive' : 'archive')}
                       className="p-2 text-xs font-bold uppercase tracking-wider"
@@ -477,7 +472,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                 )}
                 {isPartner && isPending && isRecurring && (
                   <p className="text-[11px] text-center mt-2" style={{ color: "var(--text-soft)" }}>
-                    🔁 Accepting will accept every occurrence in this series
+                    Accepting will accept every occurrence in this series
                   </p>
                 )}
 
@@ -490,7 +485,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                       className="w-full mt-4 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
                       style={{ background: "var(--chip-bg)", color: "var(--accent)", display: "flex" }}
                     >
-                      📸 View / Edit Memory
+                      <CameraIcon size={15} /> View / Edit Memory
                     </Link>
                   ) : onSaveMemory && (
                     <motion.button
@@ -500,7 +495,7 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                       className="w-full mt-4 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
                       style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
                     >
-                      📸 Save Memory
+                      <CameraIcon size={15} /> Save Memory
                     </motion.button>
                   )
                 )}
@@ -512,9 +507,10 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
                 </button>
               </>
             )}
-          </motion.div>
+        </div>
+      </Modal>
 
-          <ConfirmDialog
+      <ConfirmDialog
             isOpen={showConfirmDelete}
             onClose={() => setShowConfirmDelete(false)}
             onConfirm={() => handleAction('delete')}
@@ -523,8 +519,6 @@ export default function DetailsModal({ isOpen, onClose, onSuccess, event, onSave
             confirmLabel="Delete"
             isLoading={isDeleting}
           />
-        </>
-      )}
-    </AnimatePresence>
+    </>
   );
 }

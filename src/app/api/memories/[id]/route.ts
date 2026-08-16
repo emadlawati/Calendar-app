@@ -33,6 +33,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    // Comments/reactions key on targetId strings with no FK — clean them up
+    // or they'd linger as ghosts pointing at a deleted memory.
+    await prisma.comment.deleteMany({ where: { targetType: "memory", targetId: id } });
+    await prisma.reaction.deleteMany({ where: { targetType: "memory", targetId: id } });
     await prisma.memory.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

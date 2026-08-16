@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { NoteIcon, TargetIcon, ArchiveIcon } from "@/components/icons";
+import { NoteIcon, TargetIcon, ArchiveIcon, CoffeeIcon, SparklesIcon, CategoryIcons } from "@/components/icons";
 import { getCategoryById } from "@/lib/categories";
 import type { CalendarEvent, SpecialDateWithCountdown } from "@/lib/types";
 import SpecialDateCarousel from "./SpecialDateCarousel";
@@ -68,9 +68,9 @@ export default function CountdownBanner({
       animate={{ opacity: 1, y: 0 }}
       className="mx-2.5 sm:mx-8 rounded-2xl sm:rounded-3xl flex flex-col gap-3 sm:gap-5 px-3.5 sm:px-[26px] py-3.5 sm:py-5 relative overflow-hidden shadow-xl"
       style={{
-        background: "linear-gradient(135deg, #6b3a1f 0%, #8a4a22 100%)",
+        background: "var(--hero-gradient)",
         boxShadow: "0 14px 30px -14px rgba(60, 30, 10, 0.5)",
-        color: "#fce8c8",
+        color: "var(--hero-text)",
       }}
     >
       {/* Decorative steam swirl */}
@@ -98,44 +98,43 @@ export default function CountdownBanner({
                 borderColor: "rgba(252, 232, 200, 0.3)",
               }}
             >
-              <span
-                className="text-[20px] sm:text-[26px] leading-none"
-                style={{ fontFamily: "var(--font-caprasimo), cursive" }}
-              >
-                {isOngoing ? "✈️" : daysLeft === 0 ? "!" : daysLeft}
+              <span className="heading-font text-[20px] sm:text-[26px] leading-none flex items-center justify-center">
+                {isOngoing ? <SparklesIcon size={22} /> : daysLeft === 0 ? "!" : daysLeft}
               </span>
-              <span className="text-[8px] sm:text-[9.5px] tracking-[0.08em] opacity-75">
+              <span className="text-[8px] sm:text-[10px] tracking-[0.08em] opacity-75">
                 {isOngoing ? "NOW" : daysLeft === 0 ? "TODAY" : daysLeft === 1 ? "DAY" : "DAYS"}
               </span>
             </div>
 
             <div className="min-w-0">
-              <p className="text-[10px] sm:text-[11.5px] uppercase tracking-wider opacity-75 mb-0.5 sm:mb-1">
+              <p className="text-[10px] sm:text-[11px] uppercase tracking-wider opacity-75 mb-0.5 sm:mb-1">
                 {isOngoing ? "Happening now!" : daysLeft === 0 ? "It's happening today!" : daysLeft === 1 ? "Tomorrow" : "Up next together"}
               </p>
               <p
-                className="text-[17px] sm:text-[22px] leading-tight truncate"
-                style={{ fontFamily: "var(--font-caprasimo), cursive" }}
+                className="heading-font text-[17px] sm:text-[22px] leading-tight truncate"
               >
                 {nextEvent.title}
               </p>
-              <p className="text-[11px] sm:text-[12.5px] opacity-80 mt-0.5">
+              <p className="text-[11px] sm:text-[13px] opacity-80 mt-0.5">
                 {new Date(nextEvent.date).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
                 {nextEvent.endDate && ` → ${new Date(nextEvent.endDate).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}`}
                 {nextEvent.allDay ? " · All day" : ` @ ${nextEvent.time}`}
-                {category && <span className="hidden sm:inline"> · {category.emoji} {category.label}</span>}
+                {category && (
+                  <span className="hidden sm:inline inline-flex items-center gap-1 align-baseline">
+                    · {(() => { const CIcon = CategoryIcons[category.id]; return CIcon ? <CIcon size={11} /> : null; })()} {category.label}
+                  </span>
+                )}
               </p>
             </div>
           </>
         ) : (
           <div>
-            <p
-              className="text-[22px]"
-              style={{ fontFamily: "var(--font-caprasimo), cursive" }}
-            >
+            <p className="heading-font text-[22px]">
               No plans yet
             </p>
-            <p className="text-[12.5px] opacity-75 mt-0.5">Time to brew a new date? ☕</p>
+            <p className="text-[13px] opacity-75 mt-0.5 flex items-center gap-1.5">
+              <CoffeeIcon size={14} /> Time to brew a new date?
+            </p>
           </div>
         )}
       </div>

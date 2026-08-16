@@ -3,8 +3,21 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { getBadgeById } from "@/lib/achievements";
+import {
+  ArrowLeftIcon,
+  CalendarIcon,
+  PolaroidIcon,
+  CameraIcon,
+  LetterIcon,
+  HeartIcon,
+  FlameIcon,
+  CrownIcon,
+  CategoryIcons,
+  BadgeIcons,
+  LevelIcons,
+} from "@/components/icons";
+import Skeleton from "@/components/Skeleton";
 
 interface StatsData {
   totalEvents: number;
@@ -33,7 +46,7 @@ interface StatsData {
 function MonthLabel({ month }: { month: string }) {
   const [y, m] = month.split("-");
   const label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString(undefined, { month: "short" });
-  return <span className="text-[9px] opacity-50">{label}</span>;
+  return <span className="text-[10px] opacity-50">{label}</span>;
 }
 
 export default function StatsPage() {
@@ -48,8 +61,14 @@ export default function StatsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const startDate = new Date(process.env.NEXT_PUBLIC_RELATIONSHIP_START || "2017-01-31");
-  const daysTogether = Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  // Lazy initializer: Date.now() during render trips the React compiler's
+  // purity check, and a days-together counter only needs one value per mount.
+  const [startDate] = useState(
+    () => new Date(process.env.NEXT_PUBLIC_RELATIONSHIP_START || "2017-01-31"),
+  );
+  const [daysTogether] = useState(
+    () => Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24)),
+  );
 
   const maxMonthCount = stats ? Math.max(...stats.eventsByMonth.map((m) => m.count), 1) : 1;
   const maxCatCount = stats?.categoryBreakdown[0]?.count ?? 1;
@@ -64,17 +83,25 @@ export default function StatsPage() {
       <div className="flex items-center gap-4 mb-6">
         <Link href="/" className="flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
           style={{ color: "var(--text-soft)" }}>
-          <ArrowLeft size={16} />
+          <ArrowLeftIcon size={16} />
           Calendar
         </Link>
-        <h1 className="text-2xl" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
+        <h1 className="heading-font text-2xl" style={{ color: "var(--accent)" }}>
           Our Stats
         </h1>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="text-3xl">☕</motion.div>
+        <div className="space-y-5" aria-hidden="true">
+          <Skeleton className="h-36 rounded-3xl" />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 rounded-2xl" />
+            ))}
+          </div>
+          <Skeleton className="h-20 rounded-2xl" />
+          <Skeleton className="h-44 rounded-2xl" />
+          <Skeleton className="h-40 rounded-2xl" />
         </div>
       ) : !stats ? (
         <p className="text-center py-20" style={{ color: "var(--text-soft)" }}>Could not load stats.</p>
@@ -87,20 +114,23 @@ export default function StatsPage() {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-3xl p-6 shadow-xl relative overflow-hidden"
             style={{
-              background: "linear-gradient(135deg, #6b3a1f 0%, #8a4a22 100%)",
-              color: "#fce8c8",
+              background: "var(--hero-gradient)",
+              color: "var(--hero-text)",
             }}
           >
             <div className="flex items-center gap-4">
               <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0 border"
-                style={{ background: "rgba(252,232,200,0.15)", borderColor: "rgba(252,232,200,0.3)" }}
+                className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 border"
+                style={{ background: "rgba(252,232,200,0.15)", borderColor: "rgba(252,232,200,0.3)", color: "var(--hero-text)" }}
               >
-                {stats.emoji}
+                {(() => {
+                  const LevelIcon = LevelIcons[stats.level];
+                  return LevelIcon ? <LevelIcon size={30} /> : <span className="text-3xl">{stats.emoji}</span>;
+                })()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] uppercase tracking-widest opacity-70 mb-0.5">Couple Level {stats.level}</p>
-                <p className="text-2xl leading-tight" style={{ fontFamily: "var(--font-caprasimo), cursive" }}>
+                <p className="heading-font text-2xl leading-tight">
                   {stats.title}
                 </p>
                 <p className="text-xs opacity-60 mt-1">{stats.score.toLocaleString()} pts{stats.level < 10 ? ` · ${stats.nextLevelScore - stats.score} to next level` : " · Max level!"}</p>
@@ -129,10 +159,10 @@ export default function StatsPage() {
           {/* ── Top stat chips ── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: "Dates", value: stats.totalEvents, emoji: "📅" },
-              { label: "Memories", value: stats.totalMemories, emoji: "📸" },
-              { label: "Photos", value: stats.totalPhotos, emoji: "🖼️" },
-              { label: "Notes sent", value: stats.totalNotes, emoji: "💌" },
+              { label: "Dates", value: stats.totalEvents, Icon: CalendarIcon },
+              { label: "Memories", value: stats.totalMemories, Icon: PolaroidIcon },
+              { label: "Photos", value: stats.totalPhotos, Icon: CameraIcon },
+              { label: "Notes sent", value: stats.totalNotes, Icon: LetterIcon },
             ].map((s) => (
               <motion.div
                 key={s.label}
@@ -141,8 +171,8 @@ export default function StatsPage() {
                 className="rounded-2xl p-4 border flex flex-col items-center gap-1"
                 style={{ background: "var(--card-bg)", borderColor: "var(--card-border)" }}
               >
-                <span className="text-xl">{s.emoji}</span>
-                <span className="text-2xl font-bold" style={{ color: "var(--accent)", fontFamily: "var(--font-caprasimo), cursive" }}>
+                <s.Icon size={22} style={{ color: "var(--accent)" }} />
+                <span className="heading-font text-2xl" style={{ color: "var(--accent)" }}>
                   {s.value.toLocaleString()}
                 </span>
                 <span className="text-[11px]" style={{ color: "var(--text-soft)" }}>{s.label}</span>
@@ -155,13 +185,13 @@ export default function StatsPage() {
             className="rounded-2xl p-4 border flex items-center gap-4"
             style={{ background: "var(--card-bg)", borderColor: "var(--card-border)" }}
           >
-            <span className="text-2xl">❤️</span>
+            <HeartIcon size={24} style={{ color: "var(--danger)" }} />
             <div>
               <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
                 {daysTogether.toLocaleString()} days together
               </p>
               <p className="text-xs" style={{ color: "var(--text-soft)" }}>
-                Since 31 January 2017
+                Since {startDate.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}
                 {stats.firstEventDate && ` · First app date: ${new Date(stats.firstEventDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`}
               </p>
             </div>
@@ -177,7 +207,11 @@ export default function StatsPage() {
                 Favourite Category
               </p>
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">{stats.favoriteCategory.emoji}</span>
+                {(() => {
+                  const fav = stats.favoriteCategory;
+                  const FavIcon = CategoryIcons[fav.id];
+                  return FavIcon ? <FavIcon size={28} /> : <span className="text-3xl">{fav.emoji}</span>;
+                })()}
                 <div>
                   <p className="font-semibold" style={{ color: "var(--text)" }}>{stats.favoriteCategory.label}</p>
                   <p className="text-xs" style={{ color: "var(--text-soft)" }}>{stats.favoriteCategory.count} dates</p>
@@ -185,9 +219,13 @@ export default function StatsPage() {
               </div>
               {/* Category breakdown bars */}
               <div className="space-y-2">
-                {stats.categoryBreakdown.slice(0, 6).map((cat) => (
-                  <div key={cat.id} className="flex items-center gap-2">
-                    <span className="text-sm w-5 shrink-0">{cat.emoji}</span>
+                {stats.categoryBreakdown.slice(0, 6).map((cat) => {
+                  const BarIcon = CategoryIcons[cat.id];
+                  return (
+                    <div key={cat.id} className="flex items-center gap-2">
+                      <span className="w-5 shrink-0 flex items-center" style={{ color: "var(--text-soft)" }}>
+                        {BarIcon ? <BarIcon size={14} /> : null}
+                      </span>
                     <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--input-bg)" }}>
                       <motion.div
                         initial={{ width: 0 }}
@@ -199,7 +237,8 @@ export default function StatsPage() {
                     </div>
                     <span className="text-[11px] w-6 text-right shrink-0" style={{ color: "var(--text-soft)" }}>{cat.count}</span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -241,25 +280,30 @@ export default function StatsPage() {
               </p>
               <div className="flex gap-4 mb-3">
                 <div className="flex-1 text-center p-3 rounded-xl" style={{ background: "var(--input-bg)" }}>
-                  <p className="text-2xl font-bold" style={{ color: "var(--accent)", fontFamily: "var(--font-caprasimo), cursive" }}>
+                  <p className="heading-font text-2xl" style={{ color: "var(--accent)" }}>
                     {stats.streakData.currentStreak}
                   </p>
-                  <p className="text-[11px]" style={{ color: "var(--text-soft)" }}>current streak 🔥</p>
+                  <p className="text-[11px] flex items-center justify-center gap-1" style={{ color: "var(--text-soft)" }}>
+                    <FlameIcon size={12} /> current streak
+                  </p>
                 </div>
                 <div className="flex-1 text-center p-3 rounded-xl" style={{ background: "var(--input-bg)" }}>
-                  <p className="text-2xl font-bold" style={{ color: "var(--accent)", fontFamily: "var(--font-caprasimo), cursive" }}>
+                  <p className="heading-font text-2xl" style={{ color: "var(--accent)" }}>
                     {stats.streakData.longestStreak}
                   </p>
-                  <p className="text-[11px]" style={{ color: "var(--text-soft)" }}>longest streak 👑</p>
+                  <p className="text-[11px] flex items-center justify-center gap-1" style={{ color: "var(--text-soft)" }}>
+                    <CrownIcon size={12} /> longest streak
+                  </p>
                 </div>
               </div>
               {stats.streakData.achievements.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {stats.streakData.achievements.map((a) => {
                     const badge = getBadgeById(a.badgeId);
+                    const BadgeIcon = BadgeIcons[a.badgeId];
                     return badge ? (
-                      <span key={a.badgeId} className="chip-pill text-xs">
-                        {badge.emoji} {badge.label}
+                      <span key={a.badgeId} className="chip-pill text-xs inline-flex items-center gap-1.5">
+                        {BadgeIcon ? <BadgeIcon size={13} /> : badge.emoji} {badge.label}
                       </span>
                     ) : null;
                   })}

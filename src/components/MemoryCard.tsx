@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Pencil, Trash2, MessageCircle } from "lucide-react";
+import { PencilIcon, TrashIcon, ChatIcon, CategoryIcons } from "@/components/icons";
 import { getCategoryById } from "@/lib/categories";
 import type { User } from "@/lib/types";
 
@@ -51,7 +51,7 @@ export default function MemoryCard({ memory, onView, onEdit, onDelete }: MemoryC
           style={{ background: "rgba(0,0,0,0.5)", color: "#fff" }}
           aria-label="Edit memory"
         >
-          <Pencil size={12} />
+          <PencilIcon size={12} />
         </button>
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(memory); }}
@@ -59,7 +59,7 @@ export default function MemoryCard({ memory, onView, onEdit, onDelete }: MemoryC
           style={{ background: "rgba(197, 48, 48, 0.7)", color: "#fff" }}
           aria-label="Delete memory"
         >
-          <Trash2 size={12} />
+          <TrashIcon size={12} />
         </button>
       </div>
 
@@ -79,8 +79,8 @@ export default function MemoryCard({ memory, onView, onEdit, onDelete }: MemoryC
           )}
         </div>
       ) : (
-        <div className="w-full h-32 flex items-center justify-center" style={{ background: cat.color }}>
-          <span className="text-4xl">{cat.emoji}</span>
+        <div className="w-full h-32 flex items-center justify-center" style={{ background: cat.color, color: cat.textColor }}>
+          {(() => { const CIcon = CategoryIcons[cat.id]; return CIcon ? <CIcon size={34} /> : <span className="text-4xl">{cat.emoji}</span>; })()}
         </div>
       )}
 
@@ -104,7 +104,7 @@ export default function MemoryCard({ memory, onView, onEdit, onDelete }: MemoryC
         )}
 
         <div className="flex items-center gap-1.5 mt-3 text-[11px]" style={{ color: "var(--text-very)" }}>
-          <MessageCircle size={12} />
+          <ChatIcon size={12} />
           <span>Tap to view & comment</span>
         </div>
       </div>

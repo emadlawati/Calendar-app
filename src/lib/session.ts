@@ -10,7 +10,13 @@ export const SESSION_NAME = "session";
 export const SESSION_MAX_AGE_SECONDS = 180 * 24 * 60 * 60; // 180 days
 
 export function getSecretKey(): Uint8Array {
-  const secret = process.env.GOOGLE_CLIENT_SECRET || "fallback-secret-change-me";
+  const secret = process.env.SESSION_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+  if (!secret) {
+    // A known fallback would let anyone forge session cookies.
+    throw new Error(
+      "SESSION_SECRET (or GOOGLE_CLIENT_SECRET) must be set — refusing to sign sessions with a fallback key."
+    );
+  }
   return new TextEncoder().encode(secret);
 }
 

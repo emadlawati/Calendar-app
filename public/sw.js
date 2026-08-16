@@ -1,4 +1,4 @@
-const CACHE_NAME = "purrfect-plans-v1";
+const CACHE_NAME = "purrfect-plans-v2";
 const urlsToCache = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -29,9 +29,11 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(data.title || "Purrfect Plans", {
       body: data.body || "",
       icon: data.icon || "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      badge: "/icons/icon-192-maskable.png",
       data: { url: data.url || "/" },
-      tag: "purrfect-plans",
+      // Only group when the server explicitly asks for it — otherwise each
+      // notification (new plan, note, highlight…) stacks as its own entry.
+      tag: data.tag || undefined,
     })
   );
 });

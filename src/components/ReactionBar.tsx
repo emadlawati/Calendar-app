@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { SmilePlus } from "lucide-react";
 import { useSession } from "./SessionProvider";
 import { getDisplayName } from "@/lib/names";
 import { REACTION_EMOJIS } from "@/lib/reactions";
+import { SmilePlusIcon, ReactionIcons } from "@/components/icons";
 import type { Reaction, CommentTarget, User } from "@/lib/types";
 
 interface Props {
@@ -87,11 +87,14 @@ export default function ReactionBar({ targetType, targetId, ownerId }: Props) {
           style={{
             background: g.mine ? "var(--accent-soft)" : "var(--input-bg)",
             border: `1px solid ${g.mine ? "var(--accent)" : "var(--divider)"}`,
-            color: "var(--text)",
+            color: "var(--accent)",
             cursor: canInteract ? "pointer" : "default",
-          }}
+        }}
         >
-          <span style={{ fontSize: 13 }}>{g.emoji}</span>
+          {(() => {
+            const RIcon = ReactionIcons[g.emoji];
+            return RIcon ? <RIcon size={13} /> : <span style={{ fontSize: 13 }}>{g.emoji}</span>;
+          })()}
           <span className="font-semibold" style={{ color: "var(--text-soft)" }}>{g.count}</span>
         </motion.button>
       ))}
@@ -111,7 +114,7 @@ export default function ReactionBar({ targetType, targetId, ownerId }: Props) {
           className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
           style={{ background: "var(--input-bg)", border: "1px solid var(--divider)", color: "var(--text-soft)" }}
         >
-          <SmilePlus size={14} />
+          <SmilePlusIcon size={14} />
         </motion.button>
       )}
 
@@ -132,19 +135,22 @@ export default function ReactionBar({ targetType, targetId, ownerId }: Props) {
                 boxShadow: "var(--pop-shadow)",
               }}
             >
-              {REACTION_EMOJIS.map((emoji) => (
-                <motion.button
-                  key={emoji}
-                  type="button"
-                  whileHover={{ scale: 1.25 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => toggle(emoji)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ fontSize: 17 }}
-                >
-                  {emoji}
-                </motion.button>
-              ))}
+              {REACTION_EMOJIS.map((emoji) => {
+                const RIcon = ReactionIcons[emoji];
+                return (
+                  <motion.button
+                    key={emoji}
+                    type="button"
+                    whileHover={{ scale: 1.25 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => toggle(emoji)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--accent-soft)]"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    {RIcon ? <RIcon size={17} /> : <span style={{ fontSize: 17 }}>{emoji}</span>}
+                  </motion.button>
+                );
+              })}
             </motion.div>
           </>
         )}

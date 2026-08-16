@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import Modal from "@/components/Modal";
+import { BellIcon } from "@/components/icons";
 import { useSession } from "./SessionProvider";
 
 interface Props {
@@ -42,7 +44,7 @@ export default function ReminderModal({ isOpen, onClose, onSuccess, onToast }: P
         body: JSON.stringify({ title: title.trim(), date, time, endTime: endTime || undefined }),
       });
       if (res.ok) {
-        onToast("🔔 Reminder set!");
+        onToast("Reminder set!");
         onSuccess();
         handleClose();
       } else {
@@ -57,59 +59,21 @@ export default function ReminderModal({ isOpen, onClose, onSuccess, onToast }: P
   }
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            key="reminder-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={handleClose}
-            className="fixed inset-0 z-40"
-            style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
-          />
-
-          {/* Modal */}
-          <motion.div
-            key="reminder-modal"
-            initial={{ opacity: 0, scale: 0.93, y: 24 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.93, y: 24 }}
-            transition={{ type: "spring", stiffness: 340, damping: 28 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              className="w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden"
-              style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}
-            >
-              {/* Header */}
-              <div
-                className="px-6 pt-6 pb-4 flex items-center justify-between"
-                style={{ borderBottom: "1px solid var(--divider)" }}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🔔</span>
-                  <h2
-                    className="text-xl"
-                    style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}
-                  >
-                    New Reminder
-                  </h2>
-                </div>
-                <button
-                  onClick={handleClose}
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:opacity-70"
-                  style={{ background: "var(--input-bg)", color: "var(--text-soft)" }}
-                >
-                  ✕
-                </button>
-              </div>
-
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      width="sm"
+      title={
+        <div className="flex items-center gap-2">
+          <BellIcon size={20} style={{ color: "var(--accent)" }} />
+          <h2 className="heading-font text-xl" style={{ color: "var(--accent)" }}>
+            New Reminder
+          </h2>
+        </div>
+      }
+    >
               {/* Form */}
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Title */}
                 <div>
                   <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: "var(--text-very)" }}>
@@ -212,14 +176,13 @@ export default function ReminderModal({ isOpen, onClose, onSuccess, onToast }: P
                       color: submitting || !title.trim() || !date || !time ? "var(--text-very)" : "var(--on-accent)",
                     }}
                   >
-                    {submitting ? "Setting..." : "Set Reminder 🔔"}
+                    <span className="inline-flex items-center gap-1.5">
+                      <BellIcon size={13} />
+                      {submitting ? "Setting..." : "Set Reminder"}
+                    </span>
                   </motion.button>
                 </div>
-              </form>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+      </form>
+    </Modal>
   );
 }

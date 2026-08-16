@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { CoffeeIcon, PawIcon } from "@/components/icons";
+import { CalendarSkeleton } from "@/components/Skeleton";
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -36,7 +37,7 @@ function LoginContent() {
           </div>
         </motion.div>
 
-        <h1 className="text-2xl mt-4" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
+        <h1 className="heading-font text-2xl mt-4" style={{ color: "var(--accent)" }}>
           Our Calendar
         </h1>
         <p className="text-sm mt-1.5 mb-8" style={{ color: "var(--text-soft)" }}>
@@ -47,7 +48,7 @@ function LoginContent() {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="rounded-2xl p-4 mb-6 text-left text-sm border"
-            style={{ background: "rgba(193, 74, 51, 0.06)", borderColor: "rgba(193, 74, 51, 0.2)", color: "#9b3a2a" }}
+            style={{ background: "color-mix(in srgb, var(--danger) 6%, transparent)", borderColor: "color-mix(in srgb, var(--danger) 20%, transparent)", color: "var(--danger)" }}
           >
             <p className="font-semibold mb-1 flex items-center gap-1"><PawIcon size={12} /> Not registered!</p>
             <p className="mb-2">The Google account{attemptedEmail ? ` (${attemptedEmail})` : ""} you tried isn&apos;t linked to this calendar.</p>
@@ -58,7 +59,7 @@ function LoginContent() {
         {error === "no_email" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="rounded-2xl p-3 mb-6 text-sm border"
-            style={{ background: "rgba(193, 74, 51, 0.06)", borderColor: "rgba(193, 74, 51, 0.2)", color: "#9b3a2a" }}>
+            style={{ background: "color-mix(in srgb, var(--danger) 6%, transparent)", borderColor: "color-mix(in srgb, var(--danger) 20%, transparent)", color: "var(--danger)" }}>
             Could not retrieve your email. Please try again.
           </motion.div>
         )}
@@ -96,7 +97,9 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }} className="text-3xl">☕</motion.div>
+        <div className="w-full max-w-sm p-8">
+          <CalendarSkeleton />
+        </div>
       </div>
     }>
       <LoginContent />

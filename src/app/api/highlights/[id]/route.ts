@@ -40,6 +40,9 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    // Comments/reactions key on targetId strings with no FK — clean them up.
+    await prisma.comment.deleteMany({ where: { targetType: "highlight", targetId: id } });
+    await prisma.reaction.deleteMany({ where: { targetType: "highlight", targetId: id } });
     await prisma.dailyHighlight.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch {

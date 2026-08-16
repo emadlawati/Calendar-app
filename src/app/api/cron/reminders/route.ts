@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
 import resend from "@/lib/resend";
 import { getCategoryById } from "@/lib/categories";
+import { sendPushToBoth } from "@/lib/webpush";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -81,7 +82,7 @@ export async function GET(request: Request) {
         <div style="background:#fff;padding:24px;border-radius:24px;margin:20px 0;border:1px solid #ffeedb;">
           <p style="margin:0;font-size:13px;color:#5d4037;opacity:0.7;">${cat.emoji} ${cat.label}</p>
           <h2 style="margin:6px 0;color:#5d4037;">${evt.title}</h2>
-          <p style="margin:5px 0;">🕐 ${evt.allDay ? "All day" : `@ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`}${evt.endDate ? ` · until ${formatDate(evt.endDate.toISOString().split("T")[0])} 🧳` : ""}</p>
+          <p style="margin:5px 0;">🕐 ${evt.allDay ? "All day" : `@ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`}${evt.endDate ? ` · until ${formatDate(evt.endDate.toISOString().split("T")[0])}` : ""}</p>
           ${evt.notes ? `<p style="margin:14px 0 0;font-style:italic;">"${evt.notes}"</p>` : ""}
         </div>
         ${openBtn("Open Calendar 🐾")}
@@ -95,6 +96,11 @@ export async function GET(request: Request) {
         html,
       }).catch((e: unknown) => console.error("Today reminder email failed:", e));
     }
+    await sendPushToBoth({
+      title: `${cat.emoji} Today: ${evt.title}!`,
+      body: evt.allDay ? "All day today" : `Today @ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`,
+      url: `${BASE_URL}/`,
+    }).catch((e: unknown) => console.error("Today reminder push failed:", e));
     results.push(`today:${evt.title}`);
   }
 
@@ -121,6 +127,11 @@ export async function GET(request: Request) {
         html,
       }).catch((e: unknown) => console.error("Tomorrow reminder email failed:", e));
     }
+    await sendPushToBoth({
+      title: `${cat.emoji} Tomorrow: ${evt.title}`,
+      body: evt.allDay ? "All day tomorrow" : `Tomorrow @ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`,
+      url: `${BASE_URL}/`,
+    }).catch((e: unknown) => console.error("Tomorrow reminder push failed:", e));
     results.push(`tomorrow:${evt.title}`);
   }
 

@@ -5,7 +5,6 @@ import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { motion, AnimatePresence } from "framer-motion";
 import UserMenu from "@/components/UserMenu";
 import EventModal from "@/components/EventModal";
 import DetailsModal from "@/components/DetailsModal";
@@ -13,12 +12,15 @@ import CountdownBanner from "@/components/CountdownBanner";
 import StreakBanner from "@/components/StreakBanner";
 import BucketListDrawer from "@/components/BucketListDrawer";
 import Toast from "@/components/Toast";
+import InfoBanner from "@/components/InfoBanner";
+import FloatingActions from "@/components/FloatingActions";
+import { CalendarSkeleton } from "@/components/Skeleton";
 import { useSession } from "@/components/SessionProvider";
 import { triggerConfetti } from "@/lib/confetti";
 import { getCategoryById } from "@/lib/categories";
 import { PEOPLE } from "@/lib/people";
 import { specialDateLabel, linkableSpecialDates } from "@/lib/special-date-display";
-import { CategoryIcons, PlusIcon } from "@/components/icons";
+import { CategoryIcons, HighlightStarIcon, CameraIcon, BellIcon, PersonIcons, XIcon } from "@/components/icons";
 import type { CalendarEvent, SpecialDateWithCountdown, StreakData, PendingMemory, Reminder, DailyHighlight } from "@/lib/types";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
 import PushPrompt from "@/components/PushPrompt";
@@ -105,7 +107,7 @@ export default function Home() {
     fetchEvents();
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('accepted') === 'true') {
-      setToastMessage("Meow! The plan has been accepted! 🧶");
+      setToastMessage("Meow! The plan has been accepted!");
       triggerConfetti();
       window.history.replaceState({}, '', '/');
     } else if (urlParams.get('google') === 'connected') {
@@ -179,12 +181,6 @@ export default function Home() {
     fetchHighlights();
   }, [fetchHighlights]);
 
-  useEffect(() => {
-    const handler = (e: CustomEvent) => setToastMessage(`💕 ${e.detail}`);
-    window.addEventListener("nudge-sent", handler as EventListener);
-    return () => window.removeEventListener("nudge-sent", handler as EventListener);
-  }, []);
-
   const handleSelectSlot = (slotInfo: { start: Date }) => {
     setSelectedDate(slotInfo.start);
     setIsModalOpen(true);
@@ -207,9 +203,9 @@ export default function Home() {
     if (event.isHighlight) {
       return {
         style: {
-          backgroundColor: "#fff8e1",
-          color: "#7c5c00",
-          borderLeft: "3px solid #f9a825",
+          backgroundColor: "var(--chip-highlight)",
+          color: "var(--chip-highlight-text)",
+          borderLeft: "3px solid var(--chip-highlight-dot)",
           borderRadius: "8px",
           padding: "4px 7px 4px 6px",
           fontSize: "11.5px",
@@ -227,9 +223,9 @@ export default function Home() {
     if (event.isReminder) {
       return {
         style: {
-          backgroundColor: "#e8eaf6",
-          color: "#3949ab",
-          borderLeft: "3px solid #5c6bc0",
+          backgroundColor: "var(--chip-reminder)",
+          color: "var(--chip-reminder-text)",
+          borderLeft: "3px solid var(--chip-reminder-dot)",
           borderRadius: "8px",
           padding: "4px 7px 4px 6px",
           fontSize: "11.5px",
@@ -335,12 +331,7 @@ export default function Home() {
     : [...events, ...reminderEvents, ...highlightEvents];
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.main
-        initial={{ opacity: 0, y: 0 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="min-h-screen flex flex-col max-w-6xl mx-auto relative"
-      >
+    <main className="min-h-screen flex flex-col max-w-6xl mx-auto relative">
         {/* Header */}
         <UserMenu />
 
@@ -365,63 +356,23 @@ export default function Home() {
 
           {pendingMemory && (
             <div className="mx-2.5 sm:mx-8 mt-2.5 sm:mt-3">
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-between gap-3 p-4 rounded-2xl border"
-                style={{
-                  background: "var(--card-bg)",
-                  borderColor: "var(--card-border)",
-                  boxShadow: "var(--card-shadow)",
-                }}
-              >
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-                    Save this memory?
-                  </p>
-                  <p className="text-xs" style={{ color: "var(--text-soft)" }}>
-                    {pendingMemory.event.title} · {pendingMemory.daysAgo} {pendingMemory.daysAgo === 1 ? "day" : "days"} ago
-                  </p>
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setIsRateModalOpen(true)}
-                  className="chip-pill font-medium text-xs"
-                  style={{ whiteSpace: "nowrap" }}
-                >
-                  Save memory &rarr;
-                </motion.button>
-              </motion.div>
+              <InfoBanner
+                title="Save this memory?"
+                subtitle={`${pendingMemory.event.title} · ${pendingMemory.daysAgo} ${pendingMemory.daysAgo === 1 ? "day" : "days"} ago`}
+                actionLabel="Save memory →"
+                onAction={() => setIsRateModalOpen(true)}
+              />
             </div>
           )}
 
           {flashback && (
             <div className="mx-2.5 sm:mx-8 mt-2.5 sm:mt-3">
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-between gap-3 p-4 rounded-2xl border"
-                style={{ background: "var(--card-bg)", borderColor: "var(--card-border)", boxShadow: "var(--card-shadow)" }}
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-                    📸 On this day, {flashback.yearsAgo} {flashback.yearsAgo === 1 ? "year" : "years"} ago
-                  </p>
-                  <p className="text-xs truncate" style={{ color: "var(--text-soft)" }}>
-                    {flashback.memory.event.title}
-                  </p>
-                </div>
-                <motion.a
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  href="/memories"
-                  className="chip-pill font-medium text-xs shrink-0"
-                  style={{ whiteSpace: "nowrap" }}
-                >
-                  View &rarr;
-                </motion.a>
-              </motion.div>
+              <InfoBanner
+                title={`On this day, ${flashback.yearsAgo} ${flashback.yearsAgo === 1 ? "year" : "years"} ago`}
+                subtitle={flashback.memory.event.title}
+                actionLabel="View →"
+                href="/memories"
+              />
             </div>
           )}
         </div>
@@ -433,27 +384,30 @@ export default function Home() {
           </span>
 
           {/* Person chips */}
-          {PEOPLE.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setFilterPerson(filterPerson === p.id ? null : p.id)}
-              className="chip-pill text-xs"
-              style={{
-                background: filterPerson === p.id ? "var(--accent)" : "var(--chip-bg)",
-                color: filterPerson === p.id ? "var(--on-accent)" : "var(--chip-text)",
-                borderColor: filterPerson === p.id ? "var(--accent)" : "var(--chip-border)",
-              }}
-            >
-              {p.emoji} {p.label}
-            </button>
-          ))}
+          {PEOPLE.map((p) => {
+            const PIcon = PersonIcons[p.id];
+            return (
+              <button
+                key={p.id}
+                onClick={() => setFilterPerson(filterPerson === p.id ? null : p.id)}
+                className="chip-pill text-xs inline-flex items-center gap-1.5"
+                style={{
+                  background: filterPerson === p.id ? "var(--accent)" : "var(--chip-bg)",
+                  color: filterPerson === p.id ? "var(--on-accent)" : "var(--chip-text)",
+                  borderColor: filterPerson === p.id ? "var(--accent)" : "var(--chip-border)",
+                }}
+              >
+                {PIcon ? <PIcon size={12} /> : p.emoji} {p.label}
+              </button>
+            );
+          })}
 
           {/* Occasion select */}
           <select
             value={filterOccasion ?? ""}
             onChange={(e) => setFilterOccasion(e.target.value || null)}
             aria-label="Filter by occasion"
-            className="rounded-full px-3 py-[5px] text-[11.5px] outline-none border cursor-pointer"
+            className="rounded-full px-3 py-[5px] text-[11px] outline-none border cursor-pointer"
             style={{
               background: filterOccasion ? "var(--accent)" : "var(--chip-bg)",
               color: filterOccasion ? "var(--on-accent)" : "var(--chip-text)",
@@ -461,7 +415,7 @@ export default function Home() {
             }}
           >
             <option value="">Any occasion</option>
-            <option value="__any__">🎗️ Linked to any occasion</option>
+            <option value="__any__">Linked to any occasion</option>
             {linkableSpecialDates(specialDates).map((sd) => (
               <option key={sd.id} value={sd.id}>
                 {specialDateLabel(sd)}
@@ -476,27 +430,19 @@ export default function Home() {
               </span>
               <button
                 onClick={() => { setFilterPerson(null); setFilterOccasion(null); }}
-                className="chip-pill text-xs font-semibold"
+                className="chip-pill text-xs font-semibold inline-flex items-center gap-1"
               >
-                Clear ✕
+                Clear <XIcon size={10} />
               </button>
             </>
           )}
         </div>
 
         {/* Calendar Card */}
-        <motion.div layout className="flex-1 calendar-card mx-2.5 sm:mx-8 mt-3 sm:mt-[18px] mb-20 sm:mb-8 flex flex-col min-h-[360px] md:min-h-[650px]">
+        <div className="flex-1 calendar-card mx-2.5 sm:mx-8 mt-3 sm:mt-[18px] mb-20 sm:mb-8 flex flex-col min-h-[360px] md:min-h-[650px]">
           <div className="flex-1 h-full min-h-[350px] md:min-h-[600px]">
             {(isLoading || isSessionLoading) ? (
-              <div className="flex items-center justify-center h-full">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="text-3xl"
-                >
-                  ☕
-                </motion.div>
-              </div>
+              <CalendarSkeleton />
             ) : (
               <Calendar
                 localizer={localizer}
@@ -513,44 +459,29 @@ export default function Home() {
                       const h = highlights.find((hl) => hl.date === event.highlightDate);
                       const hasPhotos = h?.photos && JSON.parse(h.photos).length > 0;
                       return (
-                        <motion.div
-                          initial={{ scale: 0.9, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          whileHover={{ scale: 1.03 }}
-                          className="flex items-center gap-1.5"
-                        >
-                          <span style={{ fontSize: 10 }}>⭐</span>
+                        <div className="event-chip flex items-center gap-1.5">
+                          <HighlightStarIcon size={10} />
                           <span className="truncate">{event.title}</span>
-                          {hasPhotos && <span style={{ fontSize: 9, opacity: 0.75 }}>📷</span>}
-                        </motion.div>
+                          {hasPhotos && <CameraIcon size={9} style={{ opacity: 0.75 }} />}
+                        </div>
                       );
                     }
                     if (event.isReminder) {
                       return (
-                        <motion.div
-                          initial={{ scale: 0.9, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          whileHover={{ scale: 1.03 }}
-                          className="flex items-center gap-1.5 group relative"
-                        >
-                          <span style={{ fontSize: 10 }}>🔔</span>
+                        <div className="event-chip flex items-center gap-1.5">
+                          <BellIcon size={10} />
                           <span className="truncate">{event.title}</span>
-                        </motion.div>
+                        </div>
                       );
                     }
                     const cat = getCategoryById(event.category);
                     const Icon = CategoryIcons[cat.id];
                     return (
-                      <motion.div
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        whileHover={{ scale: 1.03 }}
-                        className="flex items-center gap-1.5 group relative"
-                      >
+                      <div className="event-chip flex items-center gap-1.5">
                         <Icon size={11} color={cat.textColor} />
                         <span className="truncate">{event.title}</span>
-                        {event.memoryId && <span style={{ fontSize: 9, opacity: 0.8 }}>📸</span>}
-                      </motion.div>
+                        {event.memoryId && <CameraIcon size={9} style={{ opacity: 0.8 }} />}
+                      </div>
                     );
                   },
                 }}
@@ -564,57 +495,18 @@ export default function Home() {
               />
             )}
           </div>
-        </motion.div>
+        </div>
 
         {/* Floating action buttons */}
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-auto sm:right-8 z-50 flex items-center gap-2 sm:gap-2.5">
-          {/* Reminder — icon + label */}
-          <motion.button
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsReminderModalOpen(true)}
-            className="flex items-center gap-1 sm:gap-1.5 text-[12px] sm:text-[14px] px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-semibold shadow-md"
-            style={{
-              background: "var(--card-bg)",
-              border: "1.5px solid var(--card-border)",
-              color: "var(--text-soft)",
-            }}
-          >
-            <span className="text-sm">🔔</span>
-            <span className="hidden sm:inline">Reminder</span>
-          </motion.button>
-
-          {/* Highlight */}
-          <motion.button
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              setHighlightEditing(null);
-              setHighlightInitialDate(undefined);
-              setIsHighlightModalOpen(true);
-            }}
-            className="flex items-center gap-1 sm:gap-1.5 text-[12px] sm:text-[14px] px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl font-semibold shadow-md"
-            style={{
-              background: "var(--card-bg)",
-              border: "1.5px solid var(--card-border)",
-              color: "var(--text-soft)",
-            }}
-          >
-            <span className="text-sm">⭐</span>
-            <span className="hidden sm:inline">Highlight</span>
-          </motion.button>
-
-          {/* New Event — primary */}
-          <motion.button
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsModalOpen(true)}
-            className="btn-accent text-[13px] sm:text-[15px] px-4 sm:px-[22px] py-2.5 sm:py-[14px]"
-          >
-            <PlusIcon size={16} />
-            <span className="hidden sm:inline">New </span>Event
-          </motion.button>
-        </div>
+        <FloatingActions
+          onNewEvent={() => setIsModalOpen(true)}
+          onReminder={() => setIsReminderModalOpen(true)}
+          onHighlight={() => {
+            setHighlightEditing(null);
+            setHighlightInitialDate(undefined);
+            setIsHighlightModalOpen(true);
+          }}
+        />
 
         {/* Modals & Drawers */}
         <EventModal
@@ -667,7 +559,7 @@ export default function Home() {
         <DailyHighlightModal
           isOpen={isHighlightModalOpen}
           onClose={() => { setIsHighlightModalOpen(false); setHighlightEditing(null); }}
-          onSuccess={() => { fetchHighlights(); setToastMessage("⭐ Highlight saved!"); }}
+          onSuccess={() => { fetchHighlights(); setToastMessage("Highlight saved!"); }}
           initialDate={highlightInitialDate}
           existing={highlightEditing}
         />
@@ -687,7 +579,6 @@ export default function Home() {
         />
 
         <PushPrompt />
-      </motion.main>
-    </AnimatePresence>
+      </main>
   );
 }

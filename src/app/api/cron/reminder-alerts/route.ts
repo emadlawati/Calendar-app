@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
 import resend from "@/lib/resend";
 import { reminderDateTime } from "@/lib/reminder-utils";
+import { sendPushToBoth } from "@/lib/webpush";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -95,6 +96,12 @@ export async function GET(request: Request) {
 
       await sendWhatsApp(`🔔 Reminder tomorrow: ${reminder.title} at ${reminder.time}`);
 
+      await sendPushToBoth({
+        title: `🔔 Reminder tomorrow: ${reminder.title}`,
+        body: `Tomorrow at ${reminder.time}${reminder.endTime ? ` – ${reminder.endTime}` : ""}`,
+        url: `${BASE_URL}/`,
+      }).catch((e: unknown) => console.error("24h reminder push failed:", e));
+
       await prisma.reminder.update({ where: { id: reminder.id }, data: { sent24h: true } });
       results.push(`24h:${reminder.title}`);
     }
@@ -122,6 +129,12 @@ export async function GET(request: Request) {
       }
 
       await sendWhatsApp(`🔔 In 1 hour: ${reminder.title} at ${reminder.time} ☕`);
+
+      await sendPushToBoth({
+        title: `🔔 In 1 hour: ${reminder.title}!`,
+        body: `Starting at ${reminder.time}${reminder.endTime ? ` – ${reminder.endTime}` : ""}`,
+        url: `${BASE_URL}/`,
+      }).catch((e: unknown) => console.error("1h reminder push failed:", e));
 
       await prisma.reminder.update({ where: { id: reminder.id }, data: { sent1h: true } });
       results.push(`1h:${reminder.title}`);

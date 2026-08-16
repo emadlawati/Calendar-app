@@ -3,8 +3,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { getCategoryById } from "@/lib/categories";
+import { ArrowLeftIcon, CategoryIcons, CameraIcon, CoffeeIcon } from "@/components/icons";
+import Skeleton from "@/components/Skeleton";
 
 interface TimelineEvent {
   id: string;
@@ -64,10 +65,10 @@ export default function TimelinePage() {
       <div className="flex items-center gap-4 mb-6">
         <Link href="/" className="flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
           style={{ color: "var(--text-soft)" }}>
-          <ArrowLeft size={16} />
+          <ArrowLeftIcon size={16} />
           Calendar
         </Link>
-        <h1 className="text-2xl" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
+        <h1 className="heading-font text-2xl" style={{ color: "var(--accent)" }}>
           Our Story
         </h1>
       </div>
@@ -92,15 +93,18 @@ export default function TimelinePage() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="text-3xl">
-            ☕
-          </motion.div>
+        <div className="space-y-6" aria-hidden="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              <Skeleton className="w-9 h-9 rounded-full shrink-0" />
+              <Skeleton className="flex-1 h-20 rounded-2xl" />
+            </div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20" style={{ color: "var(--text-soft)" }}>
-          <p className="text-lg mb-2" style={{ fontFamily: "var(--font-caprasimo), cursive" }}>No dates yet</p>
-          <p className="text-sm">Accept some plans and they'll appear here 🐾</p>
+          <p className="heading-font text-lg mb-2">No dates yet</p>
+          <p className="text-sm">Accept some plans and they'll appear here</p>
         </div>
       ) : (
         <div className="space-y-10">
@@ -130,6 +134,7 @@ export default function TimelinePage() {
                   <div className="space-y-6">
                     {evts.map((evt, i) => {
                       const cat = getCategoryById(evt.category);
+                      const CatIcon = CategoryIcons[cat.id];
                       const dateLabel = new Date(evt.date).toLocaleDateString(undefined, {
                         month: "short", day: "numeric",
                       });
@@ -146,14 +151,15 @@ export default function TimelinePage() {
                           {/* Dot */}
                           <div className="shrink-0 flex flex-col items-center" style={{ width: 40 }}>
                             <div
-                              className="w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0 shadow-sm border-2"
+                              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-sm border-2"
                               style={{
                                 background: cat.color,
+                                color: cat.textColor,
                                 borderColor: "var(--card-bg)",
                                 zIndex: 1,
                               }}
                             >
-                              {cat.emoji}
+                              {CatIcon ? <CatIcon size={16} /> : null}
                             </div>
                           </div>
 
@@ -183,7 +189,7 @@ export default function TimelinePage() {
                                   {evt.allDay ? " · All day" : ` @ ${evt.time}`}
                                 </span>
                                 <span
-                                  className="text-[9.5px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider"
+                                  className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider"
                                   style={{ background: cat.color, color: cat.textColor }}
                                 >
                                   {cat.label}
@@ -206,10 +212,10 @@ export default function TimelinePage() {
                               {evt.memoryId && (
                                 <Link
                                   href="/memories"
-                                  className="inline-flex items-center gap-1 mt-2 text-[10.5px] font-medium hover:opacity-70 transition-opacity"
+                                  className="inline-flex items-center gap-1 mt-2 text-[11px] font-medium hover:opacity-70 transition-opacity"
                                   style={{ color: "var(--accent)" }}
                                 >
-                                  📸 View memory
+                                  <CameraIcon size={11} /> View memory
                                 </Link>
                               )}
                             </div>
@@ -227,8 +233,8 @@ export default function TimelinePage() {
 
       {/* Footer count */}
       {!loading && filtered.length > 0 && (
-        <p className="text-center text-xs mt-10 pb-6" style={{ color: "var(--text-very)" }}>
-          {filtered.length} {filtered.length === 1 ? "date" : "dates"} together ☕
+        <p className="text-center text-xs mt-10 pb-6 flex items-center justify-center gap-1.5" style={{ color: "var(--text-very)" }}>
+          {filtered.length} {filtered.length === 1 ? "date" : "dates"} together <CoffeeIcon size={12} />
         </p>
       )}
     </motion.main>

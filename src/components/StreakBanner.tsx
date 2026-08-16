@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Flame } from "lucide-react";
 import { getBadgeById } from "@/lib/achievements";
+import { FlameIcon, BadgeIcons } from "@/components/icons";
 import type { StreakData } from "@/lib/types";
 
 export default function StreakBanner({ streak }: { streak: StreakData | null }) {
@@ -28,7 +28,7 @@ export default function StreakBanner({ streak }: { streak: StreakData | null }) 
           }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
         >
-          <Flame size={14} />
+          <FlameIcon size={14} />
         </motion.div>
         <span>
           {streak.currentStreak} {streak.currentStreak === 1 ? "week" : "weeks"} brewing together!
@@ -48,7 +48,10 @@ export default function StreakBanner({ streak }: { streak: StreakData | null }) 
           }}
           title={badge.label}
         >
-          <span className="text-sm">{badge.emoji}</span>
+          {(() => {
+            const BadgeIcon = BadgeIcons[badge.id];
+            return BadgeIcon ? <BadgeIcon size={14} /> : <span className="text-sm">{badge.emoji}</span>;
+          })()}
           <span>{badge.label}</span>
         </motion.div>
       ))}

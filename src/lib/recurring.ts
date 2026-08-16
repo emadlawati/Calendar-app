@@ -3,6 +3,28 @@ import { addWeeks, addMonths, addYears } from "date-fns";
 
 export type Frequency = "weekly" | "biweekly" | "monthly" | "yearly";
 
+/**
+ * All event dates are stored as UTC midnight (the API creates them from
+ * "YYYY-MM-DD" strings). Normalize to UTC midnight so generation behaves
+ * identically on a +04:00 dev machine and a UTC server.
+ */
+function toUtcMidnight(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+function addInterval(date: Date, frequency: Frequency, times = 1): Date {
+  switch (frequency) {
+    case "weekly":
+      return addWeeks(date, times);
+    case "biweekly":
+      return addWeeks(date, 2 * times);
+    case "monthly":
+      return addMonths(date, times);
+    case "yearly":
+      return addYears(date, times);
+  }
+}
+
 export async function generateInstances(
   seriesId: string,
   title: string,
@@ -17,7 +39,7 @@ export async function generateInstances(
   endDate?: Date | null,
   horizonMonths = 12
 ): Promise<number> {
-  const from = await findNextGenerationStart(seriesId, startDate);
+  const from = await findNextGenerationStart(seriesId, startDate, frequency);
   const horizon = endDate
     ? new Date(Math.min(endDate.getTime(), addMonths(new Date(), horizonMonths).getTime()))
     : addMonths(new Date(), horizonMonths);
@@ -37,13 +59,12 @@ export async function generateInstances(
     status: string;
   }[] = [];
 
-  let current = new Date(from);
-  current.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  let current = toUtcMidnight(from);
+  const today = toUtcMidnight(new Date());
+  const fromUtc = toUtcMidnight(from);
 
   while (current <= horizon) {
-    if (current >= today || current >= from) {
+    if (current >= today || current >= fromUtc) {
       instances.push({
         title,
         date: new Date(current),
@@ -60,39 +81,38 @@ export async function generateInstances(
       });
     }
 
-    if (frequency === "weekly") {
-      current = addWeeks(current, 1);
-    } else if (frequency === "biweekly") {
-      current = addWeeks(current, 2);
-    } else if (frequency === "monthly") {
-      current = addMonths(current, 1);
-    } else if (frequency === "yearly") {
-      current = addYears(current, 1);
-    } else {
-      break;
-    }
+    const next = toUtcMidnight(addInterval(current, frequency));
+    if (next.getTime() <= current.getTime()) break; // guard: interval must advance
+    current = next;
   }
 
   if (instances.length > 0) {
     await prisma.calendarEvent.createMany({ data: instances });
+    await prisma.recurringSeries.update({
+      where: { id: seriesId },
+      data: { generatedUntil: new Date(Math.max(...instances.map(i => i.date.getTime()))) },
+    });
   }
-
-  await prisma.recurringSeries.update({
-    where: { id: seriesId },
-    data: { generatedUntil: new Date(Math.max(...instances.map(i => i.date.getTime()))) },
-  });
 
   return instances.length;
 }
 
-async function findNextGenerationStart(seriesId: string, startDate: Date): Promise<Date> {
+/**
+ * Regeneration must resume one full interval after the latest existing
+ * instance — advancing by a hardcoded week spawned weekly clones of monthly
+ * and yearly series whenever the 12-month horizon rolled over.
+ */
+async function findNextGenerationStart(
+  seriesId: string,
+  startDate: Date,
+  frequency: Frequency
+): Promise<Date> {
   const latest = await prisma.calendarEvent.findFirst({
     where: { seriesId, isRecurringInstance: true },
     orderBy: { date: "desc" },
   });
   if (latest && new Date(latest.date) >= startDate) {
-    const next = addWeeks(new Date(latest.date), 1);
-    return next;
+    return addInterval(new Date(latest.date), frequency);
   }
   return startDate;
 }

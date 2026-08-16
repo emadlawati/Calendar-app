@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Gift } from "lucide-react";
+import { GiftIcon, BirthdayCakeIcon } from "@/components/icons";
 
 export default function BirthdayInviteButton() {
   const [isSending, setIsSending] = useState(false);
@@ -32,9 +32,11 @@ export default function BirthdayInviteButton() {
         opacity: isSending ? 0.7 : 1,
       }}
     >
-      <span style={{ color: sent ? "#e91e63" : "#d81b60" }}><Gift size={14} /></span>
+      <span style={{ color: sent ? "#e91e63" : "#d81b60", display: "flex" }}>
+        {sent ? <BirthdayCakeIcon size={14} /> : <GiftIcon size={14} />}
+      </span>
       <span className="text-xs sm:text-sm font-medium">
-        {isSending ? "Sending..." : sent ? "Sent! 🎂" : "🎂 Slideshow"}
+        {isSending ? "Sending..." : sent ? "Sent!" : "Slideshow"}
       </span>
     </motion.button>
   );

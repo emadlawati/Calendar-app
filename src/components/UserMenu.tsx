@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "./SessionProvider";
 import { getDisplayName } from "@/lib/names";
-import { CoffeeIcon, HeartIcon } from "@/components/icons";
+import {
+  CoffeeIcon, HeartIcon, MenuIcon, XIcon, PolaroidIcon, StatsIcon, LetterIcon,
+  TimelineIcon, BirthdayCakeIcon, LevelIcons,
+} from "@/components/icons";
 import ThemeToggle from "./ThemeToggle";
 import BirthdayInviteButton from "./BirthdayInviteButton";
 import type { LevelResult } from "@/lib/level";
@@ -15,23 +18,35 @@ interface GoogleStatus {
   email?: string;
 }
 
-function MenuIcon({ size = 22 }: { size?: number }) {
+/** Overlapping Wife + Husband initial circles (shared by desktop pill & mobile menu). */
+function CoupleAvatars({ size = 26 }: { size?: number }) {
+  const avatar = (who: "Wife" | "Husband") => (
+    <div
+      className="rounded-full flex items-center justify-center border-2 heading-font"
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.round(size * 0.42),
+        background: who === "Wife" ? "var(--accent)" : "var(--danger)",
+        color: "var(--hero-text)",
+        borderColor: "var(--card-bg)",
+      }}
+    >
+      {getDisplayName(who)[0]}
+    </div>
+  );
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <line x1="4" y1="7" x2="20" y2="7" />
-      <line x1="4" y1="12" x2="20" y2="12" />
-      <line x1="4" y1="17" x2="20" y2="17" />
-    </svg>
+    <div className="flex -space-x-2">
+      {avatar("Wife")}
+      {avatar("Husband")}
+    </div>
   );
 }
 
-function CloseIcon({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <line x1="6" y1="6" x2="18" y2="18" />
-      <line x1="18" y1="6" x2="6" y2="18" />
-    </svg>
-  );
+/** Level icon with emoji fallback (emoji stays valid data from the API). */
+function LevelGlyph({ level, emoji, size = 14 }: { level: number; emoji: string; size?: number }) {
+  const Icon = LevelIcons[level];
+  return Icon ? <Icon size={size} /> : <span className="text-sm">{emoji}</span>;
 }
 
 export default function UserMenu() {
@@ -64,10 +79,14 @@ export default function UserMenu() {
     return () => document.removeEventListener("click", handleClick);
   }, []);
 
-  if (!user) return null;
+  const [startDate] = useState(
+    () => new Date(process.env.NEXT_PUBLIC_RELATIONSHIP_START || "2017-01-31"),
+  );
+  const [daysTogether] = useState(
+    () => Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24)),
+  );
 
-  const startDate = new Date(process.env.NEXT_PUBLIC_RELATIONSHIP_START || "2017-01-31");
-  const daysTogether = Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  if (!user) return null;
 
   return (
     <>
@@ -81,17 +100,14 @@ export default function UserMenu() {
             <CoffeeIcon size={20} />
           </div>
           <div>
-            <h1
-              className="text-[22px] sm:text-[28px] leading-tight"
-              style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}
-            >
+            <h1 className="heading-font text-[22px] sm:text-[28px] leading-tight" style={{ color: "var(--accent)" }}>
               Our Calendar
             </h1>
             <p
-              className="text-[10.5px] sm:text-xs flex items-center gap-1 mt-0.5"
+              className="text-[11px] sm:text-xs flex items-center gap-1 mt-0.5"
               style={{ color: "var(--text-soft)" }}
             >
-              {getDisplayName("Wife")} &amp; {getDisplayName("Husband")} &middot; together since 2017
+              {getDisplayName("Wife")} &amp; {getDisplayName("Husband")} &middot; together since {startDate.getFullYear()}
             </p>
           </div>
         </div>
@@ -110,7 +126,7 @@ export default function UserMenu() {
                 fontWeight: 600,
               }}
             >
-              <span className="text-sm">{levelData.emoji}</span>
+              <LevelGlyph level={levelData.level} emoji={levelData.emoji} />
               Lv.{levelData.level}
             </Link>
           )}
@@ -124,7 +140,7 @@ export default function UserMenu() {
               color: "var(--text)",
             }}
           >
-            {mobileMenuOpen ? <CloseIcon size={20} /> : <MenuIcon size={20} />}
+            {mobileMenuOpen ? <XIcon size={20} /> : <MenuIcon size={20} />}
           </motion.button>
         </div>
 
@@ -138,35 +154,12 @@ export default function UserMenu() {
               borderColor: "var(--card-border)",
             }}
           >
-            <div className="flex -space-x-2">
-              <div
-                className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-[11px] border-2"
-                style={{
-                  background: "#6b3a1f",
-                  color: "#fce8c8",
-                  fontFamily: "var(--font-caprasimo), cursive",
-                  borderColor: "var(--card-bg)",
-                }}
-              >
-                {getDisplayName("Wife")[0]}
-              </div>
-              <div
-                className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-[11px] border-2"
-                style={{
-                  background: "#c14a33",
-                  color: "#fce8c8",
-                  fontFamily: "var(--font-caprasimo), cursive",
-                  borderColor: "var(--card-bg)",
-                }}
-              >
-                {getDisplayName("Husband")[0]}
-              </div>
-            </div>
+            <CoupleAvatars size={26} />
             <div className="leading-tight">
               <div className="text-sm font-semibold" style={{ color: "var(--text)" }}>
                 {daysTogether.toLocaleString()} days
               </div>
-              <div className="text-[10.5px] flex items-center gap-1" style={{ color: "var(--text-soft)" }}>
+              <div className="text-[11px] flex items-center gap-1" style={{ color: "var(--text-soft)" }}>
                 together <HeartIcon size={10} />
               </div>
             </div>
@@ -187,7 +180,7 @@ export default function UserMenu() {
               }}
               title={`${levelData.title} — ${levelData.score} pts`}
             >
-              <span className="text-sm">{levelData.emoji}</span>
+              <LevelGlyph level={levelData.level} emoji={levelData.emoji} />
               <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Lv. {levelData.level}</span>
             </Link>
           )}
@@ -201,7 +194,8 @@ export default function UserMenu() {
               color: "var(--text)",
             }}
           >
-            <span className="text-xs sm:text-sm font-medium">📸 Memories</span>
+            <PolaroidIcon size={15} />
+            <span className="text-xs sm:text-sm font-medium">Memories</span>
           </Link>
 
           {/* Stats link */}
@@ -213,7 +207,8 @@ export default function UserMenu() {
               color: "var(--text)",
             }}
           >
-            <span className="text-xs sm:text-sm font-medium">📊 Stats</span>
+            <StatsIcon size={15} />
+            <span className="text-xs sm:text-sm font-medium">Stats</span>
           </Link>
 
           {/* Notes link */}
@@ -225,7 +220,8 @@ export default function UserMenu() {
               color: "var(--text)",
             }}
           >
-            <span className="text-xs sm:text-sm font-medium">💌 Notes</span>
+            <LetterIcon size={15} />
+            <span className="text-xs sm:text-sm font-medium">Notes</span>
           </Link>
 
           {/* Timeline link */}
@@ -237,7 +233,8 @@ export default function UserMenu() {
               color: "var(--text)",
             }}
           >
-            <span className="text-xs sm:text-sm font-medium">🕰️ Timeline</span>
+            <TimelineIcon size={15} />
+            <span className="text-xs sm:text-sm font-medium">Timeline</span>
           </Link>
 
           {/* Google Connect */}
@@ -308,106 +305,45 @@ export default function UserMenu() {
                 className="flex items-center gap-3 p-3 rounded-xl mb-3"
                 style={{ background: "var(--chip-bg)" }}
               >
-                <div className="flex -space-x-2">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs border-2"
-                    style={{
-                      background: "#6b3a1f",
-                      color: "#fce8c8",
-                      fontFamily: "var(--font-caprasimo), cursive",
-                      borderColor: "var(--card-bg)",
-                    }}
-                  >
-                    {getDisplayName("Wife")[0]}
-                  </div>
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs border-2"
-                    style={{
-                      background: "#c14a33",
-                      color: "#fce8c8",
-                      fontFamily: "var(--font-caprasimo), cursive",
-                      borderColor: "var(--card-bg)",
-                    }}
-                  >
-                    {getDisplayName("Husband")[0]}
-                  </div>
-                </div>
+                <CoupleAvatars size={32} />
                 <div>
                   <div className="text-sm font-bold" style={{ color: "var(--text)" }}>
                     {daysTogether.toLocaleString()} days together
                   </div>
                   <div className="text-[11px] flex items-center gap-1" style={{ color: "var(--text-soft)" }}>
-                    {levelData ? `${levelData.emoji} ${levelData.title} · Level ${levelData.level}` : "Loading..."}
+                    {levelData ? (
+                      <>
+                        <LevelGlyph level={levelData.level} emoji={levelData.emoji} size={12} />
+                        {levelData.title} · Level {levelData.level}
+                      </>
+                    ) : "Loading..."}
                   </div>
                 </div>
               </div>
 
               {/* Navigation grid */}
               <div className="grid grid-cols-2 gap-2 mb-3">
-                <Link
-                  href="/notes"
-                  className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
-                  style={{
-                    background: "var(--card-bg)",
-                    borderColor: "var(--card-border)",
-                    color: "var(--text)",
-                  }}
-                >
-                  <span className="text-base">💌</span>
-                  <span className="text-[13px] font-medium">Notes</span>
-                </Link>
-
-                <Link
-                  href="/memories"
-                  className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
-                  style={{
-                    background: "var(--card-bg)",
-                    borderColor: "var(--card-border)",
-                    color: "var(--text)",
-                  }}
-                >
-                  <span className="text-base">📸</span>
-                  <span className="text-[13px] font-medium">Memories</span>
-                </Link>
-
-                <Link
-                  href="/stats"
-                  className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
-                  style={{
-                    background: "var(--card-bg)",
-                    borderColor: "var(--card-border)",
-                    color: "var(--text)",
-                  }}
-                >
-                  <span className="text-base">📊</span>
-                  <span className="text-[13px] font-medium">Stats</span>
-                </Link>
-
-                <Link
-                  href="/timeline"
-                  className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
-                  style={{
-                    background: "var(--card-bg)",
-                    borderColor: "var(--card-border)",
-                    color: "var(--text)",
-                  }}
-                >
-                  <span className="text-base">🕰️</span>
-                  <span className="text-[13px] font-medium">Timeline</span>
-                </Link>
-
-                <Link
-                  href="/birthday"
-                  className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
-                  style={{
-                    background: "var(--card-bg)",
-                    borderColor: "var(--card-border)",
-                    color: "var(--text)",
-                  }}
-                >
-                  <span className="text-base">🎂</span>
-                  <span className="text-[13px] font-medium">Slideshow</span>
-                </Link>
+                {[
+                  { href: "/notes", label: "Notes", Icon: LetterIcon },
+                  { href: "/memories", label: "Memories", Icon: PolaroidIcon },
+                  { href: "/stats", label: "Stats", Icon: StatsIcon },
+                  { href: "/timeline", label: "Timeline", Icon: TimelineIcon },
+                  { href: "/birthday", label: "Slideshow", Icon: BirthdayCakeIcon },
+                ].map(({ href, label, Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="flex items-center gap-2.5 p-3 rounded-xl border transition-colors"
+                    style={{
+                      background: "var(--card-bg)",
+                      borderColor: "var(--card-border)",
+                      color: "var(--text)",
+                    }}
+                  >
+                    <Icon size={18} style={{ color: "var(--accent)" }} />
+                    <span className="text-[13px] font-medium">{label}</span>
+                  </Link>
+                ))}
               </div>
 
               {/* Google Connect on mobile */}

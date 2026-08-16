@@ -3,15 +3,16 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, Send, Trash2 } from "lucide-react";
 import { useSession } from "@/components/SessionProvider";
 import { getDisplayName } from "@/lib/names";
+import { ArrowLeftIcon, SendIcon, TrashIcon, LetterIcon, GratitudeHeartIcon } from "@/components/icons";
+import Skeleton from "@/components/Skeleton";
 import type { Note, NoteKind } from "@/lib/types";
 
 type Filter = "all" | "note" | "gratitude";
 
 function authorColor(who: string): string {
-  return who === "Wife" ? "#6b3a1f" : "#c14a33";
+  return who === "Wife" ? "var(--accent)" : "var(--danger)";
 }
 
 function formatWhen(iso: string): string {
@@ -103,11 +104,11 @@ export default function NotesPage() {
       <div className="flex items-center gap-4 mb-2">
         <Link href="/" className="flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
           style={{ color: "var(--text-soft)" }}>
-          <ArrowLeft size={16} />
+          <ArrowLeftIcon size={16} />
           Calendar
         </Link>
-        <h1 className="text-2xl flex items-center gap-2" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
-          💌 Notes
+        <h1 className="heading-font text-2xl flex items-center gap-2" style={{ color: "var(--accent)" }}>
+          <LetterIcon size={22} /> Notes
         </h1>
       </div>
       <p className="text-sm mb-6" style={{ color: "var(--text-soft)" }}>
@@ -120,20 +121,21 @@ export default function NotesPage() {
         {/* Kind toggle */}
         <div className="flex gap-1 mb-3 p-1 rounded-xl w-fit" style={{ background: "var(--input-bg)" }}>
           {([
-            { k: "note" as const, label: "💌 Note" },
-            { k: "gratitude" as const, label: "💛 Appreciation" },
-          ]).map(({ k, label }) => (
+            { k: "note" as const, label: "Note", Icon: LetterIcon },
+            { k: "gratitude" as const, label: "Appreciation", Icon: GratitudeHeartIcon },
+          ]).map(({ k, label, Icon }) => (
             <button
               key={k}
               type="button"
               onClick={() => setKind(k)}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5"
               style={{
                 background: kind === k ? "var(--card-bg)" : "transparent",
                 color: kind === k ? "var(--accent)" : "var(--text-soft)",
                 boxShadow: kind === k ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
               }}
             >
+              <Icon size={13} />
               {label}
             </button>
           ))}
@@ -159,7 +161,7 @@ export default function NotesPage() {
               color: !content.trim() || sending ? "var(--text-very)" : "var(--on-accent)",
             }}
           >
-            <Send size={14} />
+            <SendIcon size={14} />
             {sending ? "Sending…" : "Send"}
           </motion.button>
         </div>
@@ -168,19 +170,20 @@ export default function NotesPage() {
       {/* Filter */}
       <div className="flex items-center gap-2 mb-4">
         {([
-          { f: "all" as const, label: "All" },
-          { f: "note" as const, label: "💌 Notes" },
-          { f: "gratitude" as const, label: "💛 Appreciations" },
-        ]).map(({ f, label }) => (
+          { f: "all" as const, label: "All", Icon: null },
+          { f: "note" as const, label: "Notes", Icon: LetterIcon },
+          { f: "gratitude" as const, label: "Appreciations", Icon: GratitudeHeartIcon },
+        ]).map(({ f, label, Icon }) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className="chip-pill text-xs"
+            className="chip-pill text-xs inline-flex items-center gap-1.5"
             style={{
               background: filter === f ? "var(--accent)" : "var(--chip-bg)",
               color: filter === f ? "var(--on-accent)" : "var(--chip-text)",
             }}
           >
+            {Icon && <Icon size={12} />}
             {label}
           </button>
         ))}
@@ -188,13 +191,17 @@ export default function NotesPage() {
 
       {/* Log */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="text-3xl">☕</motion.div>
+        <div className="space-y-2.5" aria-hidden="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
+          ))}
         </div>
       ) : visible.length === 0 ? (
         <div className="text-center py-16" style={{ color: "var(--text-soft)" }}>
-          <p className="text-5xl mb-3">💌</p>
-          <p className="text-lg mb-1" style={{ fontFamily: "var(--font-caprasimo), cursive" }}>Nothing here yet</p>
+          <div className="flex justify-center mb-3" style={{ color: "var(--accent)" }}>
+            <LetterIcon size={44} />
+          </div>
+          <p className="heading-font text-lg mb-1">Nothing here yet</p>
           <p className="text-sm">Send the first one above</p>
         </div>
       ) : (
@@ -220,16 +227,16 @@ export default function NotesPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0"
-                          style={{ background: authorColor(n.createdBy), color: "#fce8c8", fontFamily: "var(--font-caprasimo), cursive" }}>
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 heading-font"
+                          style={{ background: authorColor(n.createdBy), color: "var(--hero-text)" }}>
                           {getDisplayName(n.createdBy)[0]}
                         </span>
                         <span className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>
                           {mine ? `You → ${partnerName}` : `${getDisplayName(n.createdBy)} → You`}
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"
                           style={{ background: "var(--chip-bg)", color: "var(--chip-text)", border: "1px solid var(--chip-border)" }}>
-                          {n.kind === "gratitude" ? "💛 Appreciation" : "💌 Note"}
+                          {n.kind === "gratitude" ? <><GratitudeHeartIcon size={10} /> Appreciation</> : <><LetterIcon size={10} /> Note</>}
                         </span>
                         {isNew && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
@@ -257,9 +264,9 @@ export default function NotesPage() {
                         onClick={() => remove(n.id)}
                         aria-label="Delete note"
                         className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70"
-                        style={{ color: "#c14a33" }}
+                        style={{ color: "var(--danger)" }}
                       >
-                        <Trash2 size={13} />
+                        <TrashIcon size={13} />
                       </button>
                     )}
                   </div>

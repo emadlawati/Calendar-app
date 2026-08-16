@@ -15,13 +15,15 @@ function chunk(type, data) {
   return Buffer.concat([len, Buffer.from(type), data, crcBuf]);
 }
 
-function makeIcon(size) {
-  // Draw a rounded square with a coffee-cup-like center design
+function makeIcon(size, maskable = false) {
+  // Draw a rounded square with a coffee-cup-like center design.
+  // Maskable variant: full-bleed background (no rounded corners) and the
+  // heart scaled into the 80% safe zone so launcher masks don't crop it.
   const pad = Math.floor(size * 0.18);
   const stride = size * 4 + 1;
   const raw = Buffer.alloc(size * stride);
   const inner = size - pad * 2;
-  const radius = Math.floor(size * 0.22);
+  const radius = maskable ? 0 : Math.floor(size * 0.22);
 
   const bgR = 107, bgG = 58, bgB = 31;     // Coffee brown
   const cupR = 252, cupG = 232, cupB = 200; // Cream
@@ -49,11 +51,11 @@ function makeIcon(size) {
 
       raw[off] = bgR; raw[off+1] = bgG; raw[off+2] = bgB; raw[off+3] = 255;
 
-      // Draw a stylized heart in the center
+      // Draw a stylized heart in the center (smaller for maskable safe zone)
       const cx = size / 2, cy = size * 0.45;
       const relX = (x - cx) / size, relY = (y - cy) / size;
       const heartDist = Math.abs(relX);
-      const heartScale = size * 0.12;
+      const heartScale = size * (maskable ? 0.10 : 0.12);
 
       // Simple heart shape: top two circles + bottom triangle
       const heartY = (y - (cy - heartScale * 0.3)) / heartScale;
@@ -84,4 +86,6 @@ function makeIcon(size) {
 
 fs.writeFileSync("public/icons/icon-192.png", makeIcon(192));
 fs.writeFileSync("public/icons/icon-512.png", makeIcon(512));
-console.log("icons written with heart design");
+fs.writeFileSync("public/icons/icon-192-maskable.png", makeIcon(192, true));
+fs.writeFileSync("public/icons/icon-512-maskable.png", makeIcon(512, true));
+console.log("icons written (any + maskable variants)");

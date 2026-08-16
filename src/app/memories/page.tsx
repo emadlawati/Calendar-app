@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import MemoryCard from "@/components/MemoryCard";
 import MemoryViewModal from "@/components/MemoryViewModal";
@@ -9,7 +9,9 @@ import HighlightViewModal from "@/components/HighlightViewModal";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import DailyHighlightModal from "@/components/DailyHighlightModal";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import Modal from "@/components/Modal";
+import { ArrowLeftIcon, PlusIcon, PolaroidIcon, HighlightStarIcon, CategoryIcons, CelebrateIcon, PawIcon } from "@/components/icons";
+import Skeleton from "@/components/Skeleton";
 import { getCategoryById } from "@/lib/categories";
 import type { CalendarEvent, PendingMemory, DailyHighlight, User } from "@/lib/types";
 
@@ -152,10 +154,10 @@ export default function MemoriesPage() {
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
             style={{ color: "var(--text-soft)" }}>
-            <ArrowLeft size={16} />
+            <ArrowLeftIcon size={16} />
             Calendar
           </Link>
-          <h1 className="text-2xl" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
+          <h1 className="heading-font text-2xl" style={{ color: "var(--accent)" }}>
             {activeTab === "memories" ? "Memory Wall" : "Daily Highlights"}
           </h1>
         </div>
@@ -166,7 +168,7 @@ export default function MemoriesPage() {
             onClick={openPicker}
             className="flex items-center gap-1.5 chip-pill font-semibold text-xs"
           >
-            <Plus size={13} />
+            <PlusIcon size={13} />
             New Memory
           </motion.button>
         ) : (
@@ -176,7 +178,7 @@ export default function MemoriesPage() {
             onClick={() => { setEditingHighlight(null); setIsHighlightModalOpen(true); }}
             className="flex items-center gap-1.5 chip-pill font-semibold text-xs"
           >
-            <Plus size={13} />
+            <PlusIcon size={13} />
             New Highlight
           </motion.button>
         )}
@@ -195,7 +197,7 @@ export default function MemoriesPage() {
             color: activeTab === "memories" ? "var(--on-accent)" : "var(--text-soft)",
           }}
         >
-          📸 Memories
+          <PolaroidIcon size={15} /> Memories
         </button>
         <button
           onClick={() => setActiveTab("highlights")}
@@ -205,7 +207,7 @@ export default function MemoriesPage() {
             color: activeTab === "highlights" ? "var(--on-accent)" : "var(--text-soft)",
           }}
         >
-          ⭐ Highlights
+          <HighlightStarIcon size={15} /> Highlights
           {highlights.length > 0 && (
             <span
               className="text-[10px] px-1.5 py-0.5 rounded-full"
@@ -226,7 +228,8 @@ export default function MemoriesPage() {
           {stats && stats.totalMemories > 0 && (
             <div className="flex flex-wrap gap-3 mb-6">
               <div className="chip-pill flex items-center gap-1.5">
-                <span className="text-xs">📸 {stats.totalMemories} memories</span>
+                <PolaroidIcon size={13} />
+                <span className="text-xs">{stats.totalMemories} memories</span>
               </div>
               {stats.thisYearCount > 0 && (
                 <div className="chip-pill">
@@ -245,29 +248,36 @@ export default function MemoriesPage() {
             >
               All
             </button>
-            {categories.map((c) => (
-              <button
-                key={c.category}
-                onClick={() => setFilterCategory(c.category)}
-                className="chip-pill text-xs"
-                style={{ background: filterCategory === c.category ? "var(--accent)" : "var(--chip-bg)", color: filterCategory === c.category ? "var(--on-accent)" : "var(--chip-text)" }}
-              >
-                {c.emoji} {c.count}
-              </button>
-            ))}
+            {categories.map((c) => {
+              const FilterIcon = CategoryIcons[c.category];
+              return (
+                <button
+                  key={c.category}
+                  onClick={() => setFilterCategory(c.category)}
+                  className="chip-pill text-xs inline-flex items-center gap-1.5"
+                  style={{ background: filterCategory === c.category ? "var(--accent)" : "var(--chip-bg)", color: filterCategory === c.category ? "var(--on-accent)" : "var(--chip-text)" }}
+                >
+                  {FilterIcon && <FilterIcon size={12} />}
+                  {c.count}
+                </button>
+              );
+            })}
           </div>
 
           {/* Masonry Grid */}
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="text-3xl">
-                ☕
-              </motion.div>
+            <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5" aria-hidden="true">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className={["h-56", "h-72", "h-48", "h-64", "h-52", "h-72"][i] + " rounded-2xl"} />
+              ))}
             </div>
           ) : memories.length === 0 ? (
             <div className="text-center py-20" style={{ color: "var(--text-soft)" }}>
-              <p className="text-lg mb-2" style={{ fontFamily: "var(--font-caprasimo), cursive" }}>No memories yet</p>
-              <p className="text-sm">Save your first memory and it&apos;ll appear here 🐾</p>
+              <div className="flex justify-center mb-2" style={{ color: "var(--accent)" }}>
+                <PawIcon size={28} />
+              </div>
+              <p className="heading-font text-lg mb-2">No memories yet</p>
+              <p className="text-sm">Save your first memory and it&apos;ll appear here</p>
             </div>
           ) : (
             <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5">
@@ -287,15 +297,18 @@ export default function MemoriesPage() {
         /* ── Highlights tab ── */
         <>
           {highlightsLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="text-3xl">
-                ☕
-              </motion.div>
+            <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5" aria-hidden="true">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className={["h-56", "h-64", "h-48", "h-60", "h-52", "h-64"][i] + " rounded-2xl"} />
+              ))}
             </div>
           ) : highlights.length === 0 ? (
             <div className="text-center py-20" style={{ color: "var(--text-soft)" }}>
-              <p className="text-lg mb-2" style={{ fontFamily: "var(--font-caprasimo), cursive" }}>No highlights yet</p>
-              <p className="text-sm">Capture a moment from any day — no event needed ⭐</p>
+              <div className="flex justify-center mb-2" style={{ color: "var(--accent)" }}>
+                <HighlightStarIcon size={28} />
+              </div>
+              <p className="heading-font text-lg mb-2">No highlights yet</p>
+              <p className="text-sm">Capture a moment from any day — no event needed</p>
             </div>
           ) : (
             <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5">
@@ -338,7 +351,7 @@ export default function MemoriesPage() {
                     )}
                     <div className="p-4">
                       <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="text-base">⭐</span>
+                        <HighlightStarIcon size={15} style={{ color: "var(--cat-occasions-dot)" }} />
                         <p className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{displayDate}</p>
                       </div>
                       {h.note && (
@@ -356,49 +369,37 @@ export default function MemoriesPage() {
       )}
 
       {/* Event Picker Sheet */}
-      <AnimatePresence>
-        {isPickerOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsPickerOpen(false)}
-              className="fixed inset-0 z-40"
-              style={{ background: "rgba(40, 25, 15, 0.45)", backdropFilter: "blur(6px)" }}
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 16 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 modal-shell w-[440px] max-w-[95vw] max-h-[75vh] flex flex-col p-6"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
-                  Pick an event
-                </h2>
-                <button onClick={() => setIsPickerOpen(false)} style={{ color: "var(--text-soft)" }}>
-                  <X size={20} />
-                </button>
-              </div>
-              <p className="text-xs mb-4" style={{ color: "var(--text-soft)" }}>
-                Choose a past event to save a memory for
-              </p>
-
-              <div className="flex-1 overflow-y-auto space-y-2">
+      <Modal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        width="md"
+        ariaLabel="Pick an event"
+        title={
+          <div>
+            <h2 className="heading-font text-lg" style={{ color: "var(--accent)" }}>
+              Pick an event
+            </h2>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-soft)" }}>
+              Choose a past event to save a memory for
+            </p>
+          </div>
+        }
+      >
+        <div className="space-y-2">
                 {pickerLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="text-2xl">
-                      ☕
-                    </motion.div>
+                  <div className="space-y-2 py-2" aria-hidden="true">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} className="h-16 rounded-xl" />
+                    ))}
                   </div>
                 ) : pickerEvents.length === 0 ? (
-                  <p className="text-center text-sm py-8" style={{ color: "var(--text-soft)" }}>
-                    No past events without memories 🎉
+                  <p className="text-center text-sm py-8 flex items-center justify-center gap-1.5" style={{ color: "var(--text-soft)" }}>
+                    <CelebrateIcon size={14} /> No past events without memories
                   </p>
                 ) : (
                   pickerEvents.map((event) => {
                     const cat = getCategoryById(event.category);
+                    const PickerIcon = CategoryIcons[cat.id];
                     return (
                       <motion.button
                         key={event.id}
@@ -412,10 +413,10 @@ export default function MemoriesPage() {
                         }}
                       >
                         <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base"
-                          style={{ background: cat.color }}
+                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: cat.color, color: cat.textColor }}
                         >
-                          {cat.emoji}
+                          {PickerIcon ? <PickerIcon size={16} /> : null}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
@@ -429,11 +430,8 @@ export default function MemoriesPage() {
                     );
                   })
                 )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+        </div>
+      </Modal>
 
       <SaveMemoryModal
         isOpen={isEditModalOpen}

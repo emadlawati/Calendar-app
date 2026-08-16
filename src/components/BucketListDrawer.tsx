@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { TargetIcon, XIcon, PlusIcon, CheckIcon, ArchiveIcon } from "@/components/icons";
+import { TargetIcon, XIcon, PlusIcon, CheckIcon, ArchiveIcon, CategoryIcons } from "@/components/icons";
 import { getCategoryById } from "@/lib/categories";
 import type { BucketItem } from "@/lib/types";
 
@@ -88,7 +88,7 @@ export default function BucketListDrawer({ isOpen, onClose }: BucketListDrawerPr
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-50" style={{ background: "rgba(40, 25, 15, 0.45)", backdropFilter: "blur(4px)" }}
+            className="fixed inset-0 z-40 modal-backdrop"
           />
           <motion.div
             initial={{ y: "100%" }}
@@ -102,7 +102,7 @@ export default function BucketListDrawer({ isOpen, onClose }: BucketListDrawerPr
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <TargetIcon size={20} style={{ color: "var(--accent)" }} />
-                  <h2 className="text-lg" style={{ fontFamily: "var(--font-caprasimo), cursive", color: "var(--accent)" }}>
+                  <h2 className="heading-font text-lg" style={{ color: "var(--accent)" }}>
                     Bucket List {completedCount > 0 && `(${completedCount} done)`}
                   </h2>
                 </div>
@@ -138,24 +138,25 @@ export default function BucketListDrawer({ isOpen, onClose }: BucketListDrawerPr
               ) : (
                 filteredItems.map((item) => {
                   const cat = getCategoryById(item.category);
+                  const ItemIcon = CategoryIcons[cat.id];
                   return (
                     <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border"
                       style={{
-                        background: item.completed ? "rgba(106, 180, 120, 0.06)" : "var(--input-bg)",
-                        borderColor: item.completed ? "rgba(106, 180, 120, 0.2)" : "var(--divider)",
+                        background: item.completed ? "color-mix(in srgb, var(--success) 6%, transparent)" : "var(--input-bg)",
+                        borderColor: item.completed ? "color-mix(in srgb, var(--success) 20%, transparent)" : "var(--divider)",
                       }}>
-                      <button onClick={() => handleToggleComplete(item)}
+                      <button onClick={() => handleToggleComplete(item)} aria-label={item.completed ? "Mark as not done" : "Mark as done"}
                         className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0"
                         style={{
-                          background: item.completed ? "#6ab478" : "transparent",
-                          borderColor: item.completed ? "#6ab478" : "var(--text-very)",
+                          background: item.completed ? "var(--success)" : "transparent",
+                          borderColor: item.completed ? "var(--success)" : "var(--text-very)",
                           color: "#fff",
                         }}>
                         {item.completed && <CheckIcon size={11} />}
                       </button>
-                      <span className={`flex-1 text-sm truncate ${item.completed ? "line-through opacity-40" : ""}`}
+                      <span className={`flex-1 text-sm truncate inline-flex items-center gap-1.5 ${item.completed ? "line-through opacity-40" : ""}`}
                         style={{ color: "var(--text)" }}>
-                        {cat.emoji} {item.title}
+                        {ItemIcon && <ItemIcon size={13} style={{ color: cat.dotColor, flexShrink: 0 }} />} {item.title}
                       </span>
                       <button onClick={() => handleDelete(item.id)} className="opacity-30 hover:opacity-80">
                         <XIcon size={14} />

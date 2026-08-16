@@ -2,18 +2,22 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
-import { CalendarClock, Cat, Loader2 } from "lucide-react";
-import { useSession } from "@/components/SessionProvider";
 import { useSearchParams } from "next/navigation";
+import {
+  CalendarClockIcon,
+  CatIcon,
+  LoaderIcon,
+  PawIcon,
+  SendIcon,
+  CategoryIcons,
+} from "@/components/icons";
+import Skeleton from "@/components/Skeleton";
 import { EVENT_CATEGORIES } from "@/lib/categories";
 import type { CalendarEvent } from "@/lib/types";
 
 function AdjustEventForm() {
-  const { user: sessionUser } = useSession();
   const searchParams = useSearchParams();
   const eventId = searchParams.get("id");
-  const urlUser = searchParams.get("user"); // from email link
-  const currentUser = (urlUser || sessionUser) as "Wife" | "Husband";
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -33,7 +37,7 @@ function AdjustEventForm() {
   useEffect(() => {
     if (!eventId) return;
 
-    fetch(`/api/events/${eventId}`)
+    fetch(`/api/events/${eventId}`, { credentials: "same-origin" })
       .then(res => {
         if (!res.ok) throw new Error("Event not found");
         return res.json();
@@ -64,6 +68,7 @@ function AdjustEventForm() {
       const res = await fetch('/api/events/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "same-origin",
         body: JSON.stringify({
           action: 'adjust',
           date,
@@ -73,7 +78,6 @@ function AdjustEventForm() {
           notes,
           endTime: endTime || null,
           category,
-          user: currentUser,
           eventId: eventId
         })
       });
@@ -96,30 +100,31 @@ function AdjustEventForm() {
 
   if (loading) {
     return (
-      <main className="min-h-screen p-4 flex items-center justify-center bg-milk-white">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center"
-        >
-          <Loader2 className="animate-spin text-blush-pink mx-auto" size={40} />
-          <p className="mt-4 text-text-dark font-sniglet">Loading plan...</p>
-        </motion.div>
+      <main className="min-h-screen p-4 flex items-center justify-center" style={{ background: "var(--bg)" }}>
+        <div className="w-full max-w-md space-y-4" aria-hidden="true">
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-14 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-14 rounded-xl" />
+        </div>
       </main>
     );
   }
 
   if (error || !event) {
     return (
-      <main className="min-h-screen p-4 flex items-center justify-center bg-milk-white">
+      <main className="min-h-screen p-4 flex items-center justify-center" style={{ background: "var(--bg)" }}>
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="w-full max-w-sm plush-card p-6 text-center"
+          className="w-full max-w-sm rounded-3xl border p-8 text-center"
+          style={{ background: "var(--card-bg)", borderColor: "var(--card-border)", boxShadow: "var(--card-shadow)" }}
         >
-          <Cat size={48} className="mx-auto text-latte-brown/30 mb-4" />
-          <h1 className="text-xl font-sniglet text-text-dark mb-2">Oops!</h1>
-          <p className="text-text-dark/70">Could not find this event. It may have been deleted.</p>
+          <CatIcon size={44} style={{ color: "var(--text-very)", margin: "0 auto 1rem" }} />
+          <h1 className="heading-font text-xl mb-2" style={{ color: "var(--accent)" }}>Oops!</h1>
+          <p className="text-sm" style={{ color: "var(--text-soft)" }}>
+            Could not find this event. It may have been deleted.
+          </p>
         </motion.div>
       </main>
     );
@@ -130,149 +135,143 @@ function AdjustEventForm() {
   const proposedBy = event.createdBy;
 
   return (
-    <main className="min-h-screen p-4 flex items-center justify-center bg-milk-white">
+    <main className="min-h-screen p-4 flex items-center justify-center" style={{ background: "var(--bg)" }}>
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
+        initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-sm md:max-w-md plush-card p-6 md:p-8 relative overflow-hidden"
+        className="w-full max-w-md rounded-3xl border p-6 md:p-8 relative overflow-hidden"
+        style={{ background: "var(--card-bg)", borderColor: "var(--card-border)", boxShadow: "var(--card-shadow)" }}
       >
-        <div className="absolute top-0 right-0 p-4 opacity-10">
-          <Cat size={120} />
+        <div className="flex items-center gap-2.5 mb-4" style={{ color: "var(--text)" }}>
+          <CalendarClockIcon size={24} style={{ color: "var(--accent)" }} />
+          <h1 className="heading-font text-xl" style={{ color: "var(--accent)" }}>Propose New Time</h1>
         </div>
 
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-4 text-text-dark">
-            <CalendarClock className="text-blush-pink" size={24} />
-            <h1 className="text-xl font-sniglet">Propose New Time</h1>
-          </div>
+        <div className="p-4 rounded-2xl mb-6 border" style={{ background: "var(--input-bg)", borderColor: "var(--divider)" }}>
+          <p className="text-xs mb-1" style={{ color: "var(--text-soft)" }}>Original plan from {proposedBy}:</p>
+          <p className="text-sm font-bold" style={{ color: "var(--text)" }}>{event.title}</p>
+          <p className="text-sm" style={{ color: "var(--text-soft)" }}>{originalDate} @ {event.time}</p>
+        </div>
 
-          <div className="bg-soft-peach/30 p-4 rounded-xl mb-6 border border-soft-peach">
-            <p className="text-sm text-text-dark/80 mb-1">Original Plan from {proposedBy}:</p>
-            <p className="font-bold text-text-dark font-sniglet">{event.title}</p>
-            <p className="text-sm text-text-dark">{originalDate} @ {event.time}</p>
-          </div>
+        {success ? (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-8"
+          >
+            <PawIcon size={40} style={{ color: "var(--accent)", margin: "0 auto 1rem" }} />
+            <h2 className="heading-font text-xl mb-2" style={{ color: "var(--accent)" }}>Meow! New time sent.</h2>
+            <p className="text-sm" style={{ color: "var(--text-soft)" }}>Waiting for their purr-val.</p>
+          </motion.div>
+        ) : (
+          <form onSubmit={handlePropose} className="space-y-4">
+            <div>
+              <label className="field-label">Event Title</label>
+              <input
+                required
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder={event.title}
+              />
+            </div>
 
-          {success ? (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-8"
-            >
-              <div className="text-4xl mb-4">🐾</div>
-              <h2 className="font-sniglet text-xl text-text-dark mb-2">Meow! New time sent.</h2>
-              <p className="text-text-dark/70 text-sm">Waiting for their purr-val.</p>
-            </motion.div>
-          ) : (
-            <form onSubmit={handlePropose} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">Event Title</label>
-                <input
-                  required
-                  type="text"
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  placeholder={event.title}
-                  className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold mb-2 ml-2 text-text-dark/80">Category</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {EVENT_CATEGORIES.map((cat) => (
+            <div>
+              <label className="field-label">Category</label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {EVENT_CATEGORIES.map((cat) => {
+                  const Icon = CategoryIcons[cat.id];
+                  const selected = category === cat.id;
+                  return (
                     <motion.button
                       key={cat.id}
                       type="button"
-                      whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setCategory(cat.id)}
-                      className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl text-xs font-bold transition-all border-2 ${
-                        category === cat.id
-                          ? "border-blush-pink bg-blush-pink/30 shadow-sm"
-                          : "border-transparent bg-white/50 hover:bg-white/80"
-                      }`}
+                      className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all border-2"
+                      style={{
+                        borderColor: selected ? cat.dotColor : "transparent",
+                        background: selected ? cat.color : "var(--input-bg)",
+                        color: selected ? cat.textColor : "var(--text-soft)",
+                      }}
                     >
-                      <span className="text-lg">{cat.emoji}</span>
-                      <span className="text-[10px] leading-tight text-text-dark/70">{cat.label}</span>
+                      <Icon size={16} />
+                      <span className="text-[10px] leading-tight">{cat.label}</span>
                     </motion.button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
+            </div>
 
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">New Date</label>
-                  <input
-                    required
-                    type="date"
-                    value={date}
-                    onChange={e => setDate(e.target.value)}
-                    className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">End Date <span className="opacity-50">(optional)</span></label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    min={date}
-                    onChange={e => setEndDate(e.target.value)}
-                    className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">New Start Time</label>
-                  <input
-                    required
-                    type="time"
-                    value={time}
-                    onChange={e => setTime(e.target.value)}
-                    className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">New End Time</label>
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={e => setEndTime(e.target.value)}
-                    placeholder={event.endTime || undefined}
-                    className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold mb-1 ml-2 text-text-dark/80">Meow Notes 🐾</label>
-                <textarea
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  placeholder={event.notes || "Any additional thoughts..."}
-                  className="w-full bg-white border-2 border-latte-brown/20 rounded-2xl px-4 py-3 focus:outline-none focus:border-blush-pink transition-colors font-quicksand resize-none h-20"
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="field-label">New Date</label>
+                <input
+                  required
+                  type="date"
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
                 />
               </div>
+              <div className="flex-1">
+                <label className="field-label">End Date <span className="opacity-50 font-normal">(optional)</span></label>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={date}
+                  onChange={e => setEndDate(e.target.value)}
+                />
+              </div>
+            </div>
 
-              {submitError && (
-                <p className="text-sm text-center rounded-xl py-2" style={{ color: "#c14a33", background: "rgba(193,74,51,0.08)" }}>
-                  Something went wrong. Please try again.
-                </p>
-              )}
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="field-label">New Start Time</label>
+                <input
+                  required
+                  type="time"
+                  value={time}
+                  onChange={e => setTime(e.target.value)}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="field-label">New End Time</label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={e => setEndTime(e.target.value)}
+                  placeholder={event.endTime || undefined}
+                />
+              </div>
+            </div>
 
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.95 }}
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full mt-2 bg-text-dark text-milk-white font-sniglet text-lg py-4 rounded-2xl shadow-plush flex justify-center items-center gap-2"
-              >
-                {isSubmitting ? "Sending..." : "Propose Changes 🐾"}
-              </motion.button>
-            </form>
-          )}
-        </div>
+            <div>
+              <label className="field-label">Meow Notes</label>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder={event.notes || "Any additional thoughts..."}
+                className="resize-none h-20"
+              />
+            </div>
+
+            {submitError && (
+              <p className="text-sm text-center rounded-xl py-2" style={{ color: "var(--danger)", background: "color-mix(in srgb, var(--danger) 8%, transparent)" }}>
+                Something went wrong. Please try again.
+              </p>
+            )}
+
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              type="submit"
+              disabled={isSubmitting}
+              className="btn-send w-full justify-center text-base py-3.5"
+            >
+              <SendIcon size={16} />
+              {isSubmitting ? "Sending..." : "Propose Changes"}
+            </motion.button>
+          </form>
+        )}
       </motion.div>
     </main>
   );
@@ -280,7 +279,11 @@ function AdjustEventForm() {
 
 export default function AdjustEventPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading... 🐾</div>}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen" style={{ background: "var(--bg)" }}>
+        <LoaderIcon size={28} className="animate-spin" style={{ color: "var(--accent)" }} />
+      </div>
+    }>
       <AdjustEventForm />
     </Suspense>
   );

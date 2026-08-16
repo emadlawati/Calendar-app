@@ -27,6 +27,44 @@
   --pop-text:    #fce8c8;
   --pop-shadow:  0 18px 40px -10px rgba(40, 20, 10, 0.45);
 
+  --danger:      #c14a33;
+  --danger-text: #ffffff;
+  --success:     #4a7c5c;
+
+  --hero-gradient: linear-gradient(135deg, #6b3a1f 0%, #8a4a22 100%);
+  --hero-text:    #fce8c8;
+
+  --today-bg:    #fae3b8;
+  --today-dot:   #d99a1c;
+  --today-text:  #7a4f10;
+
+  --panel-soft:   #fbeed7;
+  --panel-softer: #fbf2e1;
+
+  /* Calendar chips for highlights/reminders (they aren't categories) */
+  --chip-highlight:      #fff8e1;
+  --chip-highlight-text: #7c5c00;
+  --chip-highlight-dot:  #f9a825;
+  --chip-reminder:       #e8eaf6;
+  --chip-reminder-text:  #3949ab;
+  --chip-reminder-dot:   #5c6bc0;
+
+  /* Category palette (consumed as var() from lib/categories.ts) */
+  --cat-betime-bg:         #fce0d8; --cat-betime-text:         #9b3a2a; --cat-betime-dot:         #c14a33;
+  --cat-outings-bg:        #fae3b8; --cat-outings-text:        #8a5a14; --cat-outings-dot:        #c98a2a;
+  --cat-occasions-bg:      #f9d77a; --cat-occasions-text:      #7a4f10; --cat-occasions-dot:      #d99a1c;
+  --cat-social-bg:         #e6dccb; --cat-social-text:         #5e4a30; --cat-social-dot:         #a08868;
+  --cat-errands-bg:        #e4ddd0; --cat-errands-text:        #6b5840; --cat-errands-dot:        #8a7858;
+  --cat-appointments-bg:   #dde5ec; --cat-appointments-text:   #33506b; --cat-appointments-dot:   #4d7599;
+  --cat-other-bg:          #dfd6c6; --cat-other-text:          #5a4a35; --cat-other-dot:          #8a7858;
+
+  /* Person-tag palette (consumed as var() from lib/people.ts) */
+  --person-family-bg:  #e8d6c2; --person-family-text:  #6b3a1f;
+  --person-couple-bg:  #fce0d8; --person-couple-text:  #9b3a2a;
+  --person-wife-bg:    #f3dcc4; --person-wife-text:    #6b3a1f;
+  --person-husband-bg: #f0e0d0; --person-husband-text: #6b3a1f;
+  --person-child-bg:   #dde5ec; --person-child-text:   #33506b;
+
   color-scheme: light;
 }
 
@@ -57,6 +95,41 @@
   --pop-text:    #f0e4d4;
   --pop-shadow:  0 18px 40px -10px rgba(0,0,0,0.7);
 
+  --danger:      #e0785b;
+  --danger-text: #1a1410;
+  --success:     #7ab894;
+
+  --hero-gradient: linear-gradient(135deg, #4a3020 0%, #6b3a1f 100%);
+  --hero-text:    #fce8c8;
+
+  --today-bg:    #4a3520;
+  --today-dot:   #d9a92a;
+  --today-text:  #e0c284;
+
+  --panel-soft:   #33261c;
+  --panel-softer: #2e221a;
+
+  --chip-highlight:      #3d3312;
+  --chip-highlight-text: #e0c878;
+  --chip-highlight-dot:  #b89022;
+  --chip-reminder:       #232a3d;
+  --chip-reminder-text:  #a8b2dd;
+  --chip-reminder-dot:   #6a7ac0;
+
+  --cat-betime-bg:         #4a2820; --cat-betime-text:         #f3b8a8; --cat-betime-dot:         #d47862;
+  --cat-outings-bg:        #443318; --cat-outings-text:        #ecc98a; --cat-outings-dot:        #d99a3a;
+  --cat-occasions-bg:      #4a3a14; --cat-occasions-text:      #edcf8a; --cat-occasions-dot:      #d9a92a;
+  --cat-social-bg:         #3a3226; --cat-social-text:         #cfc0a8; --cat-social-dot:         #b09878;
+  --cat-errands-bg:        #35302a; --cat-errands-text:        #c6bba8; --cat-errands-dot:        #9a8868;
+  --cat-appointments-bg:   #24303c; --cat-appointments-text:   #a8c4dd; --cat-appointments-dot:   #5d87ab;
+  --cat-other-bg:          #352e26; --cat-other-text:          #cfc0ac; --cat-other-dot:         #9a8868;
+
+  --person-family-bg:  #403426; --person-family-text:  #d9c4ac;
+  --person-couple-bg:  #46281f; --person-couple-text:  #f0b8a5;
+  --person-wife-bg:    #3d2c1c; --person-wife-text:    #e3c9a8;
+  --person-husband-bg: #383026; --person-husband-text: #dccbb4;
+  --person-child-bg:   #24303c; --person-child-text:   #a8c4dd;
+
   color-scheme: dark;
 }
 
@@ -70,7 +143,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.headin-font { font-family: var(--font-caprasimo), cursive; }
+.heading-font { font-family: var(--font-caprasimo), cursive; }
 
 /* ------ Inputs ------ */
 .input, input[type=text], input[type=date], input[type=time], textarea {
@@ -80,7 +153,7 @@ body {
   border-radius: 12px;
   background: var(--input-bg);
   color: var(--text);
-  font: 13.5px var(--font-outfit), sans-serif;
+  font: 13px var(--font-outfit), sans-serif;
   outline: none;
   transition: border-color .15s;
 }
@@ -196,22 +269,13 @@ input:focus, textarea:focus {
 }
 
 /* In-month weekend */
-.calendar-custom .rbc-month-row .rbc-off-range-bg ~ .rbc-off-range-bg {
-  /* skip */
-}
 
 /* Today */
 .calendar-custom .rbc-today {
-  background: #fae3b8 !important;
+  background: var(--today-bg) !important;
 }
 .calendar-custom .rbc-today .rbc-day-bg {
-  background: #fae3b8;
-}
-.dark .calendar-custom .rbc-today {
-  background: #4a3520 !important;
-}
-.dark .calendar-custom .rbc-today .rbc-day-bg {
-  background: #4a3520;
+  background: var(--today-bg);
 }
 
 /* Off-range */
@@ -256,12 +320,23 @@ input:focus, textarea:focus {
   gap: 6px;
   padding: 4px 7px 4px 6px;
   border-radius: 8px;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+}
+/* Chip contents — CSS hover instead of per-chip framer instances */
+.calendar-custom .event-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  transition: transform 0.12s ease;
+}
+.calendar-custom .event-chip:hover {
+  transform: scale(1.03);
 }
 
 /* Show more link */
@@ -303,17 +378,21 @@ input:focus, textarea:focus {
 }
 
 /* ------ Modal bases ------ */
-.modal-backdrop {
-  background: rgba(40, 25, 15, 0.45);
-  backdrop-filter: blur(6px);
-}
-.modal-shell {
-  background: var(--card-bg);
-  border-radius: 28px;
-  box-shadow: 0 30px 80px -20px rgba(40, 20, 5, 0.5);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+/* Layered so Tailwind utilities (max-h, rounded-*) can still override them. */
+@layer components {
+  .modal-backdrop {
+    background: rgba(40, 25, 15, 0.45);
+    backdrop-filter: blur(6px);
+  }
+  .modal-shell {
+    background: var(--card-bg);
+    border-radius: 28px;
+    box-shadow: 0 30px 80px -20px rgba(40, 20, 5, 0.5);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
 }
 
 /* Accent button */
@@ -358,24 +437,6 @@ input:focus, textarea:focus {
 .btn-send:active { transform: scale(0.97); }
 .btn-send:disabled { opacity: 0.5; cursor: wait; }
 
-/* Popover */
-.event-popover {
-  position: absolute;
-  background: var(--pop-bg);
-  color: var(--pop-text);
-  border-radius: 14px;
-  padding: 12px 14px;
-  min-width: 220px;
-  max-width: 280px;
-  box-shadow: var(--pop-shadow);
-  font-size: 13px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(4px);
-  transition: opacity .15s, transform .15s;
-  z-index: 30;
-}
-
 /* Chip pill */
 .chip-pill {
   background: var(--chip-bg);
@@ -383,7 +444,7 @@ input:focus, textarea:focus {
   color: var(--chip-text);
   border-radius: 999px;
   padding: 5px 11px;
-  font-size: 11.5px;
+  font-size: 11px;
   cursor: pointer;
   transition: all .12s;
 }
@@ -403,6 +464,38 @@ input:focus, textarea:focus {
 /* Utility */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Skeleton loading shimmer */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--chip-bg);
+  border-radius: 12px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+.dark .skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.06),
+    transparent
+  );
+}
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
 
 /* Floating hearts animation */
 @keyframes float {
@@ -461,7 +554,7 @@ input:focus, textarea:focus {
     padding: 8px 0;
   }
   .calendar-custom .rbc-event-content {
-    font-size: 10.5px;
+    font-size: 11px;
     padding: 2px 5px;
     gap: 4px;
   }
@@ -474,7 +567,6 @@ input:focus, textarea:focus {
   /* Modal — full-screen on mobile */
   .modal-shell {
     border-radius: 20px;
-    max-height: 90vh;
   }
 
   /* Floating buttons safe area */

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Moon, Sun } from "lucide-react";
+import { MoonIcon, SunIcon } from "@/components/icons";
 import { useTheme } from "./ThemeProvider";
 
 export default function ThemeToggle() {
@@ -26,7 +26,7 @@ export default function ThemeToggle() {
         animate={{ rotate: isDark ? 180 : 0 }}
         transition={{ duration: 0.35, ease: "easeInOut" }}
       >
-        {isDark ? <Sun size={16} /> : <Moon size={16} />}
+        {isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
       </motion.div>
     </motion.button>
   );

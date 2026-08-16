@@ -7,14 +7,16 @@ export interface EventCategory {
   dotColor: string;
 }
 
+// Colors are CSS variable references so every consumer (inline styles included)
+// picks up the dark-mode palette defined in globals.css for free.
 export const EVENT_CATEGORIES: EventCategory[] = [
-  { id: "betime",       label: "BE Time",           emoji: "❤️", color: "#fce0d8", textColor: "#9b3a2a", dotColor: "#c14a33" },
-  { id: "outings",      label: "Family Outings",    emoji: "🚗", color: "#fae3b8", textColor: "#8a5a14", dotColor: "#c98a2a" },
-  { id: "occasions",    label: "Special Occasions", emoji: "🎂", color: "#f9d77a", textColor: "#7a4f10", dotColor: "#d99a1c" },
-  { id: "social",       label: "Social",            emoji: "🥂", color: "#e6dccb", textColor: "#5e4a30", dotColor: "#a08868" },
-  { id: "errands",      label: "Errands",           emoji: "🧾", color: "#e4ddd0", textColor: "#6b5840", dotColor: "#8a7858" },
-  { id: "appointments", label: "Appointments",      emoji: "🩺", color: "#dde5ec", textColor: "#33506b", dotColor: "#4d7599" },
-  { id: "other",        label: "Other",             emoji: "🐾", color: "#dfd6c6", textColor: "#5a4a35", dotColor: "#8a7858" },
+  { id: "betime",       label: "BE Time",           emoji: "❤️", color: "var(--cat-betime-bg)",       textColor: "var(--cat-betime-text)",       dotColor: "var(--cat-betime-dot)" },
+  { id: "outings",      label: "Family Outings",    emoji: "🚗", color: "var(--cat-outings-bg)",      textColor: "var(--cat-outings-text)",      dotColor: "var(--cat-outings-dot)" },
+  { id: "occasions",    label: "Special Occasions", emoji: "🎂", color: "var(--cat-occasions-bg)",    textColor: "var(--cat-occasions-text)",    dotColor: "var(--cat-occasions-dot)" },
+  { id: "social",       label: "Social",            emoji: "🥂", color: "var(--cat-social-bg)",       textColor: "var(--cat-social-text)",       dotColor: "var(--cat-social-dot)" },
+  { id: "errands",      label: "Errands",           emoji: "🧾", color: "var(--cat-errands-bg)",      textColor: "var(--cat-errands-text)",      dotColor: "var(--cat-errands-dot)" },
+  { id: "appointments", label: "Appointments",      emoji: "🩺", color: "var(--cat-appointments-bg)", textColor: "var(--cat-appointments-text)", dotColor: "var(--cat-appointments-dot)" },
+  { id: "other",        label: "Other",             emoji: "🐾", color: "var(--cat-other-bg)",        textColor: "var(--cat-other-text)",        dotColor: "var(--cat-other-dot)" },
 ];
 
 /**

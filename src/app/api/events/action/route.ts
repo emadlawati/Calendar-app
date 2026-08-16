@@ -42,6 +42,44 @@ async function acceptEventOrSeries(eventId: string) {
   return { event, acceptedCount: 1 };
 }
 
+/**
+ * Google Calendar sync for an accepted series. The clicked occurrence is
+ * synced by the caller; this covers the remaining future occurrences so
+ * edits/deletes of those instances reach Google too. Capped so accepting a
+ * long series stays snappy — the horizon regenerates anyway.
+ */
+async function syncSeriesOccurrencesToGoogle(user: string, clickedEvent: { id: string; seriesId: string | null; date: Date }) {
+  if (!clickedEvent.seriesId) return;
+  const occurrences = await prisma.calendarEvent.findMany({
+    where: {
+      seriesId: clickedEvent.seriesId,
+      date: { gte: clickedEvent.date },
+      archived: false,
+    },
+    orderBy: { date: "asc" },
+    take: 12,
+  });
+  for (const occ of occurrences) {
+    if (occ.id === clickedEvent.id || occ.googleEventId) continue;
+    const googleEventId = await createCalendarEvent(user, {
+      title: occ.title,
+      date: occ.date.toISOString().split('T')[0],
+      endDate: occ.endDate ? occ.endDate.toISOString().split('T')[0] : null,
+      time: occ.time,
+      endTime: occ.endTime,
+      notes: occ.notes,
+      category: occ.category,
+      allDay: occ.allDay,
+    });
+    if (googleEventId) {
+      await prisma.calendarEvent.update({
+        where: { id: occ.id },
+        data: { googleEventId },
+      }).catch(() => {});
+    }
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -83,6 +121,12 @@ export async function POST(request: Request) {
           });
           console.log(`Google Calendar event created for ${user}: ${googleEventId}`);
         }
+      }
+
+      // Sync the rest of the accepted series to Google Calendar too
+      if (acceptedEvent?.seriesId && isSeries) {
+        await syncSeriesOccurrencesToGoogle(user, acceptedEvent)
+          .catch((err: unknown) => console.error("Series Google sync failed:", err));
       }
 
       // Recalculate streaks after accepting
@@ -448,7 +492,17 @@ export async function POST(request: Request) {
         });
       }
 
-      // Delete from database (regardless of Google Calendar result — best effort)
+      // Delete from database (regardless of Google Calendar result — best effort).
+      // Memories cascade via FK, but their comments/reactions key on targetId
+      // strings — clean those up too.
+      const memoryIds = await prisma.memory.findMany({
+        where: { eventId },
+        select: { id: true },
+      });
+      for (const m of memoryIds) {
+        await prisma.comment.deleteMany({ where: { targetType: "memory", targetId: m.id } });
+        await prisma.reaction.deleteMany({ where: { targetType: "memory", targetId: m.id } });
+      }
       await prisma.calendarEvent.delete({
         where: { id: eventId }
       });
@@ -515,6 +569,12 @@ export async function GET(request: Request) {
         });
         console.log(`Google Calendar event created for ${acceptedBy}: ${googleEventId}`);
       }
+    }
+
+    // Sync the rest of the accepted series to Google Calendar too (email-link accept)
+    if (acceptedBy && acceptedEvent?.seriesId && isSeries) {
+      await syncSeriesOccurrencesToGoogle(acceptedBy, acceptedEvent)
+        .catch((err: unknown) => console.error("Series Google sync failed:", err));
     }
 
     await recalculateStreaks();

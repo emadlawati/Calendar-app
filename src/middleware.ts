@@ -7,7 +7,6 @@ const PUBLIC_PREFIXES = [
   "/login",
   "/api/auth",
   "/api/cron",
-  "/events/adjust",
   "/birthday",
   "/birthday/",
   "/_next",

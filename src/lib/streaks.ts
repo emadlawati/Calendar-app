@@ -1,11 +1,36 @@
 import prisma from "@/lib/prisma";
 import { BADGES, type Badge } from "@/lib/achievements";
-import { startOfWeek, addWeeks } from "date-fns";
 
 export interface StreakResult {
   currentStreak: number;
   longestStreak: number;
   newUnlocks: Badge[];
+}
+
+const TZ = "Asia/Muscat";
+
+/** Calendar date (YYYY-MM-DD) as experienced in Muscat. */
+function muscatDateStr(d: Date): string {
+  return d.toLocaleDateString("en-CA", { timeZone: TZ });
+}
+
+/**
+ * ISO Monday week-start (YYYY-MM-DD) for a YYYY-MM-DD date string.
+ * All arithmetic stays in UTC so results never depend on server timezone.
+ */
+function weekStartOf(dateStr: string): string {
+  const [y, m, day] = dateStr.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1, day));
+  const weekday = (d.getUTCDay() + 6) % 7; // Monday = 0
+  d.setUTCDate(d.getUTCDate() - weekday);
+  return d.toISOString().split("T")[0];
+}
+
+function previousWeek(weekStr: string): string {
+  const [y, m, day] = weekStr.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1, day));
+  d.setUTCDate(d.getUTCDate() - 7);
+  return d.toISOString().split("T")[0];
 }
 
 export async function recalculateStreaks(): Promise<StreakResult> {
@@ -15,72 +40,63 @@ export async function recalculateStreaks(): Promise<StreakResult> {
     orderBy: { date: "desc" },
   });
 
+  // Bucket by Muscat calendar week — a Sunday-evening date in the Gulf must
+  // not leak into the previous UTC week.
   const weekStarts = new Set<string>();
   for (const e of acceptedEvents) {
-    const monday = startOfWeek(new Date(e.date), { weekStartsOn: 1 });
-    weekStarts.add(monday.toISOString().split("T")[0]);
+    weekStarts.add(weekStartOf(muscatDateStr(new Date(e.date))));
   }
 
-  const sortedWeeks = Array.from(weekStarts)
-    .map((d) => new Date(d))
-    .sort((a, b) => b.getTime() - a.getTime());
+  const sortedWeeks = Array.from(weekStarts).sort().reverse();
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const thisWeekMonday = startOfWeek(today, { weekStartsOn: 1 });
+  const thisWeekMonday = weekStartOf(muscatDateStr(new Date()));
 
-  // Count consecutive weeks from this week backwards
+  // Count consecutive weeks from this week backwards. The 104-iteration cap
+  // guards runaway loops; a couple celebrating 2+ solid years can re-earn it.
   let currentStreak = 0;
   let checkWeek = thisWeekMonday;
-
-  for (let i = 0; i < 104; i++) {
-    const weekStr = checkWeek.toISOString().split("T")[0];
-    if (weekStarts.has(weekStr)) {
-      currentStreak++;
-      checkWeek = addWeeks(checkWeek, -1);
-    } else {
-      break;
-    }
+  while (weekStarts.has(checkWeek) && currentStreak < 104) {
+    currentStreak++;
+    checkWeek = previousWeek(checkWeek);
   }
 
-  // Longest streak: walk through all weeks
+  // Longest streak: walk through all weeks (oldest → newest)
   let longestStreak = 0;
-  if (sortedWeeks.length > 0) {
-    let run = 1;
-    longestStreak = 1;
-    for (let i = 1; i < sortedWeeks.length; i++) {
-      const expected = addWeeks(sortedWeeks[i - 1], -1);
-      if (sortedWeeks[i].toISOString().split("T")[0] === expected.toISOString().split("T")[0]) {
-        run++;
-        if (run > longestStreak) longestStreak = run;
-      } else {
-        run = 1;
-      }
+  let run = 0;
+  let expectNext: string | null = null;
+  for (let i = sortedWeeks.length - 1; i >= 0; i--) {
+    if (expectNext !== null && sortedWeeks[i] === expectNext) {
+      run++;
+    } else {
+      run = 1;
     }
+    if (run > longestStreak) longestStreak = run;
+    expectNext = previousWeek(sortedWeeks[i]);
   }
 
-  const now = new Date();
+  const bestEver = Math.max(longestStreak, currentStreak);
+  const lastWeekStart = new Date(`${thisWeekMonday}T00:00:00.000Z`);
 
-  // Update streak record
   await prisma.streak.upsert({
     where: { userId: "couple" },
     update: {
       currentStreak,
-      longestStreak: Math.max(longestStreak, currentStreak),
-      lastWeekStart: thisWeekMonday,
+      longestStreak: bestEver,
+      lastWeekStart,
     },
     create: {
       userId: "couple",
       currentStreak,
-      longestStreak: Math.max(longestStreak, currentStreak),
-      lastWeekStart: thisWeekMonday,
+      longestStreak: bestEver,
+      lastWeekStart,
     },
   });
 
-  // Check for newly unlocked achievements
+  // Check for newly unlocked achievements. Badges unlock on the best-ever
+  // streak — a couple whose 24-week run broke long ago has still earned it.
   const newUnlocks: Badge[] = [];
   for (const badge of BADGES) {
-    if (currentStreak >= badge.weeksRequired) {
+    if (bestEver >= badge.weeksRequired) {
       const existing = await prisma.achievement.findUnique({
         where: { userId_badgeId: { userId: "couple", badgeId: badge.id } },
       });
@@ -93,7 +109,7 @@ export async function recalculateStreaks(): Promise<StreakResult> {
     }
   }
 
-  return { currentStreak, longestStreak, newUnlocks };
+  return { currentStreak, longestStreak: bestEver, newUnlocks };
 }
 
 export async function getStreakData(): Promise<{
@@ -101,11 +117,10 @@ export async function getStreakData(): Promise<{
   longestStreak: number;
   achievements: { badgeId: string; unlockedAt: Date }[];
 }> {
-  let streak = await prisma.streak.findUnique({ where: { userId: "couple" } });
-  if (!streak) {
-    const result = await recalculateStreaks();
-    streak = await prisma.streak.findUnique({ where: { userId: "couple" } });
-  }
+  // Always recompute — reads used to return stale rows whenever no accept
+  // had triggered a recalculation (e.g. weeks with no new activity).
+  await recalculateStreaks();
+  const streak = await prisma.streak.findUnique({ where: { userId: "couple" } });
 
   const achievements = await prisma.achievement.findMany({
     where: { userId: "couple" },

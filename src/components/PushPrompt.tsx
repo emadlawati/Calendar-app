@@ -1,8 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { BellIcon, XIcon } from "@/components/icons";
 
 type State = "unsupported" | "pending" | "loading" | "denied" | "local" | "subscribed";
 
@@ -95,7 +95,7 @@ export default function PushPrompt() {
               className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
             >
-              <Bell size={18} />
+              <BellIcon size={18} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
@@ -104,8 +104,8 @@ export default function PushPrompt() {
                    state === "local" ? "Only while app is open" :
                    "Get notified in the app!"}
                 </p>
-                <button onClick={() => setDismissed(true)} style={{ color: "var(--text-soft)", opacity: 0.5 }}>
-                  <X size={14} />
+                <button onClick={() => setDismissed(true)} aria-label="Dismiss" style={{ color: "var(--text-soft)", opacity: 0.5 }}>
+                  <XIcon size={14} />
                 </button>
               </div>
               <p className="text-[11px] mt-0.5 mb-2" style={{ color: "var(--text-soft)" }}>

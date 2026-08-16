@@ -36,10 +36,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const user = await getRequestUser(body.createdBy);
+    const user = await getRequestUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const photos = Array.isArray(body.photos) ? JSON.stringify(body.photos) : null;
-    const creator = user ?? "Husband";
+    const creator = user;
 
     // One memory per person per event — upsert on the (eventId, createdBy) pair,
     // so each partner keeps their own memory for the same event.
