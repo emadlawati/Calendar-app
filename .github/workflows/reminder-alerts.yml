@@ -1,0 +1,28 @@
+# 1-hour reminder alerts need a ~10-minute heartbeat, which Vercel's Hobby
+# plan doesn't allow (daily crons only). This workflow provides the heartbeat
+# for /api/cron/reminder-alerts; the daily digest stays on Vercel's cron.
+# CRON_SECRET is stored as a GitHub repository secret and must match the
+# Vercel environment variable of the same name.
+name: Reminder alerts
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: reminder-alerts
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reminder alerts
+        run: |
+          curl --silent --show-error --fail \
+            --max-time 120 \
+            --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.APP_BASE_URL || 'https://couples-shared-calendar.vercel.app' }}/api/cron/reminder-alerts"
