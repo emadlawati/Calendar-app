@@ -1,393 +1,508 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
+
+/* ==========================================================================
+   "Reading Room" — a private library.
+   Square corners, ruled paper, two accents (terracotta + gold), no gradients.
+   ========================================================================== */
 
 :root {
-  --bg:          #f5ede0;
-  --bg-grain:    rgba(120, 80, 40, 0.04);
-  --card-bg:     #fffaf2;
-  --card-border: #ead9bd;
-  --card-shadow: 0 1px 0 #fff inset, 0 12px 32px -16px rgba(80, 50, 20, 0.18);
-  --divider:     #ebd9ba;
+  /* ---- Reading Room palette ---- */
+  --paper:        #F7F5EC;
+  --card:         #FDFCF6;
+  --wash:         #EFF0E2;
+  --tint:         #EDEFE0;
 
-  --text:        #3b2716;
-  --text-soft:   #8a6f55;
-  --text-very:   #bba18a;
+  --rule-light:   #E4E4D4;
+  --rule:         #DCDCC8;
+  --rule-strong:  #C9CDB4;
 
-  --accent:      #6b3a1f;
-  --accent-soft: #f3dcc4;
-  --on-accent:   #fce8c8;
+  --ink:          #2E3B2A;
+  --green-deep:   #3F5136;
+  --green-darkest:#2A3626;
+  --sage:         #6E7F5C;
+  --sage-light:   #8FA97A;
+  --sage-pale:    #A9BC96;
+  --sage-paler:   #C2CCB2;
 
-  --input-bg:     #fff8ec;
-  --input-border: #e6d3b3;
+  --terracotta:   #B4614A;
+  --gold:         #C9A227;
 
-  --chip-bg:     #fbf2e1;
-  --chip-border: #ead9bd;
-  --chip-text:   #5a3a22;
+  --muted:        #6F7A64;
+  --faint:        #8A9179;
+  --ghost:        #A8AE97;
+  --ghost-light:  #C2C7B0;
 
-  --pop-bg:      #3b2716;
-  --pop-text:    #fce8c8;
-  --pop-shadow:  0 18px 40px -10px rgba(40, 20, 10, 0.45);
+  --sheet-shadow: 0 18px 44px -20px rgba(30, 40, 26, 0.34);
 
-  --danger:      #c14a33;
-  --danger-text: #ffffff;
-  --success:     #4a7c5c;
+  /* ---- Category identity: used ONLY as a 4px dot ---- */
+  --cat-betime-dot:       var(--terracotta);
+  --cat-outings-dot:      var(--sage);
+  --cat-occasions-dot:    var(--gold);
+  --cat-social-dot:       var(--terracotta);
+  --cat-errands-dot:      var(--sage);
+  --cat-appointments-dot: var(--faint);
+  --cat-other-dot:        var(--ghost);
 
-  --hero-gradient: linear-gradient(135deg, #6b3a1f 0%, #8a4a22 100%);
-  --hero-text:    #fce8c8;
+  /* Category "bg"/"text" are kept for legacy consumers, but resolve to
+     neutral paper tones so no category ever renders as a filled colour block. */
+  --cat-betime-bg: var(--tint);       --cat-betime-text: var(--ink);
+  --cat-outings-bg: var(--tint);      --cat-outings-text: var(--ink);
+  --cat-occasions-bg: var(--tint);    --cat-occasions-text: var(--ink);
+  --cat-social-bg: var(--tint);       --cat-social-text: var(--ink);
+  --cat-errands-bg: var(--tint);      --cat-errands-text: var(--ink);
+  --cat-appointments-bg: var(--tint); --cat-appointments-text: var(--ink);
+  --cat-other-bg: var(--tint);        --cat-other-text: var(--ink);
 
-  --today-bg:    #fae3b8;
-  --today-dot:   #d99a1c;
-  --today-text:  #7a4f10;
+  /* ---- Person tags ---- */
+  --person-family-bg:  var(--tint); --person-family-text:  var(--ink);
+  --person-couple-bg:  var(--tint); --person-couple-text:  var(--ink);
+  --person-wife-bg:    var(--tint); --person-wife-text:    var(--ink);
+  --person-husband-bg: var(--tint); --person-husband-text: var(--ink);
+  --person-child-bg:   var(--tint); --person-child-text:   var(--ink);
 
-  --panel-soft:   #fbeed7;
-  --panel-softer: #fbf2e1;
+  /* ---- Legacy aliases ----
+     Older components still reference these names; pointing them at the new
+     palette means the whole app picks up the redesign rather than sitting
+     in two visual languages at once. */
+  --bg:          var(--paper);
+  --bg-grain:    transparent;
+  --card-bg:     var(--card);
+  --card-border: var(--rule);
+  --card-shadow: none;
+  --divider:     var(--rule-light);
 
-  /* Calendar chips for highlights/reminders (they aren't categories) */
-  --chip-highlight:      #fff8e1;
-  --chip-highlight-text: #7c5c00;
-  --chip-highlight-dot:  #f9a825;
-  --chip-reminder:       #e8eaf6;
-  --chip-reminder-text:  #3949ab;
-  --chip-reminder-dot:   #5c6bc0;
+  --text:        var(--ink);
+  --text-soft:   var(--muted);
+  --text-very:   var(--faint);
 
-  /* Category palette (consumed as var() from lib/categories.ts) */
-  --cat-betime-bg:         #fce0d8; --cat-betime-text:         #9b3a2a; --cat-betime-dot:         #c14a33;
-  --cat-outings-bg:        #fae3b8; --cat-outings-text:        #8a5a14; --cat-outings-dot:        #c98a2a;
-  --cat-occasions-bg:      #f9d77a; --cat-occasions-text:      #7a4f10; --cat-occasions-dot:      #d99a1c;
-  --cat-social-bg:         #e6dccb; --cat-social-text:         #5e4a30; --cat-social-dot:         #a08868;
-  --cat-errands-bg:        #e4ddd0; --cat-errands-text:        #6b5840; --cat-errands-dot:        #8a7858;
-  --cat-appointments-bg:   #dde5ec; --cat-appointments-text:   #33506b; --cat-appointments-dot:   #4d7599;
-  --cat-other-bg:          #dfd6c6; --cat-other-text:          #5a4a35; --cat-other-dot:          #8a7858;
+  --accent:      var(--green-deep);
+  --accent-soft: var(--tint);
+  --on-accent:   var(--paper);
 
-  /* Person-tag palette (consumed as var() from lib/people.ts) */
-  --person-family-bg:  #e8d6c2; --person-family-text:  #6b3a1f;
-  --person-couple-bg:  #fce0d8; --person-couple-text:  #9b3a2a;
-  --person-wife-bg:    #f3dcc4; --person-wife-text:    #6b3a1f;
-  --person-husband-bg: #f0e0d0; --person-husband-text: #6b3a1f;
-  --person-child-bg:   #dde5ec; --person-child-text:   #33506b;
+  --input-bg:     var(--card);
+  --input-border: var(--rule);
+
+  --chip-bg:     var(--wash);
+  --chip-border: var(--rule-strong);
+  --chip-text:   var(--ink);
+
+  --pop-bg:      var(--green-deep);
+  --pop-text:    var(--paper);
+  --pop-shadow:  var(--sheet-shadow);
+
+  --danger:      var(--terracotta);
+  --danger-text: var(--paper);
+  --success:     var(--sage);
+
+  --hero-gradient: var(--green-deep);
+  --hero-text:     var(--paper);
+
+  --today-bg:    var(--green-deep);
+  --today-dot:   var(--gold);
+  --today-text:  var(--paper);
+
+  --panel-soft:   var(--wash);
+  --panel-softer: var(--tint);
+
+  --chip-highlight:      var(--wash);
+  --chip-highlight-text: var(--ink);
+  --chip-highlight-dot:  var(--gold);
+  --chip-reminder:       var(--wash);
+  --chip-reminder-text:  var(--ink);
+  --chip-reminder-dot:   var(--faint);
 
   color-scheme: light;
 }
 
+/* Dark reading room — same structure, lamplight instead of daylight.
+   The spec is a light design; this keeps the existing theme toggle usable
+   rather than leaving dark mode broken. */
 .dark {
-  --bg:          #1a1410;
-  --bg-grain:    rgba(180, 140, 100, 0.03);
-  --card-bg:     #2a1f18;
-  --card-border: #3d3028;
-  --card-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 12px 32px -16px rgba(0,0,0,0.5);
-  --divider:     #3d3028;
+  --paper:        #1B1F19;
+  --card:         #232820;
+  --wash:         #272D23;
+  --tint:         #2F3629;
 
-  --text:        #f0e4d4;
-  --text-soft:   #b8a088;
-  --text-very:   #7a6854;
+  --rule-light:   #333A2D;
+  --rule:         #3C4435;
+  --rule-strong:  #4E5843;
 
-  --accent:      #d49a6a;
-  --accent-soft: #3d2a1a;
-  --on-accent:   #1a1410;
+  --ink:          #E7E9DC;
+  --green-deep:   #7E9469;
+  --green-darkest:#141811;
+  --sage:         #8FA97A;
+  --sage-light:   #A9BC96;
+  --sage-pale:    #C2CCB2;
+  --sage-paler:   #D6DDC9;
 
-  --input-bg:     #2a1f18;
-  --input-border: #4a3a2c;
+  --terracotta:   #D0836A;
+  --gold:         #D8B44A;
 
-  --chip-bg:     #35281e;
-  --chip-border: #4a3a2c;
-  --chip-text:   #d4b896;
+  --muted:        #A7AF9B;
+  --faint:        #8D9681;
+  --ghost:        #6C7461;
+  --ghost-light:  #565D4D;
 
-  --pop-bg:      #4a3a2c;
-  --pop-text:    #f0e4d4;
-  --pop-shadow:  0 18px 40px -10px rgba(0,0,0,0.7);
+  --sheet-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.72);
 
-  --danger:      #e0785b;
-  --danger-text: #1a1410;
-  --success:     #7ab894;
-
-  --hero-gradient: linear-gradient(135deg, #4a3020 0%, #6b3a1f 100%);
-  --hero-text:    #fce8c8;
-
-  --today-bg:    #4a3520;
-  --today-dot:   #d9a92a;
-  --today-text:  #e0c284;
-
-  --panel-soft:   #33261c;
-  --panel-softer: #2e221a;
-
-  --chip-highlight:      #3d3312;
-  --chip-highlight-text: #e0c878;
-  --chip-highlight-dot:  #b89022;
-  --chip-reminder:       #232a3d;
-  --chip-reminder-text:  #a8b2dd;
-  --chip-reminder-dot:   #6a7ac0;
-
-  --cat-betime-bg:         #4a2820; --cat-betime-text:         #f3b8a8; --cat-betime-dot:         #d47862;
-  --cat-outings-bg:        #443318; --cat-outings-text:        #ecc98a; --cat-outings-dot:        #d99a3a;
-  --cat-occasions-bg:      #4a3a14; --cat-occasions-text:      #edcf8a; --cat-occasions-dot:      #d9a92a;
-  --cat-social-bg:         #3a3226; --cat-social-text:         #cfc0a8; --cat-social-dot:         #b09878;
-  --cat-errands-bg:        #35302a; --cat-errands-text:        #c6bba8; --cat-errands-dot:        #9a8868;
-  --cat-appointments-bg:   #24303c; --cat-appointments-text:   #a8c4dd; --cat-appointments-dot:   #5d87ab;
-  --cat-other-bg:          #352e26; --cat-other-text:          #cfc0ac; --cat-other-dot:         #9a8868;
-
-  --person-family-bg:  #403426; --person-family-text:  #d9c4ac;
-  --person-couple-bg:  #46281f; --person-couple-text:  #f0b8a5;
-  --person-wife-bg:    #3d2c1c; --person-wife-text:    #e3c9a8;
-  --person-husband-bg: #383026; --person-husband-text: #dccbb4;
-  --person-child-bg:   #24303c; --person-child-text:   #a8c4dd;
+  --card-shadow: none;
+  --on-accent:   var(--green-darkest);
+  --today-text:  var(--green-darkest);
+  --danger-text: var(--green-darkest);
+  --hero-text:   var(--paper);
+  --pop-text:    var(--paper);
 
   color-scheme: dark;
 }
 
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
 body {
-  background: var(--bg);
-  background-image: radial-gradient(var(--bg-grain) 1px, transparent 1px);
-  background-size: 14px 14px;
-  font-family: var(--font-outfit), -apple-system, sans-serif;
-  color: var(--text);
+  background: var(--paper);
+  font-family: var(--font-ui), -apple-system, sans-serif;
+  color: var(--ink);
+  font-size: 13.5px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-.heading-font { font-family: var(--font-caprasimo), cursive; }
-
-/* ------ Inputs ------ */
-.input, input[type=text], input[type=date], input[type=time], textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1.5px solid var(--input-border);
-  border-radius: 12px;
-  background: var(--input-bg);
-  color: var(--text);
-  font: 13px var(--font-outfit), sans-serif;
-  outline: none;
-  transition: border-color .15s;
-}
-input:focus, textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(107, 58, 31, 0.08);
-}
-.dark input:focus, .dark textarea:focus {
-  box-shadow: 0 0 0 3px rgba(212, 154, 106, 0.12);
-}
-
-.field-label {
-  font: 600 12px var(--font-outfit), sans-serif;
-  color: var(--text);
-  margin-bottom: 6px;
-  letter-spacing: 0.02em;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* ------ Calendar card wrapper ------ */
-.calendar-card {
-  background: var(--card-bg);
-  border-radius: 24px;
-  border: 1px solid var(--card-border);
-  box-shadow: var(--card-shadow);
-  overflow: hidden;
-}
-
-/* ------ react-big-calendar overrides ------ */
-.calendar-custom {
-  font-family: var(--font-outfit), sans-serif;
-  min-height: 400px;
-}
-
-/* Toolbar */
-.calendar-custom .rbc-toolbar {
-  margin-bottom: 0;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--divider);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-}
-.calendar-custom .rbc-toolbar .rbc-btn-group {
-  display: flex;
-  gap: 4px;
-}
-.calendar-custom .rbc-toolbar button {
-  font-family: var(--font-outfit), sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 13px;
-  border-radius: 999px;
-  border: none;
-  background: transparent;
-  color: var(--text-soft);
-  transition: all .15s;
-}
-.calendar-custom .rbc-toolbar button:hover {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-.calendar-custom .rbc-toolbar button.rbc-active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
-}
-.calendar-custom .rbc-toolbar .rbc-toolbar-label {
-  font-family: var(--font-caprasimo), cursive;
-  font-size: 20px;
-  color: var(--accent);
-  text-align: center;
-  flex: 1;
-}
-
-/* Weekday header */
-.calendar-custom .rbc-month-header {
-  background: var(--bg);
-}
-.calendar-custom .rbc-header {
-  padding: 10px 0;
-  border: none;
-  font-family: var(--font-caprasimo), cursive;
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  color: var(--text-soft);
-  text-transform: lowercase;
-}
-
-/* Month view */
-.calendar-custom .rbc-month-view {
+/* Square corners everywhere. The circular FAB opts back in explicitly. */
+*,
+*::before,
+*::after {
   border-radius: 0;
-  border: none;
-  background: transparent;
 }
-.calendar-custom .rbc-month-row {
-  border-top: 1px solid var(--divider);
-  min-height: 96px;
-}
-.calendar-custom .rbc-day-bg {
-  border: 1px solid var(--divider);
-  transition: background .15s;
-}
-.calendar-custom .rbc-day-bg:hover {
-  background: rgba(245, 237, 224, 0.3);
-}
-.dark .calendar-custom .rbc-day-bg:hover {
-  background: rgba(212, 154, 106, 0.06);
+.rr-round,
+.rr-round * {
+  border-radius: 999px;
 }
 
-/* In-month weekend */
-
-/* Today */
-.calendar-custom .rbc-today {
-  background: var(--today-bg) !important;
-}
-.calendar-custom .rbc-today .rbc-day-bg {
-  background: var(--today-bg);
+::selection {
+  background: var(--tint);
+  color: var(--ink);
 }
 
-/* Off-range */
-.calendar-custom .rbc-off-range-bg {
-  background: rgba(245, 237, 224, 0.7);
-  opacity: 0.55;
-}
-.dark .calendar-custom .rbc-off-range-bg {
-  background: rgba(26, 20, 16, 0.7);
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+.rr-display,
+.heading-font {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+  letter-spacing: 0.002em;
 }
 
-/* Day numbers */
-.calendar-custom .rbc-date-cell {
-  font-family: var(--font-caprasimo), cursive;
-  font-size: 14px;
-  color: var(--text);
-  padding: 4px 8px;
-  text-align: left;
-}
-.calendar-custom .rbc-off-range .rbc-date-cell {
-  color: var(--text-very);
-}
-
-/* Today day number */
-.calendar-custom .rbc-today .rbc-date-cell {
-  color: var(--accent);
-  font-size: 16px;
+.rr-italic {
+  font-family: var(--font-display), Georgia, serif;
+  font-style: italic;
   font-weight: 400;
 }
 
-/* Event chips */
-.calendar-custom .rbc-event {
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
+/* Section labels: KARLA, 10.5px, .22em, uppercase */
+.rr-label {
+  font-family: var(--font-ui), sans-serif;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--faint);
+  font-weight: 600;
 }
-.calendar-custom .rbc-event-content {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 7px 4px 6px;
-  border-radius: 8px;
+
+.rr-meta {
+  font-family: var(--font-ui), sans-serif;
   font-size: 11px;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* ==========================================================================
+   Paper objects
+   ========================================================================== */
+
+.rr-card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+}
+
+/* The title page: outer strong rule, 6px breath, inner rule. */
+.rr-double {
+  border: 1px solid var(--rule-strong);
+  padding: 6px;
+  background: var(--card);
+}
+.rr-double > * {
+  border: 1px solid var(--rule);
+  padding: 20px;
+  height: 100%;
+}
+
+.rr-hairline { border-top: 1px solid var(--rule-light); }
+.rr-hairline-strong { border-top: 1px solid var(--rule-strong); }
+.rr-dotted { border-top: 1px dotted var(--rule-strong); }
+
+/* Stamp: text in a 1px terracotta box */
+.rr-stamp {
+  display: inline-block;
+  border: 1px solid var(--terracotta);
+  color: var(--terracotta);
+  font-family: var(--font-ui), sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* Quote: 2px gold left rule + italic Cormorant */
+.rr-quote {
+  border-left: 2px solid var(--gold);
+  padding-left: 14px;
+  font-family: var(--font-display), Georgia, serif;
+  font-style: italic;
+  color: var(--ink);
+}
+
+/* Photo entries: a 12px paper frame, nothing rounded. */
+.rr-frame {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  padding: 12px;
+}
+.rr-frame img {
+  display: block;
+  width: 100%;
+  object-fit: cover;
+}
+
+/* Category dot — the only place category colour appears. */
+.rr-dot {
+  width: 4px;
+  height: 4px;
+  display: inline-block;
+  flex: none;
+}
+
+/* ==========================================================================
+   Controls
+   ========================================================================== */
+
+.rr-action {
+  font-family: var(--font-ui), sans-serif;
+  font-size: 12.5px;
+  color: var(--sage);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+.rr-action:hover { color: var(--ink); }
+.rr-action-danger { color: var(--terracotta); }
+
+.rr-btn {
+  background: var(--green-deep);
+  color: var(--paper);
+  border: none;
+  font-family: var(--font-ui), sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 14px 20px;
+  cursor: pointer;
+  transition: background .15s;
+  min-height: 44px;
+}
+.rr-btn:hover { background: var(--green-darkest); }
+.rr-btn:disabled { background: var(--ghost); cursor: default; }
+
+.rr-btn-quiet {
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  color: var(--ink);
+  font-family: var(--font-ui), sans-serif;
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  padding: 12px 18px;
+  cursor: pointer;
+  min-height: 44px;
+}
+.rr-btn-quiet:hover { background: var(--tint); }
+
+/* Square chips (subject / attending) */
+.rr-chip {
+  border: 1px solid var(--rule-strong);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-ui), sans-serif;
+  font-size: 12.5px;
+  padding: 10px 14px;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background .12s, border-color .12s;
+}
+.rr-chip:hover { background: var(--tint); }
+.rr-chip[data-selected="true"] {
+  background: var(--green-deep);
+  border-color: var(--green-deep);
+  color: var(--paper);
+}
+
+/* Text filters (no pills) — active is ink/bold with a terracotta underline */
+.rr-filter {
+  font-family: var(--font-ui), sans-serif;
+  font-size: 12.5px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 8px 0;
+  cursor: pointer;
+  border-bottom: 1.5px solid transparent;
+}
+.rr-filter[data-active="true"] {
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom-color: var(--terracotta);
+}
+
+/* Tabs on a shared baseline */
+.rr-tabs {
+  display: flex;
+  gap: 26px;
+  border-bottom: 1px solid var(--rule);
+}
+.rr-tab {
+  font-family: var(--font-ui), sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 0 0 10px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
 }
-/* Chip contents — CSS hover instead of per-chip framer instances */
-.calendar-custom .event-chip {
+.rr-tab[data-active="true"] {
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom-color: var(--terracotta);
+}
+
+/* The one circle in the app. */
+.rr-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 28px;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--green-deep);
+  color: var(--paper);
+  border: none;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
-  transition: transform 0.12s ease;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--sheet-shadow);
+  z-index: 40;
 }
-.calendar-custom .event-chip:hover {
-  transform: scale(1.03);
-}
+.rr-fab:hover { background: var(--green-darkest); }
 
-/* Show more link */
-.calendar-custom .rbc-show-more {
-  font-weight: 600;
-  color: var(--text-soft);
-  font-size: 11px;
-  background: transparent;
-  padding: 2px 6px;
+/* Hamburger: a 36px ruled square */
+.rr-hamburger {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--rule);
+  background: var(--card);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: none;
 }
+.rr-hamburger:hover { background: var(--tint); }
 
-/* Week / Day views */
-.calendar-custom .rbc-time-view {
-  border-radius: 0;
+/* ==========================================================================
+   Inputs — borderless on a ruled line
+   ========================================================================== */
+
+.input,
+input[type=text],
+input[type=date],
+input[type=time],
+input[type=search],
+textarea,
+select {
+  width: 100%;
+  padding: 10px 0;
   border: none;
+  border-bottom: 1px solid var(--rule-strong);
   background: transparent;
+  color: var(--ink);
+  font-family: var(--font-ui), sans-serif;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color .15s;
 }
-.calendar-custom .rbc-time-header {
-  border-bottom: 1px solid var(--divider);
+input::placeholder,
+textarea::placeholder {
+  color: var(--ghost);
+  font-family: var(--font-display), Georgia, serif;
+  font-style: italic;
 }
-.calendar-custom .rbc-time-header-content {
-  border-left: none;
-}
-.calendar-custom .rbc-time-content {
-  border-top: 1px solid var(--divider);
-}
-.calendar-custom .rbc-time-content .rbc-timeslot-group {
-  border-bottom: 1px solid rgba(235, 217, 186, 0.4);
-  min-height: 48px;
-}
-.calendar-custom .rbc-time-content .rbc-time-gutter {
-  font: 11px var(--font-outfit), sans-serif;
-  color: var(--text-soft);
-  font-weight: 600;
-}
-.calendar-custom .rbc-current-time-indicator {
-  background-color: var(--accent);
-  height: 2px;
+input:focus,
+textarea:focus,
+select:focus {
+  border-bottom-color: var(--terracotta);
 }
 
-/* ------ Modal bases ------ */
-/* Layered so Tailwind utilities (max-h, rounded-*) can still override them. */
+/* Boxed variant for composer fields / marginalia */
+.rr-field {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  padding: 12px 14px;
+}
+.rr-field textarea,
+.rr-field input {
+  border-bottom: none;
+  padding: 0;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 17px;
+}
+
+.field-label {
+  font-family: var(--font-ui), sans-serif;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--faint);
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* ==========================================================================
+   Legacy component shims — keep un-rewritten pieces in the new language
+   ========================================================================== */
+
 @layer components {
   .modal-backdrop {
-    background: rgba(40, 25, 15, 0.45);
-    backdrop-filter: blur(6px);
+    background: rgba(20, 26, 18, 0.55);
   }
   .modal-shell {
-    background: var(--card-bg);
-    border-radius: 28px;
-    box-shadow: 0 30px 80px -20px rgba(40, 20, 5, 0.5);
+    background: var(--card);
+    border: 1px solid var(--rule-strong);
+    box-shadow: var(--sheet-shadow);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -395,199 +510,81 @@ input:focus, textarea:focus {
   }
 }
 
-/* Accent button */
-.btn-accent {
-  background: var(--accent);
-  color: var(--on-accent);
+.calendar-card,
+.note-card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  box-shadow: none;
+}
+
+.btn-accent,
+.btn-send {
+  background: var(--green-deep);
+  color: var(--paper);
   border: none;
-  border-radius: 999px;
-  padding: 14px 22px;
-  font: 600 15px var(--font-outfit), sans-serif;
-  box-shadow: 0 14px 32px -10px rgba(60, 30, 10, 0.55);
+  padding: 13px 20px;
+  font-family: var(--font-ui), sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: none;
   cursor: pointer;
-  transition: transform .15s, box-shadow .15s;
   display: flex;
   align-items: center;
   gap: 10px;
+  transition: background .15s;
 }
-.btn-accent:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 38px -10px rgba(60, 30, 10, 0.6);
-}
-.btn-accent:active {
-  transform: scale(0.97);
-}
+.btn-accent:hover,
+.btn-send:hover { background: var(--green-darkest); transform: none; }
+.btn-send:disabled { background: var(--ghost); }
 
-/* Send invite button (in modal footer) */
-.btn-send {
-  background: var(--accent);
-  color: var(--on-accent);
-  border: none;
-  border-radius: 12px;
-  padding: 10px 22px;
-  font: 600 14px var(--font-outfit), sans-serif;
-  box-shadow: 0 6px 14px -6px rgba(60, 30, 10, 0.5);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all .15s;
-}
-.btn-send:hover { opacity: 0.92; transform: translateY(-1px); }
-.btn-send:active { transform: scale(0.97); }
-.btn-send:disabled { opacity: 0.5; cursor: wait; }
-
-/* Chip pill */
 .chip-pill {
-  background: var(--chip-bg);
-  border: 1px solid var(--chip-border);
-  color: var(--chip-text);
-  border-radius: 999px;
-  padding: 5px 11px;
-  font-size: 11px;
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  color: var(--ink);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: var(--font-ui), sans-serif;
   cursor: pointer;
-  transition: all .12s;
+  transition: background .12s;
 }
-.chip-pill:hover {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
+.chip-pill:hover { background: var(--tint); border-color: var(--rule-strong); }
 
-/* Note card */
-.note-card {
-  background: var(--card-bg);
-  border-radius: 22px;
-  border: 1px solid var(--card-border);
-  box-shadow: var(--card-shadow);
-}
+/* ==========================================================================
+   Utility
+   ========================================================================== */
 
-/* Utility */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Skeleton loading shimmer */
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: var(--chip-bg);
-  border-radius: 12px;
+  background: var(--wash);
 }
 .skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.35),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
   animation: skeleton-shimmer 1.6s ease-in-out infinite;
 }
 .dark .skeleton::after {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.06),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
 }
 @keyframes skeleton-shimmer {
   100% { transform: translateX(100%); }
 }
 
-/* Floating hearts animation */
-@keyframes float {
-  0% { transform: translateY(0) rotate(0deg); opacity: 0; }
-  20% { opacity: 0.3; }
-  80% { opacity: 0.3; }
-  100% { transform: translateY(-120px) rotate(15deg); opacity: 0; }
-}
-.animate-float { animation: float 8s ease-in-out infinite; }
-
-/* Responsive — mobile */
-@media (max-width: 640px) {
-  /* Toolbar: compact horizontal layout */
-  .calendar-custom .rbc-toolbar {
-    padding: 10px 12px;
-    gap: 4px;
-    flex-wrap: nowrap;
-  }
-  .calendar-custom .rbc-toolbar .rbc-toolbar-label {
-    font-size: 16px;
-    flex: 1;
-    text-align: center;
-    order: 0;
-  }
-  .calendar-custom .rbc-toolbar .rbc-btn-group {
-    display: flex;
-    gap: 2px;
-  }
-  .calendar-custom .rbc-toolbar .rbc-btn-group:first-child {
-    order: -1;
-  }
-  .calendar-custom .rbc-toolbar .rbc-btn-group:last-child {
-    order: 1;
-  }
-  .calendar-custom .rbc-toolbar button {
-    font-size: 11px;
-    padding: 6px 8px;
-  }
-
-  /* Calendar card tighter radius */
-  .calendar-card {
-    border-radius: 18px;
-  }
-
-  /* Month grid — taller rows, better readability */
-  .calendar-custom .rbc-month-row {
-    min-height: 64px;
-  }
-  .calendar-custom .rbc-date-cell {
-    font-size: 12px;
-    padding: 3px 5px;
-  }
-  .calendar-custom .rbc-header {
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    padding: 8px 0;
-  }
-  .calendar-custom .rbc-event-content {
-    font-size: 11px;
-    padding: 2px 5px;
-    gap: 4px;
-  }
-
-  /* Week/Day views — tighter on mobile */
-  .calendar-custom .rbc-time-content .rbc-timeslot-group {
-    min-height: 40px;
-  }
-
-  /* Modal — full-screen on mobile */
-  .modal-shell {
-    border-radius: 20px;
-  }
-
-  /* Floating buttons safe area */
-  .calendar-custom {
-    min-height: 340px;
-  }
+/* Reading width */
+.rr-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 22px 120px;
 }
 
-/* Extra small screens */
-@media (max-width: 380px) {
-  .calendar-custom .rbc-toolbar button {
-    font-size: 10px;
-    padding: 5px 6px;
-  }
-  .calendar-custom .rbc-toolbar .rbc-toolbar-label {
-    font-size: 14px;
-  }
-  .calendar-custom .rbc-month-row {
-    min-height: 56px;
-  }
-  .calendar-custom .rbc-date-cell {
-    font-size: 11px;
-  }
+@media (min-width: 1024px) {
+  .rr-page { padding-left: 34px; padding-right: 34px; }
 }

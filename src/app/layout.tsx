@@ -1,34 +1,37 @@
 import type { Metadata, Viewport } from "next";
-import { Caprasimo, Outfit } from "next/font/google";
+import { Cormorant_Garamond, Karla } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/components/SessionProvider";
 import ThemeProvider from "@/components/ThemeProvider";
 
-const caprasimo = Caprasimo({
-  weight: "400",
+// Display / content nouns — titles, entries, quotes.
+const cormorant = Cormorant_Garamond({
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
   subsets: ["latin"],
-  variable: "--font-caprasimo",
+  variable: "--font-display",
 });
 
-const outfit = Outfit({
+// UI, labels, numbers.
+const karla = Karla({
   weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
-  variable: "--font-outfit",
+  variable: "--font-ui",
 });
 
 export const metadata: Metadata = {
-  title: "Purrfect Plans — Couple's Calendar",
-  description: "A cozy calendar for planning dates together.",
+  title: "Our Calendar",
+  description: "A private library of days kept together.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Purrfect Plans",
+    title: "Our Calendar",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#6b3a1f",
+  themeColor: "#3F5136",
   width: "device-width",
   initialScale: 1,
 };
@@ -49,7 +52,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${caprasimo.variable} ${outfit.variable}`}>
+      <body className={`${cormorant.variable} ${karla.variable}`}>
         <ThemeProvider>
           <SessionProvider>
             {children}

@@ -1,584 +1,312 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar";
-import { format, parse, startOfWeek, getDay } from "date-fns";
-import { enUS } from "date-fns/locale";
-import "react-big-calendar/lib/css/react-big-calendar.css";
-import UserMenu from "@/components/UserMenu";
-import EventModal from "@/components/EventModal";
-import DetailsModal from "@/components/DetailsModal";
-import CountdownBanner from "@/components/CountdownBanner";
-import StreakBanner from "@/components/StreakBanner";
-import BucketListDrawer from "@/components/BucketListDrawer";
-import Toast from "@/components/Toast";
-import InfoBanner from "@/components/InfoBanner";
-import FloatingActions from "@/components/FloatingActions";
-import { CalendarSkeleton } from "@/components/Skeleton";
-import { useSession } from "@/components/SessionProvider";
-import { triggerConfetti } from "@/lib/confetti";
-import { getCategoryById } from "@/lib/categories";
-import { PEOPLE } from "@/lib/people";
-import { specialDateLabel, linkableSpecialDates } from "@/lib/special-date-display";
-import { CategoryIcons, HighlightStarIcon, CameraIcon, BellIcon, PersonIcons, XIcon } from "@/components/icons";
-import type { CalendarEvent, SpecialDateWithCountdown, StreakData, PendingMemory, Reminder, DailyHighlight } from "@/lib/types";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import AppShell, { Fab } from "@/components/AppShell";
+import BookGlyph from "@/components/BookGlyph";
+import EntrySheet from "@/components/EntrySheet";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
 import PushPrompt from "@/components/PushPrompt";
-import ReminderModal from "@/components/ReminderModal";
-import DailyHighlightModal from "@/components/DailyHighlightModal";
-import HighlightViewModal from "@/components/HighlightViewModal";
+import Toast from "@/components/Toast";
+import Skeleton from "@/components/Skeleton";
+import { useSession } from "@/components/SessionProvider";
+import { getCategoryById } from "@/lib/categories";
+import { getVolumeInfo, spellDate, catalogueNumber } from "@/lib/volume";
+import { specialDateLabel } from "@/lib/special-date-display";
+import type {
+  CalendarEvent, SpecialDateWithCountdown, PendingMemory, User,
+} from "@/lib/types";
 
-const TIMEZONE = "+04:00";
+const TZ = "+04:00";
 
-const locales = { "en-US": enUS };
-const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
+interface LastEntry {
+  id: string;
+  journal: string | null;
+  photos: string | null;
+  createdBy: User;
+  event: { title: string; date: string; category: string | null };
+}
 
-interface CalendarViewEvent extends CalendarEvent {
-  start: Date;
-  end: Date;
-  isReminder?: boolean;
-  isHighlight?: boolean;
-  highlightDate?: string;
-  highlightId?: string;
+/** Muscat-local midnight for a YYYY-MM-DD(THH:MM) string. */
+function dayStart(iso: string): Date {
+  return new Date(`${iso.split("T")[0]}T00:00:00${TZ}`);
+}
+
+function spanOf(e: CalendarEvent) {
+  const start = dayStart(e.date as string);
+  const end = e.endDate ? dayStart(e.endDate as string) : start;
+  return { start, end };
+}
+
+function daysBetween(from: Date, to: Date) {
+  return Math.round((to.getTime() - from.getTime()) / 86_400_000);
 }
 
 export default function Home() {
-  const { isLoading: isSessionLoading } = useSession();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedEvent, setSelectedEvent] = useState<CalendarViewEvent | null>(null);
-  const [events, setEvents] = useState<CalendarViewEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [view, setView] = useState<View>(Views.MONTH);
-  const [showArchived, setShowArchived] = useState(false);
-  const [isBucketDrawerOpen, setIsBucketDrawerOpen] = useState(false);
+  const router = useRouter();
+  const { isLoading: sessionLoading } = useSession();
+
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [specialDates, setSpecialDates] = useState<SpecialDateWithCountdown[]>([]);
-  const [streakData, setStreakData] = useState<StreakData | null>(null);
-  const [pendingMemory, setPendingMemory] = useState<PendingMemory | null>(null);
-  const [isRateModalOpen, setIsRateModalOpen] = useState(false);
-  const [flashback, setFlashback] = useState<{ memory: { id: string; journal: string | null; photos: string | null; event: { id: string; title: string; category: string | null } }; yearsAgo: number } | null>(null);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
-  const [highlights, setHighlights] = useState<DailyHighlight[]>([]);
-  const [isHighlightModalOpen, setIsHighlightModalOpen] = useState(false);
-  const [highlightInitialDate, setHighlightInitialDate] = useState<string | undefined>(undefined);
-  const [highlightEditing, setHighlightEditing] = useState<DailyHighlight | null>(null);
-  const [viewHighlight, setViewHighlight] = useState<DailyHighlight | null>(null);
-  // Filters: show only events tagged to a person and/or linked to an occasion
-  const [filterPerson, setFilterPerson] = useState<string | null>(null);
-  const [filterOccasion, setFilterOccasion] = useState<string | null>(null);
+  const [lastEntry, setLastEntry] = useState<LastEntry | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const [sheetEvent, setSheetEvent] = useState<CalendarEvent | null>(null);
+  const [bindTarget, setBindTarget] = useState<PendingMemory | null>(null);
+
+  const [vol] = useState(() => getVolumeInfo());
+  const [today] = useState(() => new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Muscat" }) + `T00:00:00${TZ}`));
 
   const fetchEvents = useCallback(async () => {
     try {
-      setIsLoading(true);
-      const url = showArchived ? '/api/events?showArchived=true' : '/api/events';
-      const res = await fetch(url, { cache: 'no-store', next: { revalidate: 0 } });
+      const res = await fetch("/api/events", { cache: "no-store" });
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setEvents(data.map((event: CalendarEvent) => {
-          const datePart = new Date(event.date).toISOString().split('T')[0];
-          const endDatePart = event.endDate
-            ? new Date(event.endDate).toISOString().split('T')[0]
-            : datePart;
-          const start = new Date(`${datePart}T${event.time}:00${TIMEZONE}`);
-          let end: Date;
-          if (event.endTime) {
-            end = new Date(`${endDatePart}T${event.endTime}:00${TIMEZONE}`);
-          } else if (endDatePart !== datePart) {
-            // Multi-day without explicit end time — end at same clock time on the last day
-            end = new Date(`${endDatePart}T${event.time}:00${TIMEZONE}`);
-          } else {
-            end = new Date(start.getTime() + 60 * 60 * 1000);
-          }
-          return { ...event, start, end, allDay: event.allDay || false };
-        }));
-      }
-    } catch (err) {
-      console.error("Fetch Error:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showArchived]);
+      if (Array.isArray(data)) setEvents(data.filter((e: CalendarEvent) => !e.archived));
+    } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchEvents();
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('accepted') === 'true') {
-      setToastMessage("Meow! The plan has been accepted!");
-      triggerConfetti();
-      window.history.replaceState({}, '', '/');
-    } else if (urlParams.get('google') === 'connected') {
-      setToastMessage("Google Calendar connected!");
-      window.history.replaceState({}, '', '/');
-    } else if (urlParams.get('google') === 'error') {
-      setToastMessage("Could not connect Google Calendar. Please try again.");
-      window.history.replaceState({}, '', '/');
+    Promise.all([
+      fetchEvents(),
+      fetch("/api/special-dates").then((r) => r.json()).then((d) => {
+        if (Array.isArray(d)) setSpecialDates(d);
+      }).catch(() => {}),
+      fetch("/api/memories").then((r) => r.json()).then((d) => {
+        if (Array.isArray(d) && d.length > 0) setLastEntry(d[0]);
+      }).catch(() => {}),
+    ]).finally(() => setLoading(false));
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("accepted") === "true") {
+      setToast("The plan has been accepted.");
+      window.history.replaceState({}, "", "/");
+    } else if (params.get("google") === "connected") {
+      setToast("Google Calendar connected.");
+      window.history.replaceState({}, "", "/");
     }
   }, [fetchEvents]);
 
-  // Fetch streaks
-  useEffect(() => {
-    fetch("/api/streaks")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.currentStreak !== undefined) setStreakData(data);
+  /* ---- Which entry is open on the desk, and what comes later ---- */
+  const { desk, deskIsNow, later } = useMemo(() => {
+    const live = events.filter((e) => e.status !== "pending" || true);
+
+    const open = live
+      .filter((e) => {
+        const { start, end } = spanOf(e);
+        return start <= today && today <= end;
       })
-      .catch(() => {});
-  }, []);
+      .sort((a, b) => spanOf(a).start.getTime() - spanOf(b).start.getTime());
 
-  // Fetch special dates
-  useEffect(() => {
-    fetch("/api/special-dates")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setSpecialDates(data as SpecialDateWithCountdown[]);
-      })
-      .catch(() => {});
-  }, []);
+    const upcoming = live
+      .filter((e) => spanOf(e).start > today)
+      .sort((a, b) => spanOf(a).start.getTime() - spanOf(b).start.getTime());
 
-  // Check for pending memories to rate
-  useEffect(() => {
-    fetch("/api/memories/pending")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.event) setPendingMemory(data);
-      })
-      .catch(() => {});
-  }, []);
+    const deskEvent = open[0] ?? upcoming[0] ?? null;
+    const isNow = open.length > 0;
 
-  // "On this day" flashback
-  useEffect(() => {
-    fetch("/api/memories/flashback")
-      .then((r) => r.json())
-      .then((data) => { if (data?.memory) setFlashback(data); })
-      .catch(() => {});
-  }, []);
+    // Countdowns: remaining events + upcoming special dates, nearest first.
+    const eventRows = upcoming
+      .filter((e) => e.id !== deskEvent?.id)
+      .map((e) => ({ id: e.id, title: e.title, days: daysBetween(today, spanOf(e).start), href: "/calendar" }));
 
-  // Fetch reminders
-  const fetchReminders = useCallback(async () => {
-    fetch("/api/reminders")
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setReminders(data); })
-      .catch(() => {});
-  }, []);
+    const specialRows = specialDates
+      .filter((d) => d.daysLeft >= 0)
+      .map((d) => ({ id: d.id, title: specialDateLabel(d), days: d.daysLeft, href: "/calendar" }));
 
-  useEffect(() => {
-    fetchReminders();
-  }, [fetchReminders]);
+    const rows = [...eventRows, ...specialRows]
+      .sort((a, b) => a.days - b.days)
+      .slice(0, 2);
 
-  // Fetch highlights
-  const fetchHighlights = useCallback(async () => {
-    fetch("/api/highlights")
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setHighlights(data); })
-      .catch(() => {});
-  }, []);
+    return { desk: deskEvent, deskIsNow: isNow, later: rows };
+  }, [events, specialDates, today]);
 
-  useEffect(() => {
-    fetchHighlights();
-  }, [fetchHighlights]);
+  const deskCat = desk ? getCategoryById(desk.category) : null;
+  const deskSpan = desk ? spanOf(desk) : null;
+  const spanDays = deskSpan ? daysBetween(deskSpan.start, deskSpan.end) + 1 : 1;
+  const dayOfSpan = deskSpan ? Math.min(spanDays, daysBetween(deskSpan.start, today) + 1) : 1;
 
-  const handleSelectSlot = (slotInfo: { start: Date }) => {
-    setSelectedDate(slotInfo.start);
-    setIsModalOpen(true);
-  };
-
-  const handleSelectEvent = (event: CalendarViewEvent) => {
-    // Highlights — open the read-only view modal for that specific highlight
-    if (event.isHighlight) {
-      const existing = highlights.find((h) => h.id === event.highlightId) ?? null;
-      if (existing) setViewHighlight(existing);
-      return;
-    }
-    // Reminders are not full calendar events — skip the details modal
-    if (event.isReminder) return;
-    setSelectedEvent(event);
-    setIsDetailsOpen(true);
-  };
-
-  const eventStyleGetter = (event: CalendarViewEvent) => {
-    if (event.isHighlight) {
-      return {
-        style: {
-          backgroundColor: "var(--chip-highlight)",
-          color: "var(--chip-highlight-text)",
-          borderLeft: "3px solid var(--chip-highlight-dot)",
-          borderRadius: "8px",
-          padding: "4px 7px 4px 6px",
-          fontSize: "11.5px",
-          fontWeight: 500,
-          display: "flex" as const,
-          alignItems: "center" as const,
-          gap: "6px",
-          overflow: "hidden" as const,
-          textOverflow: "ellipsis" as const,
-          whiteSpace: "nowrap" as const,
-          cursor: "pointer",
-        },
-      };
-    }
-    if (event.isReminder) {
-      return {
-        style: {
-          backgroundColor: "var(--chip-reminder)",
-          color: "var(--chip-reminder-text)",
-          borderLeft: "3px solid var(--chip-reminder-dot)",
-          borderRadius: "8px",
-          padding: "4px 7px 4px 6px",
-          fontSize: "11.5px",
-          fontWeight: 500,
-          display: "flex" as const,
-          alignItems: "center" as const,
-          gap: "6px",
-          overflow: "hidden" as const,
-          textOverflow: "ellipsis" as const,
-          whiteSpace: "nowrap" as const,
-          cursor: "pointer",
-        },
-      };
-    }
-    const cat = getCategoryById(event.category);
-    return {
-      style: {
-        backgroundColor: cat.color,
-        color: cat.textColor,
-        borderLeft: `3px solid ${cat.dotColor}`,
-        borderRadius: "8px",
-        padding: "4px 7px 4px 6px",
-        fontSize: "11.5px",
-        fontWeight: 500,
-        display: "flex" as const,
-        alignItems: "center" as const,
-        gap: "6px",
-        overflow: "hidden" as const,
-        textOverflow: "ellipsis" as const,
-        whiteSpace: "nowrap" as const,
-        cursor: "pointer",
-      },
-    };
-  };
-
-  // Merge reminders into the calendar events array
-  const reminderEvents: CalendarViewEvent[] = reminders.map((r) => {
-    const datePart = new Date(r.date).toISOString().split("T")[0];
-    const start = new Date(`${datePart}T${r.time}:00${TIMEZONE}`);
-    const end = r.endTime
-      ? new Date(`${datePart}T${r.endTime}:00${TIMEZONE}`)
-      : new Date(start.getTime() + 60 * 60 * 1000);
-    return {
-      id: r.id,
-      title: r.title,
-      notes: null,
-      date: r.date,
-      time: r.time,
-      endTime: r.endTime ?? null,
-      category: null,
-      allDay: false,
-      createdBy: r.createdBy,
-      status: "accepted" as const,
-      archived: false,
-      createdAt: r.createdAt,
-      updatedAt: r.createdAt,
-      start,
-      end,
-      isReminder: true,
-    };
-  });
-
-  // Map highlights to calendar events (show as all-day chips)
-  const highlightEvents: CalendarViewEvent[] = highlights.map((h) => {
-    const [y, m, d] = h.date.split("-").map(Number);
-    const dayStart = new Date(y, m - 1, d, 0, 0, 0);
-    const dayEnd = new Date(y, m - 1, d, 0, 30, 0); // 30 min block so it shows
-    const noteSnippet = h.note ? h.note.slice(0, 30) + (h.note.length > 30 ? "…" : "") : "Today's highlight";
-    return {
-      id: `highlight-${h.id}`,
-      title: noteSnippet,
-      notes: h.note,
-      date: h.date,
-      time: "00:00",
-      endTime: null,
-      category: null,
-      allDay: true,
-      createdBy: h.createdBy,
-      status: "accepted" as const,
-      archived: false,
-      createdAt: h.createdAt,
-      updatedAt: h.updatedAt,
-      start: dayStart,
-      end: dayEnd,
-      isHighlight: true,
-      highlightDate: h.date,
-      highlightId: h.id,
-    };
-  });
-
-  // When a filter is on, show only matching events — reminders and highlights
-  // carry no person/occasion tags, so they'd just be noise.
-  const isFiltering = filterPerson !== null || filterOccasion !== null;
-  const filteredEvents = events.filter((e) => {
-    if (filterPerson && e.personTag !== filterPerson) return false;
-    if (filterOccasion === "__any__") return !!e.specialDateId;
-    if (filterOccasion && e.specialDateId !== filterOccasion) return false;
-    return true;
-  });
-
-  const allCalendarEvents = isFiltering
-    ? filteredEvents
-    : [...events, ...reminderEvents, ...highlightEvents];
+  const lastPhoto = useMemo(() => {
+    if (!lastEntry?.photos) return null;
+    try {
+      const arr = JSON.parse(lastEntry.photos) as string[];
+      return arr[0] ?? null;
+    } catch { return null; }
+  }, [lastEntry]);
 
   return (
-    <main className="min-h-screen flex flex-col max-w-6xl mx-auto relative">
-        {/* Header */}
-        <UserMenu />
+    <AppShell active={null} fab={<Fab onClick={() => router.push("/entry/new")} />}>
+      {/* ── 1. Header ── */}
+      <header className="pt-5">
+        <h1 className="rr-display" style={{ fontSize: 26, lineHeight: 1.15, color: "var(--ink)" }}>
+          {spellDate(today)}
+        </h1>
+        <p className="rr-meta mt-2">
+          Vol. {vol.volumeRoman} · Page {vol.page.toLocaleString()}
+        </p>
+      </header>
 
-        {/* Countdown Banner */}
-        <div className="mt-3 sm:mt-5">
-          <CountdownBanner
-            events={events}
-            onOpenBucket={() => setIsBucketDrawerOpen(true)}
-            onToggleArchive={() => setShowArchived(!showArchived)}
-            showArchived={showArchived}
-            specialDates={specialDates}
-            onDeleteSpecialDate={async (id) => {
-              await fetch(`/api/special-dates/${id}`, { method: "DELETE", credentials: "same-origin" });
-              setSpecialDates((prev) => prev.filter((d) => d.id !== id));
-            }}
-          />
-          {streakData && (
-            <div className="mx-2.5 sm:mx-8 mt-2.5 sm:mt-3">
-              <StreakBanner streak={streakData} />
-            </div>
-          )}
-
-          {pendingMemory && (
-            <div className="mx-2.5 sm:mx-8 mt-2.5 sm:mt-3">
-              <InfoBanner
-                title="Save this memory?"
-                subtitle={`${pendingMemory.event.title} · ${pendingMemory.daysAgo} ${pendingMemory.daysAgo === 1 ? "day" : "days"} ago`}
-                actionLabel="Save memory →"
-                onAction={() => setIsRateModalOpen(true)}
-              />
-            </div>
-          )}
-
-          {flashback && (
-            <div className="mx-2.5 sm:mx-8 mt-2.5 sm:mt-3">
-              <InfoBanner
-                title={`On this day, ${flashback.yearsAgo} ${flashback.yearsAgo === 1 ? "year" : "years"} ago`}
-                subtitle={flashback.memory.event.title}
-                actionLabel="View →"
-                href="/memories"
-              />
-            </div>
-          )}
+      {loading || sessionLoading ? (
+        <div className="mt-8 flex flex-col gap-4">
+          <Skeleton className="h-52" />
+          <Skeleton className="h-20" />
         </div>
+      ) : (
+        <>
+          {/* ── 2. Open on the desk ── */}
+          <section className="mt-7">
+            {desk && deskCat && deskSpan ? (
+              <div className="rr-double">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <BookGlyph size={18} />
+                    <span className="rr-label" style={{ color: "var(--terracotta)" }}>
+                      {deskIsNow ? "Open on the desk" : "Next in the volume"}
+                    </span>
+                  </div>
 
-        {/* Filters */}
-        <div className="mx-2.5 sm:mx-8 mt-3 sm:mt-4 flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-semibold mr-0.5" style={{ color: "var(--text-soft)" }}>
-            Show:
-          </span>
+                  <button
+                    onClick={() => setSheetEvent(desk)}
+                    className="block text-left w-full mt-3"
+                  >
+                    <h2 className="rr-display" style={{ fontSize: 34, lineHeight: 1.08, color: "var(--ink)" }}>
+                      {desk.title}
+                    </h2>
+                  </button>
 
-          {/* Person chips */}
-          {PEOPLE.map((p) => {
-            const PIcon = PersonIcons[p.id];
-            return (
-              <button
-                key={p.id}
-                onClick={() => setFilterPerson(filterPerson === p.id ? null : p.id)}
-                className="chip-pill text-xs inline-flex items-center gap-1.5"
-                style={{
-                  background: filterPerson === p.id ? "var(--accent)" : "var(--chip-bg)",
-                  color: filterPerson === p.id ? "var(--on-accent)" : "var(--chip-text)",
-                  borderColor: filterPerson === p.id ? "var(--accent)" : "var(--chip-border)",
-                }}
-              >
-                {PIcon ? <PIcon size={12} /> : p.emoji} {p.label}
-              </button>
-            );
-          })}
+                  <p className="rr-italic mt-2" style={{ fontSize: 15, color: "var(--muted)" }}>
+                    {spanDays > 1
+                      ? `${spellDate(deskSpan.start, { weekday: false })} — ${spellDate(deskSpan.end, { weekday: false })}`
+                      : spellDate(deskSpan.start)}
+                    {" · "}{deskCat.label}
+                  </p>
 
-          {/* Occasion select */}
-          <select
-            value={filterOccasion ?? ""}
-            onChange={(e) => setFilterOccasion(e.target.value || null)}
-            aria-label="Filter by occasion"
-            className="rounded-full px-3 py-[5px] text-[11px] outline-none border cursor-pointer"
-            style={{
-              background: filterOccasion ? "var(--accent)" : "var(--chip-bg)",
-              color: filterOccasion ? "var(--on-accent)" : "var(--chip-text)",
-              borderColor: filterOccasion ? "var(--accent)" : "var(--chip-border)",
-            }}
-          >
-            <option value="">Any occasion</option>
-            <option value="__any__">Linked to any occasion</option>
-            {linkableSpecialDates(specialDates).map((sd) => (
-              <option key={sd.id} value={sd.id}>
-                {specialDateLabel(sd)}
-              </option>
-            ))}
-          </select>
+                  <p className="rr-meta mt-4">
+                    Cat. no. {catalogueNumber(deskSpan.start)}
+                    {spanDays > 1 && ` — ${dayOfSpan} of ${spanDays} days`}
+                  </p>
 
-          {isFiltering && (
-            <>
-              <span className="text-[11px]" style={{ color: "var(--text-soft)" }}>
-                {filteredEvents.length} {filteredEvents.length === 1 ? "event" : "events"}
-              </span>
-              <button
-                onClick={() => { setFilterPerson(null); setFilterOccasion(null); }}
-                className="chip-pill text-xs font-semibold inline-flex items-center gap-1"
-              >
-                Clear <XIcon size={10} />
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Calendar Card */}
-        <div className="flex-1 calendar-card mx-2.5 sm:mx-8 mt-3 sm:mt-[18px] mb-20 sm:mb-8 flex flex-col min-h-[360px] md:min-h-[650px]">
-          <div className="flex-1 h-full min-h-[350px] md:min-h-[600px]">
-            {(isLoading || isSessionLoading) ? (
-              <CalendarSkeleton />
+                  <div className="rr-hairline mt-5 pt-4 flex items-center gap-5">
+                    <button className="rr-action" onClick={() => setSheetEvent(desk)}>
+                      Margin notes
+                    </button>
+                    <button
+                      className="rr-action"
+                      onClick={() => setBindTarget({
+                        event: { id: desk.id, title: desk.title, category: desk.category ?? null },
+                        daysAgo: Math.max(0, daysBetween(deskSpan.start, today)),
+                      })}
+                    >
+                      Photograph
+                    </button>
+                    <button
+                      className="rr-action rr-action-danger ml-auto"
+                      onClick={() => setBindTarget({
+                        event: { id: desk.id, title: desk.title, category: desk.category ?? null },
+                        daysAgo: Math.max(0, daysBetween(deskSpan.start, today)),
+                      })}
+                    >
+                      Bind it
+                    </button>
+                  </div>
+                </div>
+              </div>
             ) : (
-              <Calendar
-                localizer={localizer}
-                events={allCalendarEvents}
-                startAccessor="start"
-                endAccessor="end"
-                allDayAccessor="allDay"
-                view={view}
-                onView={(newView: View) => setView(newView)}
-                style={{ height: "100%" }}
-                components={{
-                  event: ({ event }: { event: CalendarViewEvent }) => {
-                    if (event.isHighlight) {
-                      const h = highlights.find((hl) => hl.date === event.highlightDate);
-                      const hasPhotos = h?.photos && JSON.parse(h.photos).length > 0;
-                      return (
-                        <div className="event-chip flex items-center gap-1.5">
-                          <HighlightStarIcon size={10} />
-                          <span className="truncate">{event.title}</span>
-                          {hasPhotos && <CameraIcon size={9} style={{ opacity: 0.75 }} />}
-                        </div>
-                      );
-                    }
-                    if (event.isReminder) {
-                      return (
-                        <div className="event-chip flex items-center gap-1.5">
-                          <BellIcon size={10} />
-                          <span className="truncate">{event.title}</span>
-                        </div>
-                      );
-                    }
-                    const cat = getCategoryById(event.category);
-                    const Icon = CategoryIcons[cat.id];
-                    return (
-                      <div className="event-chip flex items-center gap-1.5">
-                        <Icon size={11} color={cat.textColor} />
-                        <span className="truncate">{event.title}</span>
-                        {event.memoryId && <CameraIcon size={9} style={{ opacity: 0.8 }} />}
-                      </div>
-                    );
-                  },
-                }}
-                views={[Views.MONTH, Views.WEEK, Views.DAY]}
-                selectable
-                popup
-                onSelectSlot={handleSelectSlot}
-                onSelectEvent={handleSelectEvent}
-                eventPropGetter={eventStyleGetter}
-                className="calendar-custom"
-              />
+              <div className="rr-double">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <BookGlyph size={18} />
+                    <span className="rr-label" style={{ color: "var(--terracotta)" }}>Open on the desk</span>
+                  </div>
+                  <p className="rr-italic mt-4" style={{ fontSize: 20, color: "var(--ghost)" }}>
+                    nothing is open — the rest of the page is blank
+                  </p>
+                </div>
+              </div>
             )}
-          </div>
-        </div>
+          </section>
 
-        {/* Floating action buttons */}
-        <FloatingActions
-          onNewEvent={() => setIsModalOpen(true)}
-          onReminder={() => setIsReminderModalOpen(true)}
-          onHighlight={() => {
-            setHighlightEditing(null);
-            setHighlightInitialDate(undefined);
-            setIsHighlightModalOpen(true);
-          }}
-        />
+          {/* ── 3. Later in the volume ── */}
+          {later.length > 0 && (
+            <section className="mt-9">
+              <p className="rr-label">Later in the volume</p>
+              <div className="mt-3">
+                {later.map((row) => (
+                  <Link
+                    key={row.id}
+                    href={row.href}
+                    className="rr-dotted flex items-baseline justify-between gap-4 py-4"
+                  >
+                    <span className="rr-display" style={{ fontSize: 20, color: "var(--ink)" }}>
+                      {row.title}
+                    </span>
+                    <span style={{ fontSize: 12.5, color: "var(--muted)", flex: "none" }}>
+                      {row.days === 0 ? "today" : row.days === 1 ? "1 day" : `${row.days} days`}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
-        {/* Modals & Drawers */}
-        <EventModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSuccess={fetchEvents}
-          selectedDate={selectedDate}
-        />
+          {/* ── 4. Last entry filed ── */}
+          {lastEntry && (
+            <section className="mt-9">
+              <p className="rr-label">Last entry filed</p>
+              <Link href="/story" className="block mt-3 rr-frame">
+                {lastPhoto ? (
+                  <img src={lastPhoto} alt="" style={{ aspectRatio: "4 / 3" }} />
+                ) : (
+                  <div style={{ aspectRatio: "4 / 3", background: "var(--wash)" }} />
+                )}
+                <div className="flex items-stretch gap-3 pt-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="rr-display" style={{ fontSize: 20, lineHeight: 1.2, color: "var(--ink)" }}>
+                      {lastEntry.event.title}
+                    </p>
+                    <p className="rr-italic mt-1" style={{ fontSize: 14, color: "var(--muted)" }}>
+                      {spellDate(dayStart(lastEntry.event.date), { weekday: false })}
+                      {" · "}{getCategoryById(lastEntry.event.category).label}
+                    </p>
+                  </div>
+                  {/* stamped margin: the date stacked vertically */}
+                  <div
+                    className="flex flex-col items-center justify-center"
+                    style={{ width: 38, borderLeft: "1px solid var(--rule-light)", flex: "none" }}
+                  >
+                    {catalogueNumber(dayStart(lastEntry.event.date)).split("·").map((part, i) => (
+                      <span key={i} className="rr-meta" style={{ fontSize: 10, letterSpacing: ".1em" }}>
+                        {part}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </Link>
+            </section>
+          )}
+        </>
+      )}
 
-        <DetailsModal
-          isOpen={isDetailsOpen}
-          onClose={() => setIsDetailsOpen(false)}
-          onSuccess={(newBadges) => {
-            fetchEvents();
-            fetch("/api/streaks").then(r => r.json()).then(d => {
-              if (d.currentStreak !== undefined) setStreakData(d);
-            });
-            if (newBadges?.length) {
-              setToastMessage(`\u{1F389} Achievement unlocked: ${newBadges[0].emoji} ${newBadges[0].label}!`);
-              triggerConfetti();
-            }
-          }}
-          event={selectedEvent}
-          onSaveMemory={(evt) => {
-            const daysAgo = Math.floor((Date.now() - new Date(evt.date).getTime()) / (1000 * 60 * 60 * 24));
-            setPendingMemory({ event: { id: evt.id, title: evt.title, category: evt.category ?? null }, daysAgo });
-            setIsRateModalOpen(true);
-          }}
-        />
+      <EntrySheet
+        event={sheetEvent}
+        onClose={() => setSheetEvent(null)}
+        onChanged={fetchEvents}
+        onBind={(e) => setBindTarget({
+          event: { id: e.id, title: e.title, category: e.category ?? null },
+          daysAgo: Math.max(0, daysBetween(spanOf(e).start, today)),
+        })}
+      />
 
-        <BucketListDrawer
-          isOpen={isBucketDrawerOpen}
-          onClose={() => setIsBucketDrawerOpen(false)}
-        />
+      <SaveMemoryModal
+        isOpen={!!bindTarget}
+        onClose={() => setBindTarget(null)}
+        onSuccess={() => { setBindTarget(null); setToast("Bound into the volume."); fetchEvents(); }}
+        pending={bindTarget}
+      />
 
-        <SaveMemoryModal
-          isOpen={isRateModalOpen}
-          onClose={() => setIsRateModalOpen(false)}
-          onSuccess={() => { fetchEvents(); setPendingMemory(null); }}
-          pending={pendingMemory}
-        />
-
-        <ReminderModal
-          isOpen={isReminderModalOpen}
-          onClose={() => setIsReminderModalOpen(false)}
-          onSuccess={fetchReminders}
-          onToast={setToastMessage}
-        />
-
-        <DailyHighlightModal
-          isOpen={isHighlightModalOpen}
-          onClose={() => { setIsHighlightModalOpen(false); setHighlightEditing(null); }}
-          onSuccess={() => { fetchHighlights(); setToastMessage("Highlight saved!"); }}
-          initialDate={highlightInitialDate}
-          existing={highlightEditing}
-        />
-
-        <HighlightViewModal
-          isOpen={!!viewHighlight}
-          onClose={() => setViewHighlight(null)}
-          highlight={viewHighlight}
-          onEdit={(h) => { setHighlightEditing(h); setHighlightInitialDate(h.date); setIsHighlightModalOpen(true); }}
-          onDeleted={fetchHighlights}
-        />
-
-        <Toast
-          message={toastMessage || ""}
-          isVisible={toastMessage !== null}
-          onClose={() => setToastMessage(null)}
-        />
-
-        <PushPrompt />
-      </main>
+      <Toast message={toast || ""} isVisible={toast !== null} onClose={() => setToast(null)} />
+      <PushPrompt />
+    </AppShell>
   );
 }
