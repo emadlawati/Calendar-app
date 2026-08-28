@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { writeErrorResponse } from "@/lib/api-errors";
 import { getRequestUser } from "@/lib/auth";
 
 // PATCH /api/highlights/[id] — update note and/or photos
@@ -28,8 +29,8 @@ export async function PATCH(
     });
 
     return NextResponse.json(highlight);
-  } catch {
-    return NextResponse.json({ error: "Failed to update highlight" }, { status: 500 });
+  } catch (error) {
+    return writeErrorResponse(error, "Request failed");
   }
 }
 
@@ -45,7 +46,7 @@ export async function DELETE(
     await prisma.reaction.deleteMany({ where: { targetType: "highlight", targetId: id } });
     await prisma.dailyHighlight.delete({ where: { id } });
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to delete highlight" }, { status: 500 });
+  } catch (error) {
+    return writeErrorResponse(error, "Request failed");
   }
 }

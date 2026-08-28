@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { writeErrorResponse } from "@/lib/api-errors";
 
 export async function DELETE(
   _request: Request,
@@ -10,7 +11,6 @@ export async function DELETE(
     await prisma.specialDate.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Special date delete error:", error);
-    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+    return writeErrorResponse(error, "Request failed");
   }
 }

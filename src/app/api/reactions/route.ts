@@ -57,8 +57,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "You can only react to your partner's posts" }, { status: 403 });
     }
 
-    const existing = await prisma.reaction.findUnique({
-      where: { targetType_targetId_createdBy_emoji: { targetType, targetId, createdBy: user, emoji } },
+    const existing = await prisma.reaction.findFirst({
+      where: { targetType, targetId, createdBy: user, emoji },
     });
 
     let added: boolean;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import prisma from '@/lib/prisma';
+import { writeErrorResponse } from '@/lib/api-errors';
 
 export async function GET(
   _request: Request,
@@ -21,10 +22,6 @@ export async function GET(
 
     return NextResponse.json(event);
   } catch (error) {
-    console.error("Database Error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch event" },
-      { status: 500 }
-    );
+    return writeErrorResponse(error, "Request failed");
   }
 }

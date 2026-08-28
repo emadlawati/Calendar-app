@@ -21,12 +21,15 @@ export function getSecretKey(): Uint8Array {
 }
 
 export interface SessionPayload {
+  /** Role within the couple — "Wife" | "Husband". */
   userId: User;
   email: string;
+  /** Which couple's library this session may read and write. */
+  coupleId: string;
 }
 
 export async function signSessionToken(payload: SessionPayload): Promise<string> {
-  return new SignJWT({ userId: payload.userId, email: payload.email })
+  return new SignJWT({ userId: payload.userId, email: payload.email, coupleId: payload.coupleId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_MAX_AGE_SECONDS}s`)
@@ -56,10 +59,24 @@ export async function getSession(): Promise<SessionPayload | null> {
       sessionCookie.value,
       getSecretKey()
     );
+
+    // Sessions minted before tenancy carry no coupleId. Treating those as
+    // valid would mean guessing which couple they belong to — reject them
+    // and make the user sign in again instead.
+    if (!payload.coupleId) return null;
+
     return payload;
   } catch {
     return null;
   }
+}
+
+/**
+ * The couple this request may touch, read straight from the session cookie.
+ * Used by the Prisma tenant-scoping extension so no route has to remember.
+ */
+export async function getSessionCoupleId(): Promise<string | undefined> {
+  return (await getSession())?.coupleId;
 }
 
 export async function clearSession(): Promise<void> {

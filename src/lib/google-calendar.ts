@@ -81,22 +81,21 @@ export async function saveTokensFromCode(code: string, userId: string) {
     // update and create. We use null coalescing to handle both.
     const refreshTokenValue = tokens.refresh_token ?? null;
 
-    await prisma.googleCalendarToken.upsert({
-      where: { userId },
-      update: {
-        accessToken: tokens.access_token!,
-        refreshToken: refreshTokenValue,
-        expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-        email: userInfo.email ?? null,
-      },
-      create: {
-        userId,
-        accessToken: tokens.access_token!,
-        refreshToken: refreshTokenValue,
-        expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-        email: userInfo.email ?? null,
-      },
-    });
+    // find-then-write rather than upsert: the unique key is now
+    // (coupleId, userId), and the scoping extension supplies the coupleId
+    // half itself — so call sites never need to name it.
+    const fields = {
+      accessToken: tokens.access_token!,
+      refreshToken: refreshTokenValue,
+      expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+      email: userInfo.email ?? null,
+    };
+    const existing = await prisma.googleCalendarToken.findFirst({ where: { userId } });
+    if (existing) {
+      await prisma.googleCalendarToken.update({ where: { id: existing.id }, data: fields });
+    } else {
+      await prisma.googleCalendarToken.create({ data: { userId, ...fields } });
+    }
     console.log('Successfully saved tokens to database');
   } catch (error) {
     console.error('Error in saveTokensFromCode:', error);
@@ -112,7 +111,7 @@ export async function saveTokensFromCode(code: string, userId: string) {
  * Get a valid authenticated OAuth2 client for a user, refreshing if needed.
  */
 export async function getAuthenticatedClient(userId: string) {
-  const tokenRecord = await prisma.googleCalendarToken.findUnique({
+  const tokenRecord = await prisma.googleCalendarToken.findFirst({
     where: { userId },
   });
 
@@ -130,7 +129,7 @@ export async function getAuthenticatedClient(userId: string) {
     try {
       const { credentials } = await oauth2Client.refreshAccessToken();
       await prisma.googleCalendarToken.update({
-        where: { userId },
+        where: { id: tokenRecord.id },
         data: {
           accessToken: credentials.access_token!,
           expiryDate: credentials.expiry_date ? new Date(credentials.expiry_date) : null,

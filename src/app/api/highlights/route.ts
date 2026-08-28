@@ -29,20 +29,21 @@ export async function POST(request: Request) {
 
     const photosStr = Array.isArray(photos) && photos.length > 0 ? JSON.stringify(photos) : null;
 
-    // One highlight per person per day — upsert on the (date, createdBy) pair
-    const highlight = await prisma.dailyHighlight.upsert({
-      where: { date_createdBy: { date, createdBy: user } },
-      create: {
-        date,
-        note: note || null,
-        photos: photosStr,
-        createdBy: user,
-      },
-      update: {
-        note: note || null,
-        photos: photosStr,
-      },
+    // One highlight per person per day, per couple. find-then-write because
+    // the unique key is now (coupleId, date, createdBy) and the scoping
+    // extension supplies the coupleId half — which is precisely what stops
+    // one couple's highlight from overwriting another's on the same date.
+    const existing = await prisma.dailyHighlight.findFirst({
+      where: { date, createdBy: user },
     });
+    const highlight = existing
+      ? await prisma.dailyHighlight.update({
+          where: { id: existing.id },
+          data: { note: note || null, photos: photosStr },
+        })
+      : await prisma.dailyHighlight.create({
+          data: { date, note: note || null, photos: photosStr, createdBy: user },
+        });
 
     // Notify partner about the new highlight
     const displayName = getDisplayName(user);

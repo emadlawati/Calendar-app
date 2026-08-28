@@ -51,3 +51,6 @@ next-env.d.ts
 .vercel
 .env*.local
 .zcode/
+
+# Local data snapshots — personal data, never commit
+backups/

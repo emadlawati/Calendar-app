@@ -77,28 +77,27 @@ export async function recalculateStreaks(): Promise<StreakResult> {
   const bestEver = Math.max(longestStreak, currentStreak);
   const lastWeekStart = new Date(`${thisWeekMonday}T00:00:00.000Z`);
 
-  await prisma.streak.upsert({
-    where: { userId: "couple" },
-    update: {
-      currentStreak,
-      longestStreak: bestEver,
-      lastWeekStart,
-    },
-    create: {
-      userId: "couple",
-      currentStreak,
-      longestStreak: bestEver,
-      lastWeekStart,
-    },
-  });
+  // find-then-write: the unique key is now (coupleId, userId) and the
+  // scoping extension fills in the coupleId half.
+  const existingStreak = await prisma.streak.findFirst({ where: { userId: "couple" } });
+  if (existingStreak) {
+    await prisma.streak.update({
+      where: { id: existingStreak.id },
+      data: { currentStreak, longestStreak: bestEver, lastWeekStart },
+    });
+  } else {
+    await prisma.streak.create({
+      data: { userId: "couple", currentStreak, longestStreak: bestEver, lastWeekStart },
+    });
+  }
 
   // Check for newly unlocked achievements. Badges unlock on the best-ever
   // streak — a couple whose 24-week run broke long ago has still earned it.
   const newUnlocks: Badge[] = [];
   for (const badge of BADGES) {
     if (bestEver >= badge.weeksRequired) {
-      const existing = await prisma.achievement.findUnique({
-        where: { userId_badgeId: { userId: "couple", badgeId: badge.id } },
+      const existing = await prisma.achievement.findFirst({
+        where: { userId: "couple", badgeId: badge.id },
       });
       if (!existing) {
         await prisma.achievement.create({
@@ -120,7 +119,7 @@ export async function getStreakData(): Promise<{
   // Always recompute — reads used to return stale rows whenever no accept
   // had triggered a recalculation (e.g. weeks with no new activity).
   await recalculateStreaks();
-  const streak = await prisma.streak.findUnique({ where: { userId: "couple" } });
+  const streak = await prisma.streak.findFirst({ where: { userId: "couple" } });
 
   const achievements = await prisma.achievement.findMany({
     where: { userId: "couple" },

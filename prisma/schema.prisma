@@ -7,8 +7,79 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─────────────────────────────────────────────────────────────
+// Tenancy
+//
+// Every row below belongs to exactly one Couple. `createdBy` stays the
+// existing role vocabulary ("Wife" | "Husband") — it is (coupleId, role)
+// together that identifies a person, which is why the role literals
+// throughout the app keep working unchanged.
+//
+// coupleId is required on every tenant model. The one exception is
+// Invite.coupleId, where null means "this invite starts a new couple".
+// ─────────────────────────────────────────────────────────────
+
+model Couple {
+  id          String   @id @default(uuid())
+  displayName String                          // "Budoor & Emad"
+  startDate   DateTime                        // was NEXT_PUBLIC_RELATIONSHIP_START
+  childName   String?                         // was NEXT_PUBLIC_CHILD_NAME
+  timezone    String   @default("Asia/Muscat")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users                CoupleUser[]
+  invites              Invite[]
+  calendarEvents       CalendarEvent[]
+  googleCalendarTokens GoogleCalendarToken[]
+  notes                Note[]
+  bucketItems          BucketItem[]
+  streaks              Streak[]
+  achievements         Achievement[]
+  memories             Memory[]
+  recurringSeries      RecurringSeries[]
+  specialDates         SpecialDate[]
+  reminders            Reminder[]
+  dailyHighlights      DailyHighlight[]
+  pushSubscriptions    PushSubscription[]
+  comments             Comment[]
+  reactions            Reaction[]
+}
+
+model CoupleUser {
+  id        String   @id @default(uuid())
+  coupleId  String
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  role      String   // "Wife" | "Husband"
+  email     String   @unique
+  name      String   // was WIFE_NAME / HUSBAND_NAME
+  birthday  String?  // "MM-DD"
+  createdAt DateTime @default(now())
+
+  @@unique([coupleId, role])
+}
+
+model Invite {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  coupleId  String?   // null = this invite starts a brand-new couple
+  couple    Couple?   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  role      String?   // which side of an existing couple is being filled
+  email     String?   // optional pre-binding to one address
+  note      String?   // who you sent it to, for your own records
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tenant data
+// ─────────────────────────────────────────────────────────────
+
 model CalendarEvent {
   id                  String   @id @default(uuid())
+  coupleId            String   @default("")
+  couple              Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
   title               String
   notes               String?
   date                DateTime
@@ -16,7 +87,7 @@ model CalendarEvent {
   time                String
   endTime             String?
   category            String?
-  personTag           String?  // "family" | "wife" | "husband" | "child"
+  personTag           String?  // "family" | "couple" | "wife" | "husband" | "child"
   allDay              Boolean  @default(false)
   createdBy           String
   status              String   @default("pending")
@@ -34,23 +105,31 @@ model CalendarEvent {
 
   memories            Memory[]
 
-  @@index([date])
-  @@index([status, archived, date])
+  @@index([coupleId, date])
+  @@index([coupleId, status, archived, date])
 }
 
 model GoogleCalendarToken {
   id           String   @id @default(uuid())
-  userId       String   @unique
+  coupleId     String   @default("")
+  couple       Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  userId       String   // role within the couple
   accessToken  String
   refreshToken String?
   expiryDate   DateTime?
   email        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // Was globally unique on userId — that allowed only one "Husband" token
+  // in the entire database.
+  @@unique([coupleId, userId])
 }
 
 model Note {
   id        String    @id @default(uuid())
+  coupleId  String   @default("")
+  couple    Couple    @relation(fields: [coupleId], references: [id], onDelete: Cascade)
   content   String
   kind      String    @default("note") // "note" | "gratitude"
   createdBy String    // "Wife" | "Husband"
@@ -58,53 +137,70 @@ model Note {
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
-  @@index([createdAt])
+  @@index([coupleId, createdAt])
 }
 
 model BucketItem {
   id        String   @id @default(uuid())
+  coupleId  String   @default("")
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
   title     String
   category  String   @default("other")
   notes     String?
   completed Boolean  @default(false)
   createdBy String
   createdAt DateTime @default(now())
+
+  @@index([coupleId])
 }
 
 model Streak {
   id            String   @id @default(uuid())
-  userId        String   @unique
+  coupleId      String   @default("")
+  couple        Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  userId        String   // role within the couple
   currentStreak Int      @default(0)
   longestStreak Int      @default(0)
   lastWeekStart DateTime
   updatedAt     DateTime @updatedAt
+
+  // Was globally unique on userId — couples would have shared one streak row.
+  @@unique([coupleId, userId])
 }
 
 model Achievement {
   id         String   @id @default(uuid())
-  userId     String
+  coupleId   String   @default("")
+  couple     Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  userId     String   // role within the couple
   badgeId    String
   unlockedAt DateTime @default(now())
 
-  @@unique([userId, badgeId])
+  // Was globally unique — only one couple could ever earn each badge.
+  @@unique([coupleId, userId, badgeId])
 }
 
 model Memory {
   id        String        @id @default(uuid())
+  coupleId  String   @default("")
+  couple    Couple        @relation(fields: [coupleId], references: [id], onDelete: Cascade)
   eventId   String
   event     CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   rating    Int
   journal   String?
-  photos    String?       // JSON array of base64 URLs
+  photos    String?       // JSON array of blob URLs
   createdBy String
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
   @@unique([eventId, createdBy])
+  @@index([coupleId])
 }
 
 model RecurringSeries {
   id             String          @id @default(uuid())
+  coupleId       String   @default("")
+  couple         Couple          @relation(fields: [coupleId], references: [id], onDelete: Cascade)
   title          String
   notes          String?
   category       String?
@@ -122,10 +218,14 @@ model RecurringSeries {
   updatedAt      DateTime        @updatedAt
 
   events         CalendarEvent[]
+
+  @@index([coupleId])
 }
 
 model SpecialDate {
   id        String   @id @default(uuid())
+  coupleId  String   @default("")
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
   title     String
   date      DateTime
   type      String   @default("annual")
@@ -135,10 +235,14 @@ model SpecialDate {
   createdAt DateTime @default(now())
 
   events    CalendarEvent[]
+
+  @@index([coupleId])
 }
 
 model Reminder {
   id                    String   @id @default(uuid())
+  coupleId              String   @default("")
+  couple                Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
   title                 String
   date                  DateTime
   time                  String
@@ -150,49 +254,61 @@ model Reminder {
   googleEventIdHusband  String?
   createdAt             DateTime @default(now())
 
-  @@index([date])
+  @@index([coupleId, date])
 }
 
 model DailyHighlight {
   id        String   @id @default(uuid())
-  date      String   // "YYYY-MM-DD" in Muscat timezone
+  coupleId  String   @default("")
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  date      String   // "YYYY-MM-DD" in the couple's timezone
   note      String?
-  photos    String?  // JSON array of URLs
+  photos    String?  // JSON array of blob URLs
   createdBy String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([date, createdBy])
+  // Was unique on [date, createdBy] alone. /api/highlights upserts on this
+  // key, so without coupleId one couple's highlight would silently overwrite
+  // another couple's highlight for the same day and role.
+  @@unique([coupleId, date, createdBy])
 }
 
 model PushSubscription {
-  id      String   @id @default(uuid())
-  userId  String   // "Wife" or "Husband"
-  endpoint String  @unique
-  keys    String   // JSON: { p256dh, auth }
+  id        String   @id @default(uuid())
+  coupleId  String   @default("")
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  userId    String   // role within the couple
+  endpoint  String   @unique // genuinely global: one browser, one subscription
+  keys      String   // JSON: { p256dh, auth }
   createdAt DateTime @default(now())
+
+  @@index([coupleId, userId])
 }
 
 model Comment {
   id         String   @id @default(uuid())
+  coupleId   String   @default("")
+  couple     Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
   targetType String   // "memory" | "highlight"
   targetId   String
   content    String
   createdBy  String   // "Wife" | "Husband"
   createdAt  DateTime @default(now())
 
-  @@index([targetType, targetId])
+  @@index([coupleId, targetType, targetId])
 }
 
 model Reaction {
   id         String   @id @default(uuid())
+  coupleId   String   @default("")
+  couple     Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
   targetType String   // "memory" | "highlight"
   targetId   String
   emoji      String
   createdBy  String   // "Wife" | "Husband"
   createdAt  DateTime @default(now())
 
-  @@unique([targetType, targetId, createdBy, emoji])
-  @@index([targetType, targetId])
+  @@unique([coupleId, targetType, targetId, createdBy, emoji])
+  @@index([coupleId, targetType, targetId])
 }
-

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { writeErrorResponse } from "@/lib/api-errors";
 
 export async function PATCH(
   request: Request,
@@ -22,8 +23,7 @@ export async function PATCH(
 
     return NextResponse.json(memory);
   } catch (error) {
-    console.error("Memory update error:", error);
-    return NextResponse.json({ error: "Failed to update memory" }, { status: 500 });
+    return writeErrorResponse(error, "Request failed");
   }
 }
 
@@ -40,7 +40,6 @@ export async function DELETE(
     await prisma.memory.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Memory delete error:", error);
-    return NextResponse.json({ error: "Failed to delete memory" }, { status: 500 });
+    return writeErrorResponse(error, "Request failed");
   }
 }

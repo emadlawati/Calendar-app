@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const token = await prisma.googleCalendarToken.findUnique({
+    const token = await prisma.googleCalendarToken.findFirst({
       where: { userId },
       select: { email: true, updatedAt: true },
     });

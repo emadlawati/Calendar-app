@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
+import { writeErrorResponse } from "@/lib/api-errors";
 import { getCurrentUser } from "@/lib/auth";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
 
@@ -43,7 +44,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Reminder delete error:", error);
-    return NextResponse.json({ error: "Failed to delete reminder" }, { status: 500 });
+    return writeErrorResponse(error, "Request failed");
   }
 }

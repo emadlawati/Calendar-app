@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
+import { writeErrorResponse } from "@/lib/api-errors";
 
 export async function DELETE(
   request: Request,
@@ -11,8 +12,7 @@ export async function DELETE(
     await prisma.bucketItem.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Bucket delete error:", error);
-    return NextResponse.json({ success: false, error: "Failed to delete bucket item" }, { status: 500 });
+    return writeErrorResponse(error, "Request failed");
   }
 }
 
@@ -29,7 +29,6 @@ export async function PATCH(
     });
     return NextResponse.json({ success: true, item });
   } catch (error) {
-    console.error("Bucket patch error:", error);
-    return NextResponse.json({ success: false, error: "Failed to update bucket item" }, { status: 500 });
+    return writeErrorResponse(error, "Request failed");
   }
 }

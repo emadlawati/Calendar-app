@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
-import prisma from "@/lib/prisma";
+import prisma, { systemPrisma, withCouple } from "@/lib/prisma";
 import resend from "@/lib/resend";
 import { reminderDateTime } from "@/lib/reminder-utils";
 import { sendPushToBoth } from "@/lib/webpush";
@@ -55,13 +55,33 @@ export async function GET(request: Request) {
     }
   }
 
-  const recipients = [process.env.WIFE_EMAIL, process.env.HUSBAND_EMAIL].filter(Boolean) as string[];
   const noEmail = process.env.RESEND_API_KEY === "re_..." || !process.env.RESEND_API_KEY;
 
   const now = Date.now();
   const results: string[] = [];
 
-  // ── Fetch all un-sent reminders ──
+  // No session here, so fan out over couples explicitly and run each one's
+  // reminders inside its own scope.
+  const couples = await systemPrisma.couple.findMany({
+    select: { id: true, users: { select: { email: true } } },
+  });
+
+  let checked = 0;
+  for (const couple of couples) {
+    const recipients = couple.users.map((u) => u.email).filter(Boolean) as string[];
+    checked += await withCouple(couple.id, () => runForCouple(recipients, noEmail, now, results));
+  }
+
+  return NextResponse.json({ ok: true, couples: couples.length, checked, sent: results });
+}
+
+async function runForCouple(
+  recipients: string[],
+  noEmail: boolean,
+  now: number,
+  results: string[],
+): Promise<number> {
+  // ── Fetch this couple's un-sent reminders ──
   const pending = await prisma.reminder.findMany({
     where: {
       OR: [{ sent24h: false }, { sent1h: false }],
@@ -141,5 +161,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, checked: pending.length, sent: results });
+  return pending.length;
 }

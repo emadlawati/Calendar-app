@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
+import { writeErrorResponse } from "@/lib/api-errors";
 import { getCurrentUser } from "@/lib/auth";
 
 // PATCH /api/notes/[id] — mark a received note as read
@@ -25,8 +26,8 @@ export async function PATCH(
       data: { read: true, readAt: new Date() },
     });
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to update note" }, { status: 500 });
+  } catch (error) {
+    return writeErrorResponse(error, "Request failed");
   }
 }
 
@@ -48,7 +49,7 @@ export async function DELETE(
 
     await prisma.note.delete({ where: { id } });
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to delete note" }, { status: 500 });
+  } catch (error) {
+    return writeErrorResponse(error, "Request failed");
   }
 }

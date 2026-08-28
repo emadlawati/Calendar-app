@@ -32,8 +32,17 @@ export async function middleware(request: NextRequest) {
   if (sessionCookie) {
     try {
       const { payload } = await jwtVerify<SessionPayload>(sessionCookie.value, getSecretKey());
-      isValidSession = true;
-      sessionPayload = { userId: payload.userId, email: payload.email };
+      // Sessions minted before tenancy carry no coupleId. There is no safe
+      // way to guess which couple they belong to, so treat them as expired
+      // and make the user sign in again.
+      if (payload.coupleId) {
+        isValidSession = true;
+        sessionPayload = {
+          userId: payload.userId,
+          email: payload.email,
+          coupleId: payload.coupleId,
+        };
+      }
     } catch {
       isValidSession = false;
     }

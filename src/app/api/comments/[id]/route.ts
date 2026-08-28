@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { writeErrorResponse } from "@/lib/api-errors";
 import { getRequestUser } from "@/lib/auth";
 
 // DELETE /api/comments/[id] — author can delete their own comment
@@ -28,7 +29,7 @@ export async function DELETE(
 
     await prisma.comment.delete({ where: { id } });
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to delete comment" }, { status: 500 });
+  } catch (error) {
+    return writeErrorResponse(error, "Request failed");
   }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
-import prisma from "@/lib/prisma";
+import prisma, { systemPrisma, withCouple } from "@/lib/prisma";
 import resend from "@/lib/resend";
 import { getCategoryById } from "@/lib/categories";
 import { sendPushToUser } from "@/lib/webpush";
@@ -46,18 +46,37 @@ export async function GET(request: Request) {
 
   const noEmail = process.env.RESEND_API_KEY === "re_..." || !process.env.RESEND_API_KEY;
 
-  const emailFor = (u: "Wife" | "Husband") => (u === "Wife" ? process.env.WIFE_EMAIL : process.env.HUSBAND_EMAIL);
+  // Cron has no session, so it fans out over couples explicitly. systemPrisma
+  // is the only unscoped read here; everything inside runs under withCouple().
+  const couples = await systemPrisma.couple.findMany({
+    select: { id: true, users: { select: { role: true, email: true } } },
+  });
 
-  /** Who should hear about this event: both partners by default, or just
-   *  one if the event is tagged exclusively "wife" or "husband". */
-  function recipientsFor(personTag: string | null) {
-    const users = getEventNotificationRecipients(personTag);
-    return {
-      users,
-      emails: users.map(emailFor).filter(Boolean) as string[],
-    };
+  const results: string[] = [];
+  for (const couple of couples) {
+    const emailByRole = new Map(couple.users.map((u) => [u.role, u.email]));
+
+    /** Who should hear about this event: both partners by default, or just
+     *  one if the event is tagged exclusively "wife" or "husband". */
+    function recipientsFor(personTag: string | null) {
+      const users = getEventNotificationRecipients(personTag);
+      return {
+        users,
+        emails: users.map((u) => emailByRole.get(u)).filter(Boolean) as string[],
+      };
+    }
+
+    await withCouple(couple.id, () => sendForCouple(recipientsFor, results, noEmail));
   }
 
+  return NextResponse.json({ ok: true, couples: couples.length, sent: results });
+}
+
+async function sendForCouple(
+  recipientsFor: (personTag: string | null) => { users: ("Wife" | "Husband")[]; emails: string[] },
+  results: string[],
+  noEmail: boolean,
+) {
   const todayStr = mscDateStr(0);
   const tomorrowStr = mscDateStr(1);
 
@@ -79,7 +98,7 @@ export async function GET(request: Request) {
     }),
   ]);
 
-  const results: string[] = [];
+
 
   // ── A. Today's reminders ──
   for (const evt of todayEvents) {
@@ -151,5 +170,5 @@ export async function GET(request: Request) {
     results.push(`tomorrow:${evt.title}`);
   }
 
-  return NextResponse.json({ ok: true, sent: results });
+
 }
