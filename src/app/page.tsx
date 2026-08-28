@@ -15,22 +15,46 @@ import { getCategoryById } from "@/lib/categories";
 import { getVolumeInfo, spellDate, catalogueNumber } from "@/lib/volume";
 import { specialDateLabel } from "@/lib/special-date-display";
 import type {
-  CalendarEvent, SpecialDateWithCountdown, PendingMemory, User,
+  CalendarEvent, SpecialDateWithCountdown, PendingMemory, DailyHighlight,
 } from "@/lib/types";
 
 const TZ = "+04:00";
 
-interface LastEntry {
-  id: string;
-  journal: string | null;
-  photos: string | null;
-  createdBy: User;
-  event: { title: string; date: string; category: string | null };
+/** A bound memory or a written entry, flattened to what the card needs. */
+interface ShelfEntry {
+  key: string;
+  title: string;
+  date: string;
+  categoryLabel: string;
+  photo: string | null;
 }
 
 /** Muscat-local midnight for a YYYY-MM-DD(THH:MM) string. */
 function dayStart(iso: string): Date {
   return new Date(`${iso.split("T")[0]}T00:00:00${TZ}`);
+}
+
+function firstPhoto(json: string | null): string | null {
+  if (!json) return null;
+  try {
+    const arr = JSON.parse(json) as string[];
+    return arr[0] ?? null;
+  } catch { return null; }
+}
+
+/**
+ * Pick one entry per day, seeded by the date — so the shelf offers something
+ * different each morning, stays put all day, and shows both of them the same
+ * page. FNV-1a keeps short date seeds well spread.
+ */
+function dailyPick<T>(items: T[], seed: string): T | null {
+  if (items.length === 0) return null;
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return items[Math.abs(h) % items.length];
 }
 
 function spanOf(e: CalendarEvent) {
@@ -49,7 +73,7 @@ export default function Home() {
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [specialDates, setSpecialDates] = useState<SpecialDateWithCountdown[]>([]);
-  const [lastEntry, setLastEntry] = useState<LastEntry | null>(null);
+  const [shelfEntries, setShelfEntries] = useState<ShelfEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -73,9 +97,32 @@ export default function Home() {
       fetch("/api/special-dates").then((r) => r.json()).then((d) => {
         if (Array.isArray(d)) setSpecialDates(d);
       }).catch(() => {}),
-      fetch("/api/memories").then((r) => r.json()).then((d) => {
-        if (Array.isArray(d) && d.length > 0) setLastEntry(d[0]);
-      }).catch(() => {}),
+      // The shelf draws on everything bound — memories and written entries alike.
+      Promise.all([
+        fetch("/api/memories").then((r) => r.json()).catch(() => []),
+        fetch("/api/highlights").then((r) => r.json()).catch(() => []),
+      ]).then(([mems, highs]) => {
+        const pool: ShelfEntry[] = [
+          ...(Array.isArray(mems) ? mems : []).map((m: {
+            id: string; journal: string | null; photos: string | null;
+            event: { title: string; date: string; category: string | null };
+          }) => ({
+            key: `memory-${m.id}`,
+            title: m.event.title,
+            date: m.event.date,
+            categoryLabel: getCategoryById(m.event.category).label,
+            photo: firstPhoto(m.photos),
+          })),
+          ...(Array.isArray(highs) ? highs : []).map((h: DailyHighlight) => ({
+            key: `written-${h.id}`,
+            title: h.note?.trim() || "A day worth keeping",
+            date: h.date,
+            categoryLabel: "Written",
+            photo: firstPhoto(h.photos),
+          })),
+        ].sort((a, b) => dayStart(b.date).getTime() - dayStart(a.date).getTime());
+        setShelfEntries(pool);
+      }),
     ]).finally(() => setLoading(false));
 
     const params = new URLSearchParams(window.location.search);
@@ -127,13 +174,12 @@ export default function Home() {
   const spanDays = deskSpan ? daysBetween(deskSpan.start, deskSpan.end) + 1 : 1;
   const dayOfSpan = deskSpan ? Math.min(spanDays, daysBetween(deskSpan.start, today) + 1) : 1;
 
-  const lastPhoto = useMemo(() => {
-    if (!lastEntry?.photos) return null;
-    try {
-      const arr = JSON.parse(lastEntry.photos) as string[];
-      return arr[0] ?? null;
-    } catch { return null; }
-  }, [lastEntry]);
+  // Seeded on today's Muscat date, so the page turns once a day rather than
+  // on every refresh — and both of them are shown the same one.
+  const shelfEntry = useMemo(
+    () => dailyPick(shelfEntries, today.toLocaleDateString("en-CA", { timeZone: "Asia/Muscat" })),
+    [shelfEntries, today],
+  );
 
   return (
     <AppShell active={null} fab={<Fab onClick={() => router.push("/entry/new")} />}>
@@ -250,24 +296,24 @@ export default function Home() {
             </section>
           )}
 
-          {/* ── 4. Last entry filed ── */}
-          {lastEntry && (
+          {/* ── 4. Reopened today — a different page each morning ── */}
+          {shelfEntry && (
             <section className="mt-9">
-              <p className="rr-label">Last entry filed</p>
+              <p className="rr-label">Reopened today</p>
               <Link href="/story" className="block mt-3 rr-frame">
-                {lastPhoto ? (
-                  <img src={lastPhoto} alt="" style={{ aspectRatio: "4 / 3" }} />
+                {shelfEntry.photo ? (
+                  <img src={shelfEntry.photo} alt="" style={{ aspectRatio: "4 / 3" }} />
                 ) : (
                   <div style={{ aspectRatio: "4 / 3", background: "var(--wash)" }} />
                 )}
                 <div className="flex items-stretch gap-3 pt-3">
                   <div className="flex-1 min-w-0">
                     <p className="rr-display" style={{ fontSize: 20, lineHeight: 1.2, color: "var(--ink)" }}>
-                      {lastEntry.event.title}
+                      {shelfEntry.title.length > 90 ? shelfEntry.title.slice(0, 90) + "…" : shelfEntry.title}
                     </p>
                     <p className="rr-italic mt-1" style={{ fontSize: 14, color: "var(--muted)" }}>
-                      {spellDate(dayStart(lastEntry.event.date), { weekday: false })}
-                      {" · "}{getCategoryById(lastEntry.event.category).label}
+                      {spellDate(dayStart(shelfEntry.date), { weekday: false })}
+                      {" · "}{shelfEntry.categoryLabel}
                     </p>
                   </div>
                   {/* stamped margin: the date stacked vertically */}
@@ -275,7 +321,7 @@ export default function Home() {
                     className="flex flex-col items-center justify-center"
                     style={{ width: 38, borderLeft: "1px solid var(--rule-light)", flex: "none" }}
                   >
-                    {catalogueNumber(dayStart(lastEntry.event.date)).split("·").map((part, i) => (
+                    {catalogueNumber(dayStart(shelfEntry.date)).split("·").map((part, i) => (
                       <span key={i} className="rr-meta" style={{ fontSize: 10, letterSpacing: ".1em" }}>
                         {part}
                       </span>
