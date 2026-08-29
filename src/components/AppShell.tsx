@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "./SessionProvider";
 import { getVolumeInfo } from "@/lib/volume";
+import useAppBadge from "@/lib/useAppBadge";
 import type { StreakData } from "@/lib/types";
 
 export type ShelfSection = "calendar" | "story" | "letters" | "shelf" | "reading-list" | null;
@@ -136,6 +137,11 @@ export default function AppShell({
   wide?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const { user } = useSession();
+
+  // Every screen sits inside this shell, so the icon's count stays current
+  // wherever you happen to be when you open the app.
+  useAppBadge(!!user);
 
   // Close on Escape — the drawer is a dialog.
   useEffect(() => {
