@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import prisma from '@/lib/prisma';
+import { eventActionUrl } from '@/lib/action-links';
 import resend from '@/lib/resend';
 import { createCalendarEvent } from '@/lib/google-calendar';
 import { getRequestUser } from '@/lib/auth';
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
         const html = renderThemedEmail(themeKind, {
           h1: themedH1,
           cardHtml,
-          acceptLink: `${baseUrl}/api/events/action?id=${newEvent.id}&action=accept&user=${notifyTarget}`,
+          acceptLink: eventActionUrl(baseUrl, newEvent.id, notifyTarget),
           adjustLink: adjustUrl,
           baseUrl,
         });

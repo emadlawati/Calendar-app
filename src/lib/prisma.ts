@@ -18,6 +18,10 @@ const TENANT_MODELS = new Set([
   'CalendarEvent', 'GoogleCalendarToken', 'Note', 'BucketItem', 'Streak',
   'Achievement', 'Memory', 'RecurringSeries', 'SpecialDate', 'Reminder',
   'DailyHighlight', 'PushSubscription', 'Comment', 'Reaction',
+  // FeedToken is resolved by token across families, which only systemPrisma
+  // may do. Listing it here means an accidental `prisma.feedToken` fails
+  // closed rather than quietly returning every family's links.
+  'FeedToken',
 ])
 
 const READ_OPS = new Set([

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { eventActionUrl } from "@/lib/action-links";
 import prisma from "@/lib/prisma";
 import { generateInstances } from "@/lib/recurring";
 import { createCalendarEvent } from "@/lib/google-calendar";
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
                   <p style="margin: 5px 0; color: #5d4037;">${dateStr} @ ${time || "00:00"}</p>
                 </div>
                 <div style="margin-top: 20px;">
-                  <a href="${baseUrl}/api/events/action?id=${firstInstance.id}&action=accept&user=${partner}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
+                  <a href="${eventActionUrl(baseUrl, firstInstance.id, partner)}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
                     Meow Accept 🧶
                   </a>
                 </div>

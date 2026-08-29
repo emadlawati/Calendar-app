@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import prisma from '@/lib/prisma';
+import prisma, { systemPrisma, withCouple } from '@/lib/prisma';
+import { getSession } from '@/lib/session';
+import { verifyEventAction, eventActionUrl } from '@/lib/action-links';
 import resend from '@/lib/resend';
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '@/lib/google-calendar';
 import { getRequestUser } from '@/lib/auth';
@@ -328,7 +330,7 @@ export async function POST(request: Request) {
                 </div>
 
                 <div style="margin-top: 20px;">
-                  <a href="${baseUrl}/api/events/action?id=${eventId}&action=accept&user=${originalCreator}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
+                  <a href="${eventActionUrl(baseUrl, eventId, originalCreator)}" style="background-color: #fce4ec; color: #5d4037; padding: 12px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-block;">
                     Meow Accept 🧶
                   </a>
                 </div>
@@ -546,8 +548,36 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL('/', request.url));
     }
 
+    // This link is followed from a mail app, where nobody is signed in — so
+    // there is no session to take the family from. Two ways in:
+    //
+    //   a signed link, which proves the request came from an email we sent;
+    //   or an ordinary session, for someone already signed in.
+    //
+    // Without one of them the scoped client has no family and throws, which
+    // is what silently broke every accept link once tenancy landed.
+    const session = await getSession();
+    let scope: string | null = session?.coupleId ?? null;
+
+    if (!scope) {
+      if (!verifyEventAction(eventId, action, searchParams.get('sig'))) {
+        console.warn('[action] unsigned accept attempt, no session');
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+      // The signature is the authority; the event says which family.
+      const owner = await systemPrisma.calendarEvent.findUnique({
+        where: { id: eventId },
+        select: { coupleId: true },
+      });
+      if (!owner) return NextResponse.redirect(new URL('/', request.url));
+      scope = owner.coupleId;
+    }
+
     // One click accepts every occurrence when this is a recurring instance
-    const { event: acceptedEvent, acceptedCount } = await acceptEventOrSeries(eventId);
+    const { event: acceptedEvent, acceptedCount } = await withCouple(
+      scope,
+      () => acceptEventOrSeries(eventId),
+    );
     const isSeries = !!acceptedEvent?.seriesId && acceptedCount > 1;
 
     // Sync to Google Calendar for the person who accepted via email link
