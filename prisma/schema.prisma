@@ -54,6 +54,7 @@ model Couple {
   pushSubscriptions    PushSubscription[]
   comments             Comment[]
   reactions            Reaction[]
+  feedTokens           FeedToken[]
 }
 
 /**
@@ -92,6 +93,29 @@ model Invite {
   usedAt    DateTime?
   expiresAt DateTime
   createdAt DateTime  @default(now())
+}
+
+/**
+ * A secret URL that serves one person's calendar as a subscribable .ics feed.
+ *
+ * Calendar clients cannot send an Authorization header, so the token lives in
+ * the URL — the same "secret address" pattern Google and Apple use for their
+ * own private feeds. It is therefore a password in link form: read-only, one
+ * person's view of one family, and revocable on its own.
+ *
+ * Stored in the clear deliberately. It has to be re-readable to be added to a
+ * second device, and it is only ever returned to that person's own session.
+ */
+model FeedToken {
+  id         String    @id @default(uuid())
+  coupleId   String
+  couple     Couple    @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  userId     String    // role within the family
+  token      String    @unique
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([coupleId, userId])
 }
 
 // ─────────────────────────────────────────────────────────────

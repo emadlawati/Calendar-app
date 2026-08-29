@@ -8,6 +8,9 @@ const PUBLIC_PREFIXES = [
   // Invitations are opened by people who have no session yet, by definition.
   "/join",
   "/api/invites/",
+  // Calendar clients subscribe with no session and cannot send headers, so
+  // the feed authenticates on the token in its own path.
+  "/api/feed/",
   "/api/auth",
   "/api/cron",
   "/birthday",

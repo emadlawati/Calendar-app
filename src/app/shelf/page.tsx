@@ -6,6 +6,7 @@ import BookGlyph from "@/components/BookGlyph";
 import ThemeToggle from "@/components/ThemeToggle";
 import CoupleSettings from "@/components/CoupleSettings";
 import NotificationSettings from "@/components/NotificationSettings";
+import CalendarFeed from "@/components/CalendarFeed";
 import Skeleton from "@/components/Skeleton";
 import { useSession } from "@/components/SessionProvider";
 import { getVolumeInfo } from "@/lib/volume";
@@ -210,6 +211,7 @@ export default function ShelfPage() {
 
           <CoupleSettings />
           <NotificationSettings />
+          <CalendarFeed />
         </>
       )}
     </AppShell>

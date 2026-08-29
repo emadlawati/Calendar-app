@@ -181,6 +181,23 @@ section("Push subscriptions cannot straddle families");
   await p.pushSubscription.deleteMany({ where: { endpoint } });
 }
 
+section("Calendar feeds cannot cross families");
+{
+  // The feed URL is the whole credential, so it had better resolve to exactly
+  // one family's data and never leak the other's.
+  const made = await api("/api/feed", bCookie, { method: "POST" });
+  const token = made.body?.url?.split("/api/feed/")[1]?.replace(/\.ics$/, "");
+  const res = await fetch(`${BASE}/api/feed/${token}.ics`);
+  const ics = await res.text();
+  check("B's feed serves B's entries without a session",
+    res.status === 200 && ics.includes("B-SECRET-EVENT"), `HTTP ${res.status}`);
+  check("B's feed carries nothing of A's", !/Budoor|Emad|Yusr/.test(ics));
+  const aFeed = await api("/api/feed", aCookie);
+  check("A's own feed link is not B's", aFeed.body?.url !== made.body?.url);
+  const bogus = await fetch(`${BASE}/api/feed/not-a-real-token.ics`);
+  check("an unknown feed token is a flat 404", bogus.status === 404, `HTTP ${bogus.status}`);
+}
+
 section("Settings cannot cross tenants");
 await api("/api/couple", bCookie, { method: "PATCH", body: JSON.stringify({ displayName: "HIJACKED" }) });
 check("A's name is untouched", (await p.couple.findUnique({ where: { id: A.id } })).displayName !== "HIJACKED");
