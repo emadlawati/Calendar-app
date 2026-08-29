@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Modal from "@/components/Modal";
 import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, TrashIcon, HighlightStarIcon } from "@/components/icons";
-import { getDisplayName } from "@/lib/names";
+import { useNames } from "./SessionProvider";
 import ReactionBar from "./ReactionBar";
 import CommentThread from "./CommentThread";
 import type { DailyHighlight } from "@/lib/types";
@@ -23,6 +23,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function HighlightViewModal({ isOpen, onClose, highlight, onEdit, onDeleted }: Props) {
+  const displayName = useNames();
   const [photoIndex, setPhotoIndex] = useState(0);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -96,7 +97,7 @@ export default function HighlightViewModal({ isOpen, onClose, highlight, onEdit,
             </h2>
           </div>
           <p className="text-[11px] mb-3" style={{ color: "var(--text-very)" }}>
-            Captured by {getDisplayName(highlight.createdBy)}
+            Captured by {displayName(highlight.createdBy)}
           </p>
 
           {highlight.note && (

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCoupleContext } from "@/lib/couple-context";
 export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -101,7 +102,8 @@ export async function POST(request: Request) {
     }
 
     // ── Send confirmation email to both partners ──
-    const recipients = [process.env.WIFE_EMAIL, process.env.HUSBAND_EMAIL].filter(Boolean) as string[];
+    const couple = await getCoupleContext();
+    const recipients = couple ? couple.members.map((m) => m.email).filter(Boolean) : [];
     const noEmail = process.env.RESEND_API_KEY === "re_..." || !process.env.RESEND_API_KEY;
 
     if (!noEmail && recipients.length > 0) {

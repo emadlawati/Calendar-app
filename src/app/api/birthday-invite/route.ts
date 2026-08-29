@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
 import resend from "@/lib/resend";
+import { getCoupleContext } from "@/lib/couple-context";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function POST() {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const recipient = process.env.WIFE_EMAIL;
+
+    // Send to the sender's own partner. Reading WIFE_EMAIL here would have
+    // mailed the first couple's wife no matter who clicked it.
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const couple = await getCoupleContext();
+    const recipient = couple?.email(user === "Wife" ? "Husband" : "Wife") ?? null;
 
     if (!recipient) {
-      return NextResponse.json({ error: "No recipient configured" }, { status: 400 });
+      return NextResponse.json({ error: "Partner has not joined yet" }, { status: 400 });
     }
 
     if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_...") {

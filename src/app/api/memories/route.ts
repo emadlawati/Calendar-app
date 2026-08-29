@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getRequestUser, getCurrentUser } from "@/lib/auth";
 import resend from "@/lib/resend";
-import { getDisplayName } from "@/lib/names";
+import { getCoupleContext } from "@/lib/couple-context";
 import { getCategoryById } from "@/lib/categories";
 import { sendPushToUser } from "@/lib/webpush";
 import type { User } from "@/lib/types";
@@ -64,18 +64,18 @@ export async function POST(request: Request) {
 
     // Notify partner that a memory was saved
     if (user) {
-      const partnerKey = user === "Wife" ? "HUSBAND_EMAIL" : "WIFE_EMAIL";
-      const partnerEmail = process.env[partnerKey];
+      const couple = await getCoupleContext();
+      const partnerEmail = couple?.email(user === "Wife" ? "Husband" : "Wife") ?? null;
       const cat = getCategoryById(memory.event.category);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
       if (partnerEmail && process.env.RESEND_API_KEY !== "re_...") {
         resend.emails.send({
           from: "Calendar 🐾 <noreply@yaminami.uk>",
           to: partnerEmail,
-          subject: `📸 ${getDisplayName(user)} saved a memory — ${memory.event.title}`,
+          subject: `📸 ${(couple?.name(user) ?? user)} saved a memory — ${memory.event.title}`,
           html: `
             <div style="font-family:sans-serif;background:#fdfbf7;padding:40px;border-radius:32px;color:#5d4037;border:2px solid #d7ccc8;">
-              <h1 style="font-size:22px;color:#5d4037;">${getDisplayName(user)} just saved a memory 📸</h1>
+              <h1 style="font-size:22px;color:#5d4037;">${(couple?.name(user) ?? user)} just saved a memory 📸</h1>
               <div style="background:#fff;padding:20px;border-radius:20px;margin:16px 0;border:1px solid #ffeedb;">
                 <p style="margin:0;font-size:13px;opacity:.7;">${cat.emoji} ${cat.label}</p>
                 <h2 style="margin:4px 0;color:#5d4037;">${memory.event.title}</h2>
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       const partner = user === "Wife" ? "Husband" as User : "Wife" as User;
       await sendPushToUser(partner, {
         title: `📸 New Memory!`,
-        body: `${getDisplayName(user)} saved a memory for ${memory.event.title}`,
+        body: `${(couple?.name(user) ?? user)} saved a memory for ${memory.event.title}`,
         url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/memories`,
       }).catch(() => {});
     }

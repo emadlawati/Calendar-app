@@ -1,6 +1,5 @@
 import prisma from "@/lib/prisma";
 import { startOfDay } from "date-fns";
-import { getDisplayName } from "@/lib/names";
 
 export interface UpcomingSpecial {
   id: string;
@@ -59,90 +58,74 @@ export async function getUpcomingSpecialDates(): Promise<UpcomingSpecial[]> {
   });
 }
 
-export async function seedSpecialDates(): Promise<void> {
+
+/**
+ * Seed a couple's birthdays, anniversary and milestones from their own
+ * record. Everything here used to come from NEXT_PUBLIC_* env vars, which
+ * meant every couple would have inherited Budoor & Emad's dates.
+ *
+ * The existence guard is a scoped count, so it is per-couple: couple #2
+ * still gets seeded even though couple #1 already has rows.
+ */
+export async function seedSpecialDates(couple: {
+  startDate: Date;
+  childName: string | null;
+  members: { role: string; name: string; birthday: string | null }[];
+}): Promise<void> {
   const existing = await prisma.specialDate.count();
   if (existing > 0) return;
 
-  const specialDates = [];
+  const rows: {
+    title: string; date: Date; type: string; kind: string;
+    emoji: string | null; createdBy: string;
+  }[] = [];
 
-  if (process.env.NEXT_PUBLIC_BUDOOR_BIRTHDAY) {
-    const [m, d] = process.env.NEXT_PUBLIC_BUDOOR_BIRTHDAY.split("-");
-    specialDates.push({
-      title: `\u{1F382} ${getDisplayName("Wife")}'s Birthday`,
-      date: new Date(Date.UTC(2000, parseInt(m) - 1, parseInt(d))),
+  /** "MM-DD" -> a date on a fixed year; only month/day matter for annuals. */
+  const annual = (mmdd: string) => {
+    const [m, d] = mmdd.split("-").map(Number);
+    return new Date(Date.UTC(2000, m - 1, d));
+  };
+
+  for (const member of couple.members) {
+    if (!member.birthday) continue;
+    rows.push({
+      title: `\u{1F382} ${member.name}'s Birthday`,
+      date: annual(member.birthday),
       type: "annual",
       kind: "birthday",
       emoji: "\u{1F382}",
-      createdBy: "Wife",
+      createdBy: member.role,
     });
   }
 
-  if (process.env.NEXT_PUBLIC_IMAD_BIRTHDAY) {
-    const [m, d] = process.env.NEXT_PUBLIC_IMAD_BIRTHDAY.split("-");
-    specialDates.push({
-      title: `\u{1F382} ${getDisplayName("Husband")}'s Birthday`,
-      date: new Date(Date.UTC(2000, parseInt(m) - 1, parseInt(d))),
-      type: "annual",
-      kind: "birthday",
-      emoji: "\u{1F382}",
-      createdBy: "Husband",
-    });
+  const start = couple.startDate;
+  rows.push({
+    title: "\u{1F48D} Anniversary",
+    date: new Date(Date.UTC(2000, start.getUTCMonth(), start.getUTCDate())),
+    type: "annual",
+    kind: "anniversary",
+    emoji: "\u{1F48D}",
+    createdBy: "Wife",
+  });
+
+  for (const row of rows) {
+    await prisma.specialDate.create({ data: row });
   }
 
-  if (process.env.NEXT_PUBLIC_CHILD_BIRTHDAY) {
-    const [m, d] = process.env.NEXT_PUBLIC_CHILD_BIRTHDAY.split("-");
-    const childName = process.env.NEXT_PUBLIC_CHILD_NAME || "our little one";
-    specialDates.push({
-      title: `\u{1F382} ${childName}'s Birthday`,
-      date: new Date(Date.UTC(2000, parseInt(m) - 1, parseInt(d))),
-      type: "annual",
-      kind: "birthday",
-      emoji: "\u{1F382}",
-      createdBy: "Wife",
-    });
-  }
-
-  const anniversaryDate = process.env.NEXT_PUBLIC_ANNIVERSARY_DATE ||
-    (process.env.NEXT_PUBLIC_RELATIONSHIP_START ? (() => {
-      const d = new Date(process.env.NEXT_PUBLIC_RELATIONSHIP_START);
-      return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    })() : null);
-
-  if (anniversaryDate) {
-    const [m, d] = anniversaryDate.split("-");
-    specialDates.push({
-      title: "\u{1F48D} Anniversary",
-      date: new Date(Date.UTC(2000, parseInt(m) - 1, parseInt(d))),
-      type: "annual",
-      kind: "anniversary",
-      emoji: "\u{1F48D}",
-      createdBy: "Wife",
-    });
-  }
-
-  for (const sd of specialDates) {
-    await prisma.specialDate.create({ data: sd });
-  }
-
-  if (specialDates.length > 0) {
-    const [m, d] = (process.env.NEXT_PUBLIC_RELATIONSHIP_START || "2017-01-31").split("-");
-    await addMilestones(parseInt(m), parseInt(d));
-  }
+  await addMilestones(start);
 }
 
-async function addMilestones(month: number, day: number): Promise<void> {
+/** "100 Days Together", "5 Years Together" — counted from the couple's own start. */
+async function addMilestones(start: Date): Promise<void> {
   const milestones = [100, 500, 1000, 2000, 3000, 3652];
-  const start = new Date(process.env.NEXT_PUBLIC_RELATIONSHIP_START || "2017-01-31");
-  start.setHours(0, 0, 0, 0);
+  const base = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
 
   for (const days of milestones) {
-    const milestoneDate = new Date(start.getTime() + days * 24 * 60 * 60 * 1000);
     const label = days >= 365 ? `${Math.floor(days / 365)} Years Together` : `${days} Days Together`;
-
     await prisma.specialDate.create({
       data: {
         title: `\u{1F389} ${label}`,
-        date: milestoneDate,
+        date: new Date(base + days * 86_400_000),
         type: "one-time",
         kind: "milestone",
         emoji: "\u{1F389}",

@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChatIcon, SendIcon, TrashIcon } from "@/components/icons";
-import { useSession } from "./SessionProvider";
-import { getDisplayName } from "@/lib/names";
+import { useSession, useNames } from "./SessionProvider";
 import type { Comment, CommentTarget, User } from "@/lib/types";
 
 interface Props {
@@ -30,6 +29,7 @@ function relativeTime(iso: string): string {
 
 export default function CommentThread({ targetType, targetId, defaultOpen = false, ownerId }: Props) {
   const { user } = useSession();
+  const displayName = useNames();
   const canInteract = !ownerId || user !== ownerId;
   const [open, setOpen] = useState(defaultOpen);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -142,7 +142,7 @@ export default function CommentThread({ targetType, targetId, defaultOpen = fals
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <span className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>
-                          {getDisplayName(c.createdBy)}
+                          {displayName(c.createdBy)}
                         </span>
                         <span className="text-[10px]" style={{ color: "var(--text-very)" }}>
                           {relativeTime(c.createdAt)}

@@ -28,6 +28,11 @@ export function toRoman(n: number): string {
   return out;
 }
 
+/**
+ * Fallback only. Every caller that knows its couple should pass
+ * `couple.startDate` to getVolumeInfo() instead — the env var exists purely
+ * so the maths still works before the session has loaded.
+ */
 export function relationshipStart(): Date {
   return new Date(process.env.NEXT_PUBLIC_RELATIONSHIP_START || "2017-01-31");
 }
@@ -47,8 +52,11 @@ export interface VolumeInfo {
   startYear: number;
 }
 
-export function getVolumeInfo(now: number = Date.now()): VolumeInfo {
-  const start = relationshipStart();
+export function getVolumeInfo(
+  startDate?: Date | string | null,
+  now: number = Date.now(),
+): VolumeInfo {
+  const start = startDate ? new Date(startDate) : relationshipStart();
   const page = Math.max(0, Math.floor((now - start.getTime()) / 86_400_000));
   const volume = Math.max(1, Math.ceil(page / DAYS_PER_VOLUME));
   const pagesInVolume = page - (volume - 1) * DAYS_PER_VOLUME;

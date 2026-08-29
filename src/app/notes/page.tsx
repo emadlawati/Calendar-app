@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import AppShell from "@/components/AppShell";
 import Skeleton from "@/components/Skeleton";
-import { useSession } from "@/components/SessionProvider";
-import { getDisplayName } from "@/lib/names";
+import { useSession, useNames, usePartnerName } from "@/components/SessionProvider";
 import type { Note, NoteKind } from "@/lib/types";
 
 function stampDate(iso: string): string {
@@ -24,6 +23,8 @@ function PaperPlane() {
 
 export default function LettersPage() {
   const { user } = useSession();
+  const displayName = useNames();
+  const partnerName = usePartnerName();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState("");
@@ -76,8 +77,6 @@ export default function LettersPage() {
     finally { setSending(false); }
   };
 
-  const partnerName = user ? getDisplayName(user === "Wife" ? "Husband" : "Wife") : "your partner";
-
   return (
     <AppShell active="letters">
       <header className="pt-5">
@@ -121,7 +120,7 @@ export default function LettersPage() {
               <div key={n.id} className="rr-double" style={{ maxWidth: "92%" }}>
                 <div style={{ padding: 18 }}>
                   <p className="rr-meta" style={{ fontSize: 10, color: "var(--terracotta)" }}>
-                    From {getDisplayName(n.createdBy)} · {label}
+                    From {displayName(n.createdBy)} · {label}
                   </p>
                   <p className="rr-italic mt-2.5" style={{ fontSize: 20, lineHeight: 1.4, color: "var(--ink)" }}>
                     {n.content}

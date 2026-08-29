@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import resend from "@/lib/resend";
 import { getCurrentUser } from "@/lib/auth";
-import { getDisplayName } from "@/lib/names";
+import { getCoupleContext } from "@/lib/couple-context";
 import { sendPushToUser } from "@/lib/webpush";
 
 export async function POST() {
@@ -13,16 +13,15 @@ export async function POST() {
     }
 
     const partner = user === "Wife" ? "Husband" : "Wife";
-    const partnerEmail = partner === "Wife"
-      ? process.env.WIFE_EMAIL
-      : process.env.HUSBAND_EMAIL;
+    const couple = await getCoupleContext();
+    const partnerEmail = couple?.email(partner) ?? null;
 
     if (!partnerEmail) {
-      return NextResponse.json({ success: false, error: "Partner email not configured" }, { status: 500 });
+      return NextResponse.json({ success: false, error: "Partner has not joined yet" }, { status: 400 });
     }
 
-    const displayName = getDisplayName(user);
-    const partnerDisplayName = getDisplayName(partner);
+    const displayName = couple?.name(user) ?? user;
+    const partnerDisplayName = couple?.name(partner) ?? partner;
 
     // Push notification to partner
     sendPushToUser(partner, {

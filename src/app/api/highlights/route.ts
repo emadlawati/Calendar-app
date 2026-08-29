@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getRequestUser } from "@/lib/auth";
-import { getDisplayName } from "@/lib/names";
+import { getCoupleContext, type CoupleContext } from "@/lib/couple-context";
 import { sendPushToUser } from "@/lib/webpush";
 import resend from "@/lib/resend";
 
@@ -46,9 +46,10 @@ export async function POST(request: Request) {
         });
 
     // Notify partner about the new highlight
-    const displayName = getDisplayName(user);
+    const couple = await getCoupleContext();
+    const displayName = couple?.name(user) ?? user;
     const partner = user === "Wife" ? "Husband" : "Wife";
-    const partnerEmail = partner === "Wife" ? process.env.WIFE_EMAIL : process.env.HUSBAND_EMAIL;
+    const partnerEmail = couple?.email(partner) ?? null;
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const dateStr = new Date(date + "T00:00:00").toLocaleDateString("en-US", {
       weekday: "short", month: "short", day: "numeric",

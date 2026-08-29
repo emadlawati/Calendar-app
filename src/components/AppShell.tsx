@@ -4,7 +4,6 @@ import { useState, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "./SessionProvider";
-import { getDisplayName } from "@/lib/names";
 import { getVolumeInfo } from "@/lib/volume";
 import type { StreakData } from "@/lib/types";
 
@@ -27,9 +26,10 @@ function HamburgerGlyph() {
 }
 
 function DrawerPanel({ active, onNavigate }: { active: ShelfSection; onNavigate?: () => void }) {
-  const { logout } = useSession();
+  const { logout, couple } = useSession();
   const [streak, setStreak] = useState<StreakData | null>(null);
-  const [vol] = useState(() => getVolumeInfo());
+  // Derived from the couple, so a second couple sees their own volume.
+  const vol = getVolumeInfo(couple?.startDate);
 
   useEffect(() => {
     fetch("/api/streaks")
@@ -51,7 +51,7 @@ function DrawerPanel({ active, onNavigate }: { active: ShelfSection; onNavigate?
       >
         <p className="rr-label" style={{ color: "var(--sage-pale)" }}>The collection of</p>
         <p className="rr-display mt-2" style={{ fontSize: 27, color: "var(--paper)", lineHeight: 1.1 }}>
-          {getDisplayName("Wife")} &amp; {getDisplayName("Husband")}
+          {couple?.displayName ?? " "}
         </p>
         <p className="rr-italic mt-1" style={{ fontSize: 14, color: "var(--sage-pale)" }}>
           est. {vol.startYear} · Vol. {vol.volumeRoman}

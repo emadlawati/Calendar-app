@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSession } from "./SessionProvider";
-import { getDisplayName } from "@/lib/names";
+import { useSession, useNames } from "./SessionProvider";
 import { REACTION_EMOJIS } from "@/lib/reactions";
 import { SmilePlusIcon, ReactionIcons } from "@/components/icons";
 import type { Reaction, CommentTarget, User } from "@/lib/types";
@@ -17,6 +16,7 @@ interface Props {
 
 export default function ReactionBar({ targetType, targetId, ownerId }: Props) {
   const { user } = useSession();
+  const displayName = useNames();
   const canInteract = !ownerId || user !== ownerId;
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [picker, setPicker] = useState(false);
@@ -70,7 +70,7 @@ export default function ReactionBar({ targetType, targetId, ownerId }: Props) {
       emoji,
       count: forEmoji.length,
       mine: forEmoji.some((r) => r.createdBy === user),
-      who: forEmoji.map((r) => getDisplayName(r.createdBy)).join(", "),
+      who: forEmoji.map((r) => displayName(r.createdBy)).join(", "),
     };
   }).filter((g) => g.count > 0);
 

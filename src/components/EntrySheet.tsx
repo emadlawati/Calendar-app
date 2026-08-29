@@ -4,10 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import BookGlyph from "./BookGlyph";
-import { useSession } from "./SessionProvider";
+import { useSession, useNames, usePerson } from "./SessionProvider";
 import { getCategoryById } from "@/lib/categories";
-import { getPersonById } from "@/lib/people";
-import { getDisplayName } from "@/lib/names";
 import { spellDate, spellTime, catalogueNumber } from "@/lib/volume";
 import type { CalendarEvent } from "@/lib/types";
 
@@ -40,6 +38,8 @@ export default function EntrySheet({
 }) {
   const router = useRouter();
   const { user } = useSession();
+  const displayName = useNames();
+  const lookupPerson = usePerson();
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
 
@@ -60,7 +60,7 @@ export default function EntrySheet({
   };
 
   const cat = event ? getCategoryById(event.category) : null;
-  const person = event ? getPersonById(event.personTag) : null;
+  const person = event ? lookupPerson(event.personTag) : null;
   const start = event ? dayStart(event.date as string) : null;
   const end = event?.endDate ? dayStart(event.endDate as string) : null;
   const isPending = event?.status === "pending";
@@ -110,7 +110,7 @@ export default function EntrySheet({
                       {event.title}
                     </h2>
                     <p className="rr-italic mt-1.5" style={{ fontSize: 15, color: "var(--muted)" }}>
-                      {cat.label} — entered by {getDisplayName(event.createdBy)}
+                      {cat.label} — entered by {displayName(event.createdBy)}
                     </p>
 
                     <div className="mt-5">

@@ -69,7 +69,7 @@ function daysBetween(from: Date, to: Date) {
 
 export default function Home() {
   const router = useRouter();
-  const { isLoading: sessionLoading } = useSession();
+  const { isLoading: sessionLoading, couple } = useSession();
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [specialDates, setSpecialDates] = useState<SpecialDateWithCountdown[]>([]);
@@ -80,7 +80,7 @@ export default function Home() {
   const [sheetEvent, setSheetEvent] = useState<CalendarEvent | null>(null);
   const [bindTarget, setBindTarget] = useState<PendingMemory | null>(null);
 
-  const [vol] = useState(() => getVolumeInfo());
+  const vol = getVolumeInfo(couple?.startDate);
   const [today] = useState(() => new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Muscat" }) + `T00:00:00${TZ}`));
 
   const fetchEvents = useCallback(async () => {

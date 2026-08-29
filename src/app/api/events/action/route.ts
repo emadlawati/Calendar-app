@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 import resend from '@/lib/resend';
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '@/lib/google-calendar';
 import { getRequestUser } from '@/lib/auth';
-import { getDisplayName } from '@/lib/names';
+import { getCoupleContext } from "@/lib/couple-context";
 import { getCategoryById } from '@/lib/categories';
 import { recalculateStreaks } from '@/lib/streaks';
 import { getBadgeById } from '@/lib/achievements';
@@ -136,7 +136,8 @@ export async function POST(request: Request) {
 
       // Push notification to creator
       if (acceptedEvent) {
-        const accepterDisplay = getDisplayName(user);
+        const couple = await getCoupleContext();
+        const accepterDisplay = couple?.name(user) ?? user;
         const cat = getCategoryById(acceptedEvent.category);
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
         sendPushToUser(acceptedEvent.createdBy, {
@@ -150,10 +151,9 @@ export async function POST(request: Request) {
 
       // Notify the original creator that their plan was accepted
       if (acceptedEvent) {
-        const creatorEmail = acceptedEvent.createdBy === "Wife"
-          ? process.env.WIFE_EMAIL
-          : process.env.HUSBAND_EMAIL;
-        const accepterDisplay = getDisplayName(user);
+        const couple = await getCoupleContext();
+        const creatorEmail = couple?.email(acceptedEvent.createdBy) ?? null;
+        const accepterDisplay = couple?.name(user) ?? user;
         const cat = getCategoryById(acceptedEvent.category);
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -272,11 +272,10 @@ export async function POST(request: Request) {
       }
 
       // Send email notification to the original event creator
-      const adjusterDisplayName = user ? getDisplayName(user) : "Your partner";
+      const adjustCouple = await getCoupleContext();
+      const adjusterDisplayName = user ? (adjustCouple?.name(user) ?? user) : "Your partner";
       const originalCreator = existingEvent.createdBy;
-      const recipientEmail = originalCreator === "Wife"
-        ? process.env.WIFE_EMAIL
-        : process.env.HUSBAND_EMAIL;
+      const recipientEmail = adjustCouple?.email(originalCreator) ?? null;
       const cat = getCategoryById(updatedCategory);
 
       if (recipientEmail && process.env.RESEND_API_KEY !== "re_...") {
@@ -416,14 +415,15 @@ export async function POST(request: Request) {
 
       // Notify whoever this event is tagged for (both, unless it's tagged
       // exclusively to one partner)
-      const editorDisplay = getDisplayName(user);
+      const editCouple = await getCoupleContext();
+      const editorDisplay = editCouple?.name(user) ?? user;
       const cat = getCategoryById(updatedCategory);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       const formattedDate = formatDateRange(updatedDate, updatedEndDate);
 
       const notifyUsers = getEventNotificationRecipients(updatedPersonTag);
       const emailRecipients: string[] = notifyUsers
-        .map((u) => (u === "Wife" ? process.env.WIFE_EMAIL : process.env.HUSBAND_EMAIL))
+        .map((u) => editCouple?.email(u))
         .filter(Boolean) as string[];
 
       if (emailRecipients.length > 0 && process.env.RESEND_API_KEY !== "re_...") {
@@ -584,10 +584,9 @@ export async function GET(request: Request) {
 
     // Notify the original creator that their plan was accepted via email link
     if (acceptedEvent && acceptedBy) {
-      const creatorEmail = acceptedEvent.createdBy === "Wife"
-        ? process.env.WIFE_EMAIL
-        : process.env.HUSBAND_EMAIL;
-      const accepterDisplay = getDisplayName(acceptedBy as "Wife" | "Husband");
+      const getCouple = await getCoupleContext();
+      const creatorEmail = getCouple?.email(acceptedEvent.createdBy) ?? null;
+      const accepterDisplay = getCouple?.name(acceptedBy) ?? acceptedBy;
       const cat = getCategoryById(acceptedEvent.category);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 

@@ -7,9 +7,9 @@ import EntrySheet from "@/components/EntrySheet";
 import ReminderModal from "@/components/ReminderModal";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
 import Toast from "@/components/Toast";
+import { usePeople } from "@/components/SessionProvider";
 import Skeleton from "@/components/Skeleton";
 import { getCategoryById } from "@/lib/categories";
-import { PEOPLE } from "@/lib/people";
 import { toRoman, spellDate, spellTime } from "@/lib/volume";
 import type { CalendarEvent, Reminder, PendingMemory } from "@/lib/types";
 
@@ -36,6 +36,7 @@ function todayKeyParts(): [number, number] {
 
 export default function CalendarPage() {
   const router = useRouter();
+  const people = usePeople();
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -176,7 +177,7 @@ export default function CalendarPage() {
 
       {/* One line of text filters */}
       <div className="flex items-center gap-5 mt-5 overflow-x-auto no-scrollbar">
-        {PEOPLE.map((p) => (
+        {people.map((p) => (
           <button
             key={p.id}
             className="rr-filter whitespace-nowrap"

@@ -5,7 +5,7 @@ import AppShell from "@/components/AppShell";
 import BookGlyph from "@/components/BookGlyph";
 import ThemeToggle from "@/components/ThemeToggle";
 import Skeleton from "@/components/Skeleton";
-import { getDisplayName } from "@/lib/names";
+import { useSession } from "@/components/SessionProvider";
 import { getVolumeInfo } from "@/lib/volume";
 
 interface StatsData {
@@ -25,7 +25,8 @@ const SHELF_SLOTS = 8;
 export default function ShelfPage() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [vol] = useState(() => getVolumeInfo());
+  const { couple } = useSession();
+  const vol = getVolumeInfo(couple?.startDate);
 
   useEffect(() => {
     fetch("/api/stats")
@@ -124,7 +125,7 @@ export default function ShelfPage() {
             <div className="flex items-baseline justify-between gap-3">
               <p className="rr-label">Borrower&apos;s card</p>
               <p className="rr-italic" style={{ fontSize: 14, color: "var(--muted)" }}>
-                {getDisplayName("Wife")} &amp; {getDisplayName("Husband")}
+                {couple?.displayName ?? " "}
               </p>
             </div>
 

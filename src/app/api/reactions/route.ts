@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, getRequestUser } from "@/lib/auth";
-import { getDisplayName } from "@/lib/names";
+import { getCoupleContext, type CoupleContext } from "@/lib/couple-context";
 import { sendPushToUser } from "@/lib/webpush";
 import { REACTION_EMOJIS } from "@/lib/reactions";
 import { getTargetOwner } from "@/lib/content-target";
@@ -69,7 +69,8 @@ export async function POST(request: Request) {
       await prisma.reaction.create({ data: { targetType, targetId, emoji, createdBy: user } });
       added = true;
       // Notify partner (push only — keep it light, no email)
-      notifyPartner(user, targetType, targetId, emoji).catch(() => {});
+      const couple = await getCoupleContext();
+      notifyPartner(couple, user, targetType, targetId, emoji).catch(() => {});
     }
 
     const reactions = await prisma.reaction.findMany({
@@ -83,8 +84,8 @@ export async function POST(request: Request) {
   }
 }
 
-async function notifyPartner(user: User, targetType: CommentTarget, targetId: string, emoji: string) {
-  const displayName = getDisplayName(user);
+async function notifyPartner(cpl: CoupleContext | null, user: User, targetType: CommentTarget, targetId: string, emoji: string) {
+  const displayName = cpl?.name(user) ?? user;
   const partner: User = user === "Wife" ? "Husband" : "Wife";
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const what = targetType === "memory" ? "your memory" : "your highlight";

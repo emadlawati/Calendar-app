@@ -2,10 +2,8 @@
 
 import { Suspense, useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSession } from "@/components/SessionProvider";
+import { useSession, useNames, usePartnerName, usePeople } from "@/components/SessionProvider";
 import { EVENT_CATEGORIES } from "@/lib/categories";
-import { PEOPLE } from "@/lib/people";
-import { getDisplayName } from "@/lib/names";
 import { specialDateLabel, linkableSpecialDates } from "@/lib/special-date-display";
 import type { BucketItem, CalendarEvent, SpecialDateWithCountdown } from "@/lib/types";
 
@@ -31,6 +29,9 @@ function NewEntryForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { user } = useSession();
+  const displayName = useNames();
+  const partnerName = usePartnerName();
+  const people = usePeople();
 
   const editId = params.get("id");
   const isEdit = !!editId;
@@ -92,8 +93,6 @@ function NewEntryForm() {
         .catch(() => {});
     }
   };
-
-  const partnerName = user ? getDisplayName(user === "Wife" ? "Husband" : "Wife") : "your partner";
   const linkable = useMemo(() => linkableSpecialDates(specialDates), [specialDates]);
 
   const file = async () => {
@@ -338,7 +337,7 @@ function NewEntryForm() {
           {/* Attending */}
           <Section label="Attending">
             <div className="flex flex-wrap gap-2">
-              {PEOPLE.map((p) => {
+              {people.map((p) => {
                 const on = personTag === p.id;
                 return (
                   <button
@@ -381,7 +380,7 @@ function NewEntryForm() {
           <div className="flex items-center justify-between gap-4 mt-9">
             <span className="rr-italic" style={{ fontSize: 15, color: "var(--muted)" }}>
               {personTag === "wife" || personTag === "husband"
-                ? `${getDisplayName(personTag === "wife" ? "Wife" : "Husband")} will be told`
+                ? `${displayName(personTag === "wife" ? "Wife" : "Husband")} will be told`
                 : `${partnerName} will be told`}
             </span>
             <button className="rr-btn" onClick={file} disabled={saving} style={{ flex: "none" }}>

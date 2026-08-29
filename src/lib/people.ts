@@ -1,7 +1,12 @@
-import { getDisplayName } from "./names";
 import type { User } from "./types";
 
-/** Who an event is about. Stored on CalendarEvent.personTag. */
+/**
+ * Who an event is about. Stored on CalendarEvent.personTag.
+ *
+ * The tag list itself is fixed; only the *labels* vary by couple, so the
+ * static shape lives here and names are resolved against the signed-in
+ * couple. Nothing in this file reads environment variables.
+ */
 export interface PersonTag {
   id: string;
   label: string;
@@ -10,19 +15,53 @@ export interface PersonTag {
   textColor: string;
 }
 
-const CHILD_NAME = process.env.NEXT_PUBLIC_CHILD_NAME || "Yusr";
+/** Names needed to label the per-person tags. */
+export interface PersonNames {
+  wife?: string;
+  husband?: string;
+  child?: string | null;
+}
 
-export const PEOPLE: PersonTag[] = [
-  { id: "family",  label: "Family",                  emoji: "👨‍👩‍👧", color: "var(--person-family-bg)",  textColor: "var(--person-family-text)" },
-  { id: "couple",  label: "Couples",                 emoji: "💑", color: "var(--person-couple-bg)",  textColor: "var(--person-couple-text)" },
-  { id: "wife",    label: getDisplayName("Wife"),    emoji: "💐", color: "var(--person-wife-bg)",    textColor: "var(--person-wife-text)" },
-  { id: "husband", label: getDisplayName("Husband"), emoji: "☕", color: "var(--person-husband-bg)", textColor: "var(--person-husband-text)" },
-  { id: "child",   label: CHILD_NAME,                emoji: "🧸", color: "var(--person-child-bg)",   textColor: "var(--person-child-text)" },
-];
+const TAGS = [
+  { id: "family",  emoji: "👨‍👩‍👧", color: "var(--person-family-bg)",  textColor: "var(--person-family-text)",  fixed: "Family" },
+  { id: "couple",  emoji: "💑", color: "var(--person-couple-bg)",  textColor: "var(--person-couple-text)",  fixed: "Couples" },
+  { id: "wife",    emoji: "💐", color: "var(--person-wife-bg)",    textColor: "var(--person-wife-text)",    fixed: null },
+  { id: "husband", emoji: "☕", color: "var(--person-husband-bg)", textColor: "var(--person-husband-text)", fixed: null },
+  { id: "child",   emoji: "🧸", color: "var(--person-child-bg)",   textColor: "var(--person-child-text)",   fixed: null },
+] as const;
 
-export function getPersonById(id: string | null | undefined): PersonTag | null {
+function labelFor(id: string, names: PersonNames): string {
+  if (id === "wife") return names.wife || "Wife";
+  if (id === "husband") return names.husband || "Husband";
+  if (id === "child") return names.child || "Our little one";
+  return TAGS.find((t) => t.id === id)?.fixed ?? id;
+}
+
+/** The five tags, labelled for a particular couple. */
+export function resolvePeople(names: PersonNames): PersonTag[] {
+  // A couple with no child recorded shouldn't be offered a child tag.
+  return TAGS
+    .filter((t) => t.id !== "child" || !!names.child)
+    .map((t) => ({
+      id: t.id,
+      emoji: t.emoji,
+      color: t.color,
+      textColor: t.textColor,
+      label: labelFor(t.id, names),
+    }));
+}
+
+export function getPersonById(id: string | null | undefined, names: PersonNames = {}): PersonTag | null {
   if (!id) return null;
-  return PEOPLE.find((p) => p.id === id) ?? null;
+  const tag = TAGS.find((t) => t.id === id);
+  if (!tag) return null;
+  return {
+    id: tag.id,
+    emoji: tag.emoji,
+    color: tag.color,
+    textColor: tag.textColor,
+    label: labelFor(tag.id, names),
+  };
 }
 
 /**

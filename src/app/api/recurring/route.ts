@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { generateInstances } from "@/lib/recurring";
 import { createCalendarEvent } from "@/lib/google-calendar";
 import resend from "@/lib/resend";
-import { getDisplayName } from "@/lib/names";
+import { getCoupleContext } from "@/lib/couple-context";
 import { getCategoryById } from "@/lib/categories";
 
 export async function POST(request: Request) {
@@ -73,7 +73,8 @@ export async function POST(request: Request) {
 
       // Send email for first upcoming instance
       const partner = createdBy === "Wife" ? "Husband" : "Wife";
-      const recipientEmail = partner === "Wife" ? process.env.WIFE_EMAIL : process.env.HUSBAND_EMAIL;
+      const couple = await getCoupleContext();
+      const recipientEmail = couple?.email(partner) ?? null;
       const cat = getCategoryById(category);
 
       if (recipientEmail && process.env.RESEND_API_KEY !== "re_...") {
@@ -82,10 +83,10 @@ export async function POST(request: Request) {
           await resend.emails.send({
             from: "Calendar 🐾 <noreply@yaminami.uk>",
             to: recipientEmail,
-            subject: `${cat.emoji} ${title} — ${getDisplayName(createdBy)} invited you (weekly!)`,
+            subject: `${cat.emoji} ${title} — ${(couple?.name(createdBy) ?? createdBy)} invited you (weekly!)`,
             html: `
               <div style="font-family: sans-serif; background-color: #fdfbf7; padding: 40px; border-radius: 32px; color: #5d4037; border: 2px solid #d7ccc8;">
-                <h1 style="color: #5d4037; font-size: 24px;">Meow! ${getDisplayName(createdBy)} wants to make this a regular thing 🐾</h1>
+                <h1 style="color: #5d4037; font-size: 24px;">Meow! ${(couple?.name(createdBy) ?? createdBy)} wants to make this a regular thing 🐾</h1>
                 <div style="background-color: #ffffff; padding: 24px; border-radius: 24px; margin: 20px 0; border: 1px solid #ffeedb;">
                   <p style="margin: 0; font-size: 14px; color: #5d4037; opacity: 0.8;">${cat.emoji} ${cat.label} · Every ${frequency}</p>
                   <h2 style="margin: 5px 0; color: #5d4037;">${title}</h2>

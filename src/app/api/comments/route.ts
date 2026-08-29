@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, getRequestUser } from "@/lib/auth";
-import { getDisplayName } from "@/lib/names";
+import { getCoupleContext, type CoupleContext } from "@/lib/couple-context";
 import { sendPushToUser } from "@/lib/webpush";
 import { getTargetOwner } from "@/lib/content-target";
 import resend from "@/lib/resend";
@@ -62,7 +62,8 @@ export async function POST(request: Request) {
     });
 
     // Best-effort partner notification — never block the response
-    notifyPartner(user, targetType, targetId, content).catch(() => {});
+    const couple = await getCoupleContext();
+    notifyPartner(couple, user, targetType, targetId, content).catch(() => {});
 
     return NextResponse.json(comment, { status: 201 });
   } catch (error) {
@@ -72,14 +73,15 @@ export async function POST(request: Request) {
 }
 
 async function notifyPartner(
+  cpl: CoupleContext | null,
   user: User,
   targetType: CommentTarget,
   targetId: string,
   content: string,
 ) {
-  const displayName = getDisplayName(user);
+  const displayName = cpl?.name(user) ?? user;
   const partner: User = user === "Wife" ? "Husband" : "Wife";
-  const partnerEmail = partner === "Wife" ? process.env.WIFE_EMAIL : process.env.HUSBAND_EMAIL;
+  const partnerEmail = cpl?.email(partner) ?? null;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const preview = content.length > 80 ? content.slice(0, 80) + "…" : content;
 

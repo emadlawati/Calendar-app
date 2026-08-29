@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { getDisplayName } from "@/lib/names";
+import { getCoupleContext, type CoupleContext } from "@/lib/couple-context";
 import { sendPushToUser } from "@/lib/webpush";
 import resend from "@/lib/resend";
 import type { User, NoteKind } from "@/lib/types";
@@ -58,7 +58,8 @@ export async function POST(request: Request) {
       data: { content, kind, createdBy: user },
     });
 
-    notifyPartner(user, kind, content).catch(() => {});
+    const couple = await getCoupleContext();
+    notifyPartner(couple, user, kind, content).catch(() => {});
 
     return NextResponse.json(note, { status: 201 });
   } catch (error) {
@@ -67,10 +68,10 @@ export async function POST(request: Request) {
   }
 }
 
-async function notifyPartner(user: User, kind: NoteKind, content: string) {
-  const displayName = getDisplayName(user);
+async function notifyPartner(cpl: CoupleContext | null, user: User, kind: NoteKind, content: string) {
+  const displayName = cpl?.name(user) ?? user;
   const partner: User = user === "Wife" ? "Husband" : "Wife";
-  const partnerEmail = partner === "Wife" ? process.env.WIFE_EMAIL : process.env.HUSBAND_EMAIL;
+  const partnerEmail = cpl?.email(partner) ?? null;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const preview = content.length > 80 ? content.slice(0, 80) + "…" : content;
   const isGratitude = kind === "gratitude";

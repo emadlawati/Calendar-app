@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 import resend from '@/lib/resend';
 import { createCalendarEvent } from '@/lib/google-calendar';
 import { getRequestUser } from '@/lib/auth';
-import { getDisplayName } from '@/lib/names';
+import { getCoupleContext } from "@/lib/couple-context";
 import { getCategoryById } from '@/lib/categories';
 import { renderThemedEmail, getTheme } from '@/lib/email-themes';
 import { sendPushToUser } from '@/lib/webpush';
@@ -78,8 +78,9 @@ export async function POST(request: Request) {
     // event's person-tag actually includes them ("wife"/"husband" tags are
     // exclusive to that partner; family/couple/child/untagged notify both).
     const notifyTarget = getEventNotificationRecipients(personTag).find((u) => u !== createdBy) ?? null;
-    const partnerEmail = notifyTarget === "Wife" ? process.env.WIFE_EMAIL : notifyTarget === "Husband" ? process.env.HUSBAND_EMAIL : null;
-    const displayName = getDisplayName(createdBy);
+    const couple = await getCoupleContext();
+    const partnerEmail = notifyTarget ? couple?.email(notifyTarget) ?? null : null;
+    const displayName = couple?.name(createdBy) ?? createdBy;
     const cat = getCategoryById(category || "other");
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
