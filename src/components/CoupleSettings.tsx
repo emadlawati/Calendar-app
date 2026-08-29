@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "./SessionProvider";
+import { formatHijri } from "@/lib/hijri";
 
 interface Member {
   id: string; role: string | null; kind: string;
   name: string; email: string | null; title: string | null; birthday: string | null;
 }
 interface CoupleRecord {
-  displayName: string; startDate: string; users: Member[];
+  displayName: string; startDate: string; hijriOffset: number; users: Member[];
 }
 interface InviteRow {
   id: string; kind: "partner" | "couple"; note: string | null;
@@ -71,6 +72,7 @@ export default function CoupleSettings() {
         body: JSON.stringify({
           displayName: couple.displayName,
           startDate: couple.startDate,
+          hijriOffset: couple.hijriOffset ?? 0,
           members: couple.users
             .filter((u) => u.kind === "adult")
             .map((u) => ({ role: u.role, name: u.name, title: u.title ?? "", birthday: u.birthday || "" })),
@@ -160,6 +162,36 @@ export default function CoupleSettings() {
             onChange={(e) => setCouple({ ...couple, startDate: e.target.value })}
             className="rr-display" style={{ fontSize: 18 }}
           />
+        </div>
+
+        {/* Oman goes by sighting, so the computed date can be a day out and
+            only the family knows which way. */}
+        <div className="mt-6">
+          <p className="rr-label" style={{ fontSize: 9.5 }}>Hijri date</p>
+          <div className="flex items-center gap-3 mt-2">
+            <span className="rr-display" style={{ fontSize: 18, color: "var(--ink)" }}>
+              {formatHijri(new Date(), { offset: couple.hijriOffset ?? 0, year: true })}
+            </span>
+          </div>
+          <div className="flex items-center gap-2.5 mt-3">
+            {[-1, 0, 1].map((o) => (
+              <button
+                key={o}
+                className="rr-btn-quiet"
+                onClick={() => setCouple({ ...couple, hijriOffset: o })}
+                style={
+                  (couple.hijriOffset ?? 0) === o
+                    ? { background: "var(--terracotta)", color: "var(--paper)", borderColor: "var(--terracotta)" }
+                    : undefined
+                }
+              >
+                {o === 0 ? "As computed" : o > 0 ? "A day later" : "A day earlier"}
+              </button>
+            ))}
+          </div>
+          <p className="rr-italic mt-2" style={{ fontSize: 13, color: "var(--muted)" }}>
+            Nudge it to match what Oman announced.
+          </p>
         </div>
 
         {/* Children: as many as there are. Each becomes its own tag on events

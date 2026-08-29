@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
 import { resolvePeople, getPersonById, type PersonTag } from "@/lib/people";
+import { formatHijri } from "@/lib/hijri";
 import type { User } from "@/lib/types";
 
 /** The couple, as the client needs it — no NEXT_PUBLIC_* involved. */
@@ -10,6 +11,7 @@ export interface CoupleInfo {
   displayName: string;
   startDate: string;
   timezone: string;
+  hijriOffset: number;
   canInviteFamilies: boolean;
   /** role -> display name, e.g. { Wife: "Budoor", Husband: "Emad" } */
   members: Record<string, string>;
@@ -125,6 +127,23 @@ export function usePerson(): (id: string | null | undefined) => PersonTag | null
   const { couple } = useContext(SessionContext);
   return useCallback(
     (id: string | null | undefined) => getPersonById(id, rosterOf(couple)),
+    [couple],
+  );
+}
+
+/**
+ * The Hijri date for this family, already nudged by their own offset.
+ * Returns "" if the browser has no Islamic calendar data.
+ */
+export function useHijri(): (d: Date, opts?: { year?: boolean }) => string {
+  const { couple } = useContext(SessionContext);
+  return useCallback(
+    (d: Date, opts?: { year?: boolean }) =>
+      formatHijri(d, {
+        offset: couple?.hijriOffset ?? 0,
+        timeZone: couple?.timezone,
+        year: opts?.year,
+      }),
     [couple],
   );
 }

@@ -27,6 +27,10 @@ model Couple {
   // deploy so the backfill can be checked before the column goes.
   childName   String?
   timezone    String   @default("Asia/Muscat")
+  // Oman declares the Hijri month by local sighting, so the computed
+  // (Umm al-Qura) date can be a day out. -1, 0 or +1 to match what was
+  // actually announced.
+  hijriOffset Int      @default(0)
   // Who may hand out invitations to whole new families. This was inferred
   // from "the oldest couple", which quietly moves if a family is ever
   // deleted and recreated — a bad thing to hang a permission on.

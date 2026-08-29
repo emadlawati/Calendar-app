@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { BADGES, type Badge } from "@/lib/achievements";
+import { weekdayIndex } from "./week";
 
 export interface StreakResult {
   currentStreak: number;
@@ -15,14 +16,15 @@ function muscatDateStr(d: Date): string {
 }
 
 /**
- * ISO Monday week-start (YYYY-MM-DD) for a YYYY-MM-DD date string.
+ * Week-start (YYYY-MM-DD) for a YYYY-MM-DD date string, using the same
+ * definition as the calendar grid — otherwise "this week" on the borrower's
+ * card would span different days from the row the calendar draws.
  * All arithmetic stays in UTC so results never depend on server timezone.
  */
 function weekStartOf(dateStr: string): string {
   const [y, m, day] = dateStr.split("-").map(Number);
   const d = new Date(Date.UTC(y, m - 1, day));
-  const weekday = (d.getUTCDay() + 6) % 7; // Monday = 0
-  d.setUTCDate(d.getUTCDate() - weekday);
+  d.setUTCDate(d.getUTCDate() - weekdayIndex(d.getUTCDay()));
   return d.toISOString().split("T")[0];
 }
 
@@ -49,12 +51,12 @@ export async function recalculateStreaks(): Promise<StreakResult> {
 
   const sortedWeeks = Array.from(weekStarts).sort().reverse();
 
-  const thisWeekMonday = weekStartOf(muscatDateStr(new Date()));
+  const thisWeekStart = weekStartOf(muscatDateStr(new Date()));
 
   // Count consecutive weeks from this week backwards. The 104-iteration cap
   // guards runaway loops; a couple celebrating 2+ solid years can re-earn it.
   let currentStreak = 0;
-  let checkWeek = thisWeekMonday;
+  let checkWeek = thisWeekStart;
   while (weekStarts.has(checkWeek) && currentStreak < 104) {
     currentStreak++;
     checkWeek = previousWeek(checkWeek);
@@ -75,7 +77,7 @@ export async function recalculateStreaks(): Promise<StreakResult> {
   }
 
   const bestEver = Math.max(longestStreak, currentStreak);
-  const lastWeekStart = new Date(`${thisWeekMonday}T00:00:00.000Z`);
+  const lastWeekStart = new Date(`${thisWeekStart}T00:00:00.000Z`);
 
   // find-then-write: the unique key is now (coupleId, userId) and the
   // scoping extension fills in the coupleId half.

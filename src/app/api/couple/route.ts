@@ -56,6 +56,10 @@ export async function PATCH(request: Request) {
   if (typeof body.timezone === "string" && body.timezone.trim()) {
     data.timezone = body.timezone.trim();
   }
+  // A day either side is all a sighting ever differs by.
+  if (Number.isInteger(body.hijriOffset) && Math.abs(body.hijriOffset) <= 1) {
+    data.hijriOffset = body.hijriOffset;
+  }
 
   if (Object.keys(data).length > 0) {
     await systemPrisma.couple.update({ where: { id: coupleId }, data });

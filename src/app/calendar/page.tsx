@@ -9,12 +9,14 @@ import SaveMemoryModal from "@/components/SaveMemoryModal";
 import Toast from "@/components/Toast";
 import { usePeople } from "@/components/SessionProvider";
 import Skeleton from "@/components/Skeleton";
+import { WEEKDAY_LETTERS, weekdayIndex } from "@/lib/week";
+import { useHijri } from "@/components/SessionProvider";
 import { getCategoryById } from "@/lib/categories";
 import { toRoman, spellDate, spellTime } from "@/lib/volume";
 import type { CalendarEvent, Reminder, PendingMemory } from "@/lib/types";
 
 const TZ = "+04:00";
-const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
+
 
 function ymd(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -103,7 +105,7 @@ export default function CalendarPage() {
   /** 42 cells, Monday-first. */
   const cells = useMemo(() => {
     const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-    const offset = (first.getDay() + 6) % 7; // Monday = 0
+    const offset = weekdayIndex(first.getDay());
     const gridStart = addDays(first, -offset);
     return Array.from({ length: 42 }, (_, i) => {
       const d = addDays(gridStart, i);
@@ -112,6 +114,8 @@ export default function CalendarPage() {
   }, [anchor]);
 
   const selectedDate = useMemo(() => dayStart(selected), [selected]);
+  const hijriOf = useHijri();
+  const selectedHijri = hijriOf(selectedDate);
   const dayEvents = byDay.get(selected) ?? [];
   const dayReminders = useMemo(
     () => reminders.filter((r) => ymd(dayStart(r.date as string)) === selected),
@@ -192,7 +196,7 @@ export default function CalendarPage() {
       {/* Month grid */}
       <div className="mt-4">
         <div className="grid grid-cols-7">
-          {WEEKDAYS.map((w, i) => (
+          {WEEKDAY_LETTERS.map((w, i) => (
             <div key={i} className="rr-label text-center pb-2" style={{ fontSize: 9.5 }}>{w}</div>
           ))}
         </div>
@@ -250,7 +254,12 @@ export default function CalendarPage() {
         style={{ background: "var(--wash)", borderTop: "1px solid var(--rule-strong)", minHeight: 220 }}
       >
         <div className="flex items-baseline justify-between gap-3">
-          <p className="rr-label">{spellDate(selectedDate).toUpperCase()}</p>
+          <p className="rr-label">
+            {spellDate(selectedDate).toUpperCase()}
+            {selectedHijri && (
+              <span style={{ color: "var(--faint)" }}> · {selectedHijri}</span>
+            )}
+          </p>
           <button className="rr-action" style={{ fontSize: 11.5 }} onClick={() => setReminderOpen(true)}>
             Add a reminder
           </button>

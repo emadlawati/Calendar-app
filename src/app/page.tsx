@@ -10,7 +10,7 @@ import SaveMemoryModal from "@/components/SaveMemoryModal";
 import PushPrompt from "@/components/PushPrompt";
 import Toast from "@/components/Toast";
 import Skeleton from "@/components/Skeleton";
-import { useSession } from "@/components/SessionProvider";
+import { useSession, useHijri } from "@/components/SessionProvider";
 import { getCategoryById } from "@/lib/categories";
 import { getVolumeInfo, spellDate, catalogueNumber } from "@/lib/volume";
 import { specialDateLabel } from "@/lib/special-date-display";
@@ -70,6 +70,7 @@ function daysBetween(from: Date, to: Date) {
 export default function Home() {
   const router = useRouter();
   const { isLoading: sessionLoading, couple } = useSession();
+  const hijriOf = useHijri();
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [specialDates, setSpecialDates] = useState<SpecialDateWithCountdown[]>([]);
@@ -181,6 +182,8 @@ export default function Home() {
     [shelfEntries, today],
   );
 
+  const hijri = hijriOf(today);
+
   return (
     <AppShell active={null} fab={<Fab onClick={() => router.push("/entry/new")} />}>
       {/* ── 1. Header ── */}
@@ -190,6 +193,7 @@ export default function Home() {
         </h1>
         <p className="rr-meta mt-2">
           Vol. {vol.volumeRoman} · Page {vol.page.toLocaleString()}
+          {hijri && <span style={{ color: "var(--faint)" }}> · {hijri}</span>}
         </p>
       </header>
 
