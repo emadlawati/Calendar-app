@@ -5,6 +5,60 @@ import prisma, { systemPrisma, withCouple } from "@/lib/prisma";
 import { getOAuth2Client } from "@/lib/google-calendar";
 import { createSession, getSession } from "@/lib/session";
 
+/**
+ * Turn a valid invitation into membership, for the email Google just proved.
+ *
+ * Guards, in order: the invite must exist, be unused and unexpired; the email
+ * must not already belong to a couple; and for a partner invite the seat must
+ * still be free. The invite is marked used in the same transaction that
+ * creates the membership, so a link cannot be redeemed twice.
+ */
+async function redeemInvite(
+  token: string,
+  email: string,
+): Promise<{ coupleId: string; role: string } | { error: string }> {
+  const invite = await systemPrisma.invite.findUnique({ where: { token } });
+  if (!invite) return { error: "invite_unknown" };
+  if (invite.usedAt) return { error: "invite_used" };
+  if (invite.expiresAt < new Date()) return { error: "invite_expired" };
+  if (invite.email && invite.email.toLowerCase() !== email) return { error: "invite_wrong_email" };
+
+  // One person, one couple — otherwise a session's coupleId would be ambiguous.
+  const already = await systemPrisma.coupleUser.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+  });
+  if (already) return { error: "already_member" };
+
+  if (invite.coupleId) {
+    // Joining an existing couple as the missing partner.
+    const role = invite.role ?? "Wife";
+    const seatTaken = await systemPrisma.coupleUser.findFirst({
+      where: { coupleId: invite.coupleId, role },
+    });
+    if (seatTaken) return { error: "seat_taken" };
+
+    const [, ] = await systemPrisma.$transaction([
+      systemPrisma.coupleUser.create({
+        data: { coupleId: invite.coupleId, role, email, name: role },
+      }),
+      systemPrisma.invite.update({ where: { id: invite.id }, data: { usedAt: new Date() } }),
+    ]);
+    return { coupleId: invite.coupleId, role };
+  }
+
+  // A brand-new couple. Names and dates are collected on /welcome; the
+  // placeholders here are never shown without that step completing.
+  const couple = await systemPrisma.couple.create({
+    data: {
+      displayName: "A new collection",
+      startDate: new Date(),
+      users: { create: [{ role: "Wife", email, name: "Wife" }] },
+    },
+  });
+  await systemPrisma.invite.update({ where: { id: invite.id }, data: { usedAt: new Date() } });
+  return { coupleId: couple.id, role: "Wife" };
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -35,10 +89,25 @@ export async function GET(request: Request) {
     }
 
     const isLogin = state === "login";
+    const inviteToken = state.startsWith("invite:") ? state.slice("invite:".length) : null;
     let userId: string;
     let coupleId: string;
+    let joined = false;
 
-    if (isLogin) {
+    if (inviteToken) {
+      // Redeeming an invitation. The email is whatever Google just proved,
+      // which is why the form details are collected afterwards rather than
+      // trusted from the link.
+      const redeemed = await redeemInvite(inviteToken, email.trim().toLowerCase());
+      if ("error" in redeemed) {
+        const url = new URL("/login", request.url);
+        url.searchParams.set("error", redeemed.error);
+        return NextResponse.redirect(url);
+      }
+      userId = redeemed.role;
+      coupleId = redeemed.coupleId;
+      joined = true;
+    } else if (isLogin) {
       const loginEmail = email.trim().toLowerCase();
 
       // Membership is the source of truth: an email either belongs to a
@@ -85,9 +154,10 @@ export async function GET(request: Request) {
       }
     });
 
-    if (isLogin) {
+    if (isLogin || joined) {
       await createSession({ userId: userId as "Wife" | "Husband", email, coupleId });
-      return NextResponse.redirect(new URL("/", request.url));
+      // A new arrival still has to say who they are.
+      return NextResponse.redirect(new URL(joined ? "/welcome" : "/", request.url));
     }
 
     return NextResponse.redirect(

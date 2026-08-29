@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,13 @@ const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB
 
 export async function POST(request: Request) {
   try {
+    // Uploads were only protected by middleware; require a session here too,
+    // so the path can be namespaced to the couple that owns the photo.
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -23,7 +31,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const filename = `memories/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    // One folder per couple, so nobody's photos share a namespace.
+    // Note these remain public-with-an-unguessable-URL; signed URLs are the
+    // proper fix if this ever grows beyond an invited beta.
+    const filename = `memories/${session.coupleId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const blob = await put(filename, file, {
       access: "public",
       contentType: file.type,

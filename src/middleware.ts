@@ -5,6 +5,9 @@ import type { SessionPayload } from "@/lib/session";
 
 const PUBLIC_PREFIXES = [
   "/login",
+  // Invitations are opened by people who have no session yet, by definition.
+  "/join",
+  "/api/invites/",
   "/api/auth",
   "/api/cron",
   "/birthday",
