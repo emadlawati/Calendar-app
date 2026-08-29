@@ -92,8 +92,13 @@ async function runForCouple(
     const dt = reminderDateTime(reminder.date, reminder.time).getTime();
     const minsUntil = (dt - now) / 60000;
 
-    // ── 24-hour alert: within [22h, 26h] from now ──
-    if (!reminder.sent24h && minsUntil >= 22 * 60 && minsUntil <= 26 * 60) {
+    // ── "tomorrow" alert ──
+    // The window is wide because the heartbeat driving this is a GitHub
+    // Actions schedule, and GitHub throttles those hard on free repos: the
+    // configured 10 minutes actually arrives every ~50 on average, with gaps
+    // of several hours. A narrow window would simply be stepped over. The
+    // sent24h flag keeps it to one send however often the sweep runs.
+    if (!reminder.sent24h && minsUntil >= 20 * 60 && minsUntil <= 30 * 60) {
       const html = `
         <div style="${EMAIL_STYLE}">
           <h1 style="color:#5d4037;font-size:24px;">🔔 Reminder tomorrow!</h1>
@@ -126,11 +131,18 @@ async function runForCouple(
       results.push(`24h:${reminder.title}`);
     }
 
-    // ── 1-hour alert: reminder is 30–90 minutes away (fires ~1h before) ──
-    if (!reminder.sent1h && minsUntil >= 30 && minsUntil <= 90) {
+    // ── "soon" alert — same reasoning, so 20 minutes to 2 hours out ──
+    if (!reminder.sent1h && minsUntil >= 20 && minsUntil <= 120) {
+      // Say how long is actually left rather than always "1 hour", which a
+      // wide window would make wrong most of the time.
+      const soon = minsUntil < 45
+        ? "Soon"
+        : minsUntil < 80
+          ? "In about an hour"
+          : `In about ${Math.round(minsUntil / 60)} hours`;
       const html = `
         <div style="${EMAIL_STYLE}">
-          <h1 style="color:#5d4037;font-size:24px;">🔔 In 1 hour!</h1>
+          <h1 style="color:#5d4037;font-size:24px;">🔔 ${soon}!</h1>
           <div style="background:#fff;padding:24px;border-radius:24px;margin:20px 0;border:1px solid #ffeedb;">
             <h2 style="margin:6px 0;color:#5d4037;">${reminder.title}</h2>
             <p style="margin:5px 0;">🕐 At ${reminder.time}${reminder.endTime ? ` – ${reminder.endTime}` : ""}</p>
@@ -143,15 +155,15 @@ async function runForCouple(
         await resend.emails.send({
           from: "Calendar 🐾 <noreply@yaminami.uk>",
           to: recipients,
-          subject: `🔔 In 1 hour: ${reminder.title}! ☕`,
+          subject: `🔔 ${soon}: ${reminder.title}! ☕`,
           html,
         }).catch((e: unknown) => console.error("1h reminder email failed:", e));
       }
 
-      await sendWhatsApp(`🔔 In 1 hour: ${reminder.title} at ${reminder.time} ☕`);
+      await sendWhatsApp(`🔔 ${soon}: ${reminder.title} at ${reminder.time} ☕`);
 
       await sendPushToBoth({
-        title: `🔔 In 1 hour: ${reminder.title}!`,
+        title: `🔔 ${soon}: ${reminder.title}`,
         body: `Starting at ${reminder.time}${reminder.endTime ? ` – ${reminder.endTime}` : ""}`,
         url: `${BASE_URL}/`,
       }).catch((e: unknown) => console.error("1h reminder push failed:", e));
