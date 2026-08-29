@@ -38,6 +38,7 @@ const TABLES = [
   "CalendarEvent", "GoogleCalendarToken", "Note", "BucketItem", "Streak",
   "Achievement", "Memory", "RecurringSeries", "SpecialDate", "Reminder",
   "DailyHighlight", "PushSubscription", "Comment", "Reaction", "FeedToken",
+  "Task", "TaskSeries",
   // Not in TENANT_MODELS — only ever read through systemPrisma, which resolves
   // a login email to a family before any scope exists. Protected anyway: it
   // holds names, emails and birthdays, and a policy costs nothing here.

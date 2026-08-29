@@ -8,14 +8,15 @@ import { getVolumeInfo } from "@/lib/volume";
 import useAppBadge from "@/lib/useAppBadge";
 import type { StreakData } from "@/lib/types";
 
-export type ShelfSection = "calendar" | "story" | "letters" | "shelf" | "reading-list" | null;
+export type ShelfSection = "calendar" | "story" | "letters" | "ledger" | "shelf" | "reading-list" | null;
 
 const NAV: { key: Exclude<ShelfSection, null>; numeral: string; name: string; href: string }[] = [
   { key: "calendar",     numeral: "I",   name: "Calendar",     href: "/calendar" },
   { key: "story",        numeral: "II",  name: "Our Story",    href: "/story" },
   { key: "letters",      numeral: "III", name: "Letters",      href: "/notes" },
-  { key: "shelf",        numeral: "IV",  name: "Our Shelf",    href: "/shelf" },
-  { key: "reading-list", numeral: "V",   name: "Reading list", href: "/reading-list" },
+  { key: "ledger",       numeral: "IV",  name: "The Ledger",   href: "/ledger" },
+  { key: "shelf",        numeral: "V",   name: "Our Shelf",    href: "/shelf" },
+  { key: "reading-list", numeral: "VI",  name: "Reading list", href: "/reading-list" },
 ];
 
 function HamburgerGlyph() {

@@ -174,5 +174,46 @@ async function sendForCouple(
     results.push(`tomorrow:${evt.title}`);
   }
 
+  // ── C. Anything in the ledger due today ──
+  // One nudge per task, ever: notifiedDue is what stops a chore that sits
+  // unfinished for a week from being announced every morning.
+  const due = await prisma.task.findMany({
+    where: {
+      completed: false,
+      notifiedDue: false,
+      dueDate: { gte: new Date(`${todayStr}T00:00:00.000Z`), lte: new Date(`${todayStr}T23:59:59.999Z`) },
+    },
+  });
 
+  for (const task of due) {
+    const { users, emailsFor } = recipientsFor(task.personTag);
+    if (users.length === 0) continue;
+
+    const delivery = await pushAndReport(users, {
+      title: `📓 Due today: ${task.title}`,
+      body: task.notes ? task.notes.slice(0, 120) : "From the ledger",
+      url: `${BASE_URL}/ledger`,
+    });
+
+    const fallback = emailsFor(delivery.needEmail);
+    if (!noEmail && fallback.length > 0) {
+      await resend.emails.send({
+        from: "Calendar 🐾 <noreply@yaminami.uk>",
+        to: fallback,
+        subject: `📓 Due today: ${task.title}`,
+        html: `
+          <div style="${EMAIL_STYLE}">
+            <h1 style="color:#5d4037;font-size:24px;">📓 Due today</h1>
+            <div style="background:#fff;padding:24px;border-radius:24px;margin:20px 0;border:1px solid #ffeedb;">
+              <h2 style="margin:6px 0;color:#5d4037;">${task.title}</h2>
+              ${task.notes ? `<p style="margin:14px 0 0;font-style:italic;">"${task.notes}"</p>` : ""}
+            </div>
+            ${openBtn("Open the ledger 🐾")}
+          </div>`,
+      }).catch((e: unknown) => console.error("Task due email failed:", e));
+    }
+
+    await prisma.task.update({ where: { id: task.id }, data: { notifiedDue: true } });
+    results.push(`task:${task.title}`);
+  }
 }

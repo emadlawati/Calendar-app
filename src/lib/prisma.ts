@@ -22,6 +22,7 @@ const TENANT_MODELS = new Set([
   // may do. Listing it here means an accidental `prisma.feedToken` fails
   // closed rather than quietly returning every family's links.
   'FeedToken',
+  'Task', 'TaskSeries',
 ])
 
 const READ_OPS = new Set([
@@ -124,10 +125,15 @@ function scopedClient() {
            */
           const run = (next: Record<string, unknown>) =>
             base.$transaction([
-              base.$executeRawUnsafe(`SET LOCAL ROLE ${RLS_ROLE}`),
-              base.$executeRaw`SELECT set_config('app.couple_id', ${coupleId}, TRUE)`,
+              // `role` is an ordinary setting, so dropping privileges and
+              // naming the family fit in one statement. Two statements cost a
+              // measured extra ~280ms per query against a distant database,
+              // which is a lot to pay for nothing.
+              base.$executeRaw`SELECT
+                set_config('role', ${RLS_ROLE}, TRUE),
+                set_config('app.couple_id', ${coupleId}, TRUE)`,
               query(next as typeof args),
-            ]).then((r) => r[2])
+            ]).then((r) => r[1])
           const scopedWhere = () => ({ ...(a.where as object), coupleId })
 
           if (READ_OPS.has(operation) || WHERE_WRITE_OPS.has(operation)) {

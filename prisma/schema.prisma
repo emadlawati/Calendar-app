@@ -55,6 +55,8 @@ model Couple {
   comments             Comment[]
   reactions            Reaction[]
   feedTokens           FeedToken[]
+  tasks                Task[]
+  taskSeries           TaskSeries[]
 }
 
 /**
@@ -119,6 +121,68 @@ model FeedToken {
   createdAt  DateTime  @default(now())
 
   @@unique([coupleId, userId])
+}
+
+/**
+ * The Ledger — what someone has to do, as opposed to what the family would
+ * like to do together one day. That second thing is BucketItem, and the two
+ * are kept apart on purpose: chores filed next to "coloring date" make the
+ * wish list feel like work, which is what stops anyone opening it.
+ *
+ * A due date here is a day, never a time. Something that has to happen at
+ * half past four is an event or a reminder, not a task.
+ */
+model Task {
+  id          String    @id @default(uuid())
+  coupleId    String    @default("")
+  couple      Couple    @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  title       String
+  notes       String?
+  // Same vocabulary as events: "family" | "couple" | "wife" | "husband",
+  // or a member id for one particular child.
+  personTag   String?
+  dueDate     DateTime? // date only; null means "no particular day"
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  completedBy String?
+  createdBy   String
+  // A chore that repeats belongs to a series, which holds the schedule.
+  seriesId    String?
+  series      TaskSeries? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  notifiedDue Boolean   @default(false) // so the due-day nudge is sent once
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([coupleId, completed, dueDate])
+  @@index([coupleId, seriesId])
+}
+
+/**
+ * A repeating chore.
+ *
+ * Only ever one open task exists per series: finishing it is what creates the
+ * next one. Recurring *events* pre-generate every occurrence, which is right
+ * for a calendar you scroll through and wrong for a list you work down — 52
+ * copies of "bins" would bury everything else.
+ */
+model TaskSeries {
+  id        String   @id @default(uuid())
+  coupleId  String   @default("")
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  title     String
+  notes     String?
+  personTag String?
+  frequency String   // "daily" | "weekly" | "fortnightly" | "monthly"
+  weekday   Int?     // 0-6, Sunday first, for weekly and fortnightly
+  monthDay  Int?     // 1-31 for monthly; clamped to the length of short months
+  active    Boolean  @default(true)
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks     Task[]
+
+  @@index([coupleId, active])
 }
 
 // ─────────────────────────────────────────────────────────────

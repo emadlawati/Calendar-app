@@ -219,6 +219,19 @@ try {
   const feed = await api("/api/feed", asHusband, { method: "POST" });
   check("calendar feed link", feed.status === 200, `HTTP ${feed.status}`);
 
+  const task = await api("/api/tasks", asHusband, {
+    method: "POST",
+    body: JSON.stringify({ title: `${MARK} task`, personTag: "family", dueDate: "2026-11-06" }),
+  });
+  check("task", task.status === 201, `HTTP ${task.status}`);
+  created.task = task.body?.task?.id;
+
+  const chore = await api("/api/tasks", asHusband, {
+    method: "POST",
+    body: JSON.stringify({ title: `${MARK} chore`, frequency: "weekly", weekday: 2 }),
+  });
+  check("standing chore", chore.status === 201, `HTTP ${chore.status}`);
+
   const sub = await api("/api/push/subscribe", asHusband, {
     method: "POST",
     body: JSON.stringify({
@@ -234,7 +247,7 @@ try {
   const models = [
     "calendarEvent", "note", "bucketItem", "dailyHighlight", "memory",
     "reminder", "specialDate", "pushSubscription", "feedToken", "streak",
-    "achievement", "comment", "reaction", "recurringSeries",
+    "achievement", "comment", "reaction", "recurringSeries", "task", "taskSeries",
   ];
   let stray = 0;
   const counts = {};
@@ -247,7 +260,8 @@ try {
     if (m === "note" && wrong > 0) stray += wrong;
   }
   check("their rows exist under their own id",
-    counts.calendarEvent > 0 && counts.note > 0 && counts.memory > 0 && counts.feedToken > 0,
+    counts.calendarEvent > 0 && counts.note > 0 && counts.memory > 0 &&
+    counts.feedToken > 0 && counts.task > 0 && counts.taskSeries > 0,
     Object.entries(counts).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${v}`).join(" "));
   check("nothing of theirs landed on the founding family", stray === 0);
 
@@ -267,6 +281,7 @@ try {
     ["/api/special-dates", "special dates"],
     ["/api/timeline", "timeline"],
     ["/api/highlights?date=2026-11-04", "highlights"],
+    ["/api/tasks", "the ledger"],
   ];
   for (const [path, name] of lists) {
     const r = await api(path, founderCookie);
@@ -285,6 +300,7 @@ try {
     { path: `/api/special-dates/${created.specialDate}`, name: "special date",      verbs: ["DELETE"] },
     { path: `/api/reminders/${created.reminder}`,        name: "reminder",          verbs: ["DELETE"] },
     { path: `/api/highlights/${created.highlight}`,      name: "highlight",         verbs: ["PATCH", "DELETE"] },
+    { path: `/api/tasks/${created.task}`,                name: "task",              verbs: ["PATCH", "DELETE"] },
   ];
 
   for (const t of targets) {
