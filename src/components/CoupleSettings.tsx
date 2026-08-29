@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 import { useSession } from "./SessionProvider";
 
-interface Member { role: string; name: string; email: string; birthday: string | null }
+interface Member {
+  id: string; role: string | null; kind: string;
+  name: string; email: string | null; title: string | null; birthday: string | null;
+}
 interface CoupleRecord {
-  displayName: string; startDate: string; childName: string | null; users: Member[];
+  displayName: string; startDate: string; users: Member[];
 }
 interface InviteRow {
   id: string; kind: "partner" | "couple"; note: string | null;
@@ -37,11 +40,23 @@ export default function CoupleSettings() {
     loadInvites();
   }, []);
 
-  const setMember = (role: string, patch: Partial<Member>) => {
+  const setMember = (id: string, patch: Partial<Member>) => {
     setCouple((c) => c && ({
       ...c,
-      users: c.users.map((u) => (u.role === role ? { ...u, ...patch } : u)),
+      users: c.users.map((u) => (u.id === id ? { ...u, ...patch } : u)),
     }));
+  };
+
+  const addChild = () => {
+    setCouple((c) => c && ({
+      ...c,
+      // A blank id marks a child that doesn't exist server-side yet.
+      users: [...c.users, { id: `new-${c.users.length}-${c.displayName.length}`, role: null, kind: "child", name: "", email: null, title: null, birthday: "" }],
+    }));
+  };
+
+  const removeChild = (id: string) => {
+    setCouple((c) => c && ({ ...c, users: c.users.filter((u) => u.id !== id) }));
   };
 
   const save = async () => {
@@ -55,9 +70,18 @@ export default function CoupleSettings() {
         credentials: "same-origin",
         body: JSON.stringify({
           displayName: couple.displayName,
-          childName: couple.childName,
           startDate: couple.startDate,
-          members: couple.users.map((u) => ({ role: u.role, name: u.name, birthday: u.birthday || "" })),
+          members: couple.users
+            .filter((u) => u.kind === "adult")
+            .map((u) => ({ role: u.role, name: u.name, title: u.title ?? "", birthday: u.birthday || "" })),
+          // Sent whole, so removing one here removes it there.
+          children: couple.users
+            .filter((u) => u.kind === "child" && u.name.trim())
+            .map((u) => ({
+              id: u.id.startsWith("new-") ? undefined : u.id,
+              name: u.name,
+              birthday: u.birthday || "",
+            })),
         }),
       });
       setStatus(res.ok ? "Saved." : "Could not save.");
@@ -106,13 +130,13 @@ export default function CoupleSettings() {
           />
         </div>
 
-        {couple.users.map((u) => (
-          <div key={u.role} className="mt-5 flex gap-5">
+        {couple.users.filter((u) => u.kind === "adult").map((u) => (
+          <div key={u.id} className="mt-5 flex gap-5">
             <div className="flex-1">
-              <p className="rr-label" style={{ fontSize: 9.5 }}>{u.role}</p>
+              <p className="rr-label" style={{ fontSize: 9.5 }}>{u.title || u.role}</p>
               <input
                 value={u.name}
-                onChange={(e) => setMember(u.role, { name: e.target.value })}
+                onChange={(e) => setMember(u.id, { name: e.target.value })}
                 className="rr-display" style={{ fontSize: 19 }}
               />
             </div>
@@ -120,7 +144,7 @@ export default function CoupleSettings() {
               <p className="rr-label" style={{ fontSize: 9.5 }}>Born (MM-DD)</p>
               <input
                 value={u.birthday ?? ""}
-                onChange={(e) => setMember(u.role, { birthday: e.target.value })}
+                onChange={(e) => setMember(u.id, { birthday: e.target.value })}
                 placeholder="04-09"
                 style={{ fontSize: 15 }}
               />
@@ -128,25 +152,53 @@ export default function CoupleSettings() {
           </div>
         ))}
 
-        <div className="mt-5 flex gap-5">
-          <div className="flex-1">
-            <p className="rr-label" style={{ fontSize: 9.5 }}>Together since</p>
-            <input
-              type="date"
-              value={couple.startDate.slice(0, 10)}
-              onChange={(e) => setCouple({ ...couple, startDate: e.target.value })}
-              className="rr-display" style={{ fontSize: 18 }}
-            />
-          </div>
-          <div className="flex-1">
-            <p className="rr-label" style={{ fontSize: 9.5 }}>Child</p>
-            <input
-              value={couple.childName ?? ""}
-              onChange={(e) => setCouple({ ...couple, childName: e.target.value })}
-              placeholder="none"
-              className="rr-display" style={{ fontSize: 18 }}
-            />
-          </div>
+        <div className="mt-5">
+          <p className="rr-label" style={{ fontSize: 9.5 }}>Together since</p>
+          <input
+            type="date"
+            value={couple.startDate.slice(0, 10)}
+            onChange={(e) => setCouple({ ...couple, startDate: e.target.value })}
+            className="rr-display" style={{ fontSize: 18 }}
+          />
+        </div>
+
+        {/* Children: as many as there are. Each becomes its own tag on events
+            and seeds its own birthday. */}
+        <div className="mt-7">
+          <p className="rr-label" style={{ fontSize: 9.5 }}>Children</p>
+          {couple.users.filter((u) => u.kind === "child").length === 0 && (
+            <p className="rr-italic mt-1" style={{ fontSize: 14, color: "var(--muted)" }}>
+              None yet.
+            </p>
+          )}
+          {couple.users.filter((u) => u.kind === "child").map((u) => (
+            <div key={u.id} className="mt-3 flex items-end gap-4">
+              <div className="flex-1">
+                <input
+                  value={u.name}
+                  onChange={(e) => setMember(u.id, { name: e.target.value })}
+                  placeholder="Name"
+                  className="rr-display" style={{ fontSize: 18 }}
+                />
+              </div>
+              <div style={{ width: 110 }}>
+                <input
+                  value={u.birthday ?? ""}
+                  onChange={(e) => setMember(u.id, { birthday: e.target.value })}
+                  placeholder="MM-DD"
+                  style={{ fontSize: 15 }}
+                />
+              </div>
+              <button
+                className="rr-action"
+                style={{ flex: "none", paddingBottom: 6 }}
+                onClick={() => removeChild(u.id)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button className="rr-btn-quiet mt-4" onClick={addChild}>Add a child</button>
         </div>
 
         <div className="flex items-center gap-4 mt-6">

@@ -30,12 +30,15 @@ async function redeemInvite(
   if (already) return { error: "already_member" };
 
   if (invite.coupleId) {
-    // Joining an existing couple as the missing partner.
-    const role = invite.role ?? "Wife";
-    const seatTaken = await systemPrisma.coupleUser.findFirst({
-      where: { coupleId: invite.coupleId, role },
+    // Joining an existing family as the missing partner. If the invitation
+    // didn't name a seat, take whichever one is free rather than assuming.
+    const seats = await systemPrisma.coupleUser.findMany({
+      where: { coupleId: invite.coupleId, kind: "adult" },
+      select: { role: true },
     });
-    if (seatTaken) return { error: "seat_taken" };
+    const filled = new Set(seats.map((s) => s.role));
+    const role = invite.role ?? (filled.has("Wife") ? "Husband" : "Wife");
+    if (filled.has(role)) return { error: "seat_taken" };
 
     const [, ] = await systemPrisma.$transaction([
       systemPrisma.coupleUser.create({
@@ -46,13 +49,15 @@ async function redeemInvite(
     return { coupleId: invite.coupleId, role };
   }
 
-  // A brand-new couple. Names and dates are collected on /welcome; the
-  // placeholders here are never shown without that step completing.
+  // A brand-new family. Both seats are free, so this one is provisional —
+  // /welcome asks which partner they actually are and moves them if needed.
+  // Names and dates are collected there too; the placeholders here are never
+  // shown without that step completing.
   const couple = await systemPrisma.couple.create({
     data: {
       displayName: "A new collection",
       startDate: new Date(),
-      users: { create: [{ role: "Wife", email, name: "Wife" }] },
+      users: { create: [{ role: "Wife", kind: "adult", email, name: "Wife" }] },
     },
   });
   await systemPrisma.invite.update({ where: { id: invite.id }, data: { usedAt: new Date() } });
@@ -113,11 +118,16 @@ export async function GET(request: Request) {
       // Membership is the source of truth: an email either belongs to a
       // couple or it does not. systemPrisma because we are resolving *which*
       // couple — there is no scope to work within yet.
+      // kind: "adult" is belt-and-braces — children have no email at all, so
+      // they cannot match, but signing in is a partner's privilege explicitly.
       const member = await systemPrisma.coupleUser.findFirst({
-        where: { email: { equals: loginEmail, mode: "insensitive" } },
+        where: { email: { equals: loginEmail, mode: "insensitive" }, kind: "adult" },
       });
 
-      if (!member) {
+      // The session carries the role, so a member without one cannot have a
+      // session at all. Every adult is given a seat when they join, so this
+      // is a corrupt row rather than a state a person can reach.
+      if (!member?.role) {
         const errorUrl = new URL("/login", request.url);
         errorUrl.searchParams.set("error", "unauthorized");
         errorUrl.searchParams.set("email", loginEmail);

@@ -13,7 +13,8 @@ export interface CalendarEvent {
   time: string;
   endTime: string | null;
   category: string | null;
-  /** Who the event is about: "family" | "wife" | "husband" | "child" */
+  /** Who the event is about: "family" | "couple" | "wife" | "husband",
+   *  or a member id when it is about one particular child. */
   personTag?: string | null;
   allDay: boolean;
   createdBy: User;

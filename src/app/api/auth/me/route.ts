@@ -14,13 +14,20 @@ export async function GET() {
   // systemPrisma: we are fetching the tenant record itself, by its own id.
   const couple = await systemPrisma.couple.findUnique({
     where: { id: session.coupleId },
-    include: { users: { select: { role: true, name: true, birthday: true } } },
+    include: {
+      users: {
+        select: { id: true, role: true, kind: true, name: true, title: true, birthday: true },
+        orderBy: [{ kind: "asc" }, { createdAt: "asc" }],
+      },
+    },
   });
 
   if (!couple) {
     // The couple was deleted underneath a live session.
     return NextResponse.json({ user: null });
   }
+
+  const adults = couple.users.filter((u) => u.kind === "adult" && u.role);
 
   return NextResponse.json({
     user: session.userId,
@@ -29,9 +36,14 @@ export async function GET() {
       id: couple.id,
       displayName: couple.displayName,
       startDate: couple.startDate.toISOString(),
-      childName: couple.childName,
       timezone: couple.timezone,
-      members: Object.fromEntries(couple.users.map((u) => [u.role, u.name])),
+      canInviteFamilies: couple.canInviteFamilies,
+      // Keyed by role, for the many callers that ask "what is the Wife called".
+      members: Object.fromEntries(adults.map((u) => [u.role as string, u.name])),
+      // Children have no role to key on, so they travel as a list.
+      children: couple.users
+        .filter((u) => u.kind === "child")
+        .map((u) => ({ id: u.id, name: u.name, birthday: u.birthday })),
     },
   });
 }

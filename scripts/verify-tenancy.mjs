@@ -62,11 +62,13 @@ const B = await p.couple.create({
   data: {
     displayName: "Sara & Omar",
     startDate: new Date("2021-03-14"),
-    childName: "Layla",
+    canInviteFamilies: false,
     users: {
       create: [
-        { role: "Wife", email: "verify-sara@test.invalid", name: "Sara", birthday: "04-09" },
-        { role: "Husband", email: "verify-omar@test.invalid", name: "Omar", birthday: "11-22" },
+        { role: "Wife", kind: "adult", email: "verify-sara@test.invalid", name: "Sara", birthday: "04-09" },
+        { role: "Husband", kind: "adult", email: "verify-omar@test.invalid", name: "Omar", birthday: "11-22" },
+        { role: null, kind: "child", email: null, name: "Layla", birthday: "02-14" },
+        { role: null, kind: "child", email: null, name: "Zayd", birthday: "09-30" },
       ],
     },
   },
@@ -112,11 +114,18 @@ section("Identity comes from the couple, not env");
 const meB = await api("/api/auth/me", bCookie);
 check("B sees its own names", meB.body?.couple?.members?.Wife === "Sara" && meB.body?.couple?.members?.Husband === "Omar",
   JSON.stringify(meB.body?.couple?.members));
-check("B sees its own child and start date",
-  meB.body?.couple?.childName === "Layla" && String(meB.body?.couple?.startDate).startsWith("2021-03-14"));
+check("B sees its own start date", String(meB.body?.couple?.startDate).startsWith("2021-03-14"));
+const kidsB = meB.body?.couple?.children ?? [];
+check("B sees both of its children", kidsB.length === 2 && kidsB.some((k) => k.name === "Layla") && kidsB.some((k) => k.name === "Zayd"),
+  kidsB.map((k) => k.name).join(", "));
+const meA = await api("/api/auth/me", aCookie);
+check("A sees none of B's children",
+  !(meA.body?.couple?.children ?? []).some((k) => ["Layla", "Zayd"].includes(k.name)));
 const sdB = await api("/api/special-dates", bCookie);
 const titlesB = Array.isArray(sdB.body) ? sdB.body.map((d) => d.title) : [];
 check("B's special dates seed under B's names", titlesB.some((t) => t.includes("Sara")) && titlesB.some((t) => t.includes("Omar")));
+check("B's children get birthdays too", titlesB.some((t) => t.includes("Layla")) && titlesB.some((t) => t.includes("Zayd")),
+  titlesB.filter((t) => /Layla|Zayd/.test(t)).join(", "));
 check("B's dates carry no trace of couple A", !titlesB.some((t) => /Budoor|Emad|Yusr/.test(t)));
 
 section("Aggregates and tokens");
@@ -128,14 +137,49 @@ check("both couples can hold a Husband Google token",
 
 section("Invitations");
 const inv = await api("/api/invites", aCookie, { method: "POST", body: JSON.stringify({ kind: "couple" }) });
-check("founding couple can invite a couple", inv.status === 201, `HTTP ${inv.status}`);
+check("the main family can invite a family", inv.status === 201, `HTTP ${inv.status}`);
 const bInv = await api("/api/invites", bCookie, { method: "POST", body: JSON.stringify({ kind: "couple" }) });
-check("others cannot invite couples", bInv.status === 403, `HTTP ${bInv.status}`);
+check("other families cannot invite families", bInv.status === 403, `HTTP ${bInv.status}`);
 const token = inv.body?.url?.split("/join/")[1];
 const anon = await api(`/api/invites/${token}`, null);
 check("join page reads the invite without a session", anon.status === 200 && anon.body?.valid);
 check("POST /api/invites is not public",
   [401, 307].includes((await api("/api/invites", null, { method: "POST", body: "{}" })).status));
+
+section("Children and notifications");
+{
+  const kid = kidsB[0];
+  const tagged = await p.calendarEvent.create({
+    data: { coupleId: B.id, title: "B-CHILD-EVENT", date: new Date("2026-10-01"), time: "09:00",
+            createdBy: "Wife", status: "accepted", personTag: kid?.id ?? "child" },
+  });
+  const seen = await api("/api/events", aCookie);
+  check("an event tagged to B's child is invisible to A",
+    Array.isArray(seen.body) && !seen.body.some((e) => e.title === "B-CHILD-EVENT"));
+  const own = await api("/api/events", bCookie);
+  const found = Array.isArray(own.body) && own.body.find((e) => e.title === "B-CHILD-EVENT");
+  check("the child tag survives the round trip", !!found && found.personTag === kid?.id);
+  await p.calendarEvent.delete({ where: { id: tagged.id } });
+}
+
+section("Push subscriptions cannot straddle families");
+{
+  const endpoint = "https://fcm.googleapis.com/verify-shared-device";
+  await p.pushSubscription.deleteMany({ where: { endpoint } });
+  await p.pushSubscription.create({
+    data: { coupleId: A.id, userId: "Husband", endpoint, keys: JSON.stringify({ p256dh: "x", auth: "y" }) },
+  });
+  // The same phone now registers under family B.
+  const res = await api("/api/push/subscribe", bCookie, {
+    method: "POST",
+    body: JSON.stringify({ endpoint, keys: { p256dh: "new", auth: "new" } }),
+  });
+  const rows = await p.pushSubscription.findMany({ where: { endpoint } });
+  check("re-registering moves the device rather than editing A's row",
+    res.status === 200 && rows.length === 1 && rows[0].coupleId === B.id,
+    `HTTP ${res.status}, ${rows.length} row(s), owner ${rows[0]?.coupleId === B.id ? "B" : "A"}`);
+  await p.pushSubscription.deleteMany({ where: { endpoint } });
+}
 
 section("Settings cannot cross tenants");
 await api("/api/couple", bCookie, { method: "PATCH", body: JSON.stringify({ displayName: "HIJACKED" }) });

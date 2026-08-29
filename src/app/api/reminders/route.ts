@@ -103,7 +103,8 @@ export async function POST(request: Request) {
 
     // ── Send confirmation email to both partners ──
     const couple = await getCoupleContext();
-    const recipients = couple ? couple.members.map((m) => m.email).filter(Boolean) : [];
+    // Partners only — children have no address.
+    const recipients = couple ? couple.adultEmails : [];
     const noEmail = process.env.RESEND_API_KEY === "re_..." || !process.env.RESEND_API_KEY;
 
     if (!noEmail && recipients.length > 0) {

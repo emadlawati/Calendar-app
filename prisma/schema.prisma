@@ -23,8 +23,14 @@ model Couple {
   id          String   @id @default(uuid())
   displayName String                          // "Budoor & Emad"
   startDate   DateTime                        // was NEXT_PUBLIC_RELATIONSHIP_START
-  childName   String?                         // was NEXT_PUBLIC_CHILD_NAME
+  // Superseded by CoupleUser rows of kind "child". Kept unread for one
+  // deploy so the backfill can be checked before the column goes.
+  childName   String?
   timezone    String   @default("Asia/Muscat")
+  // Who may hand out invitations to whole new families. This was inferred
+  // from "the oldest couple", which quietly moves if a family is ever
+  // deleted and recreated — a bad thing to hang a permission on.
+  canInviteFamilies Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -46,17 +52,29 @@ model Couple {
   reactions            Reaction[]
 }
 
+/**
+ * Everyone in the family — the two partners and any children.
+ *
+ * `role` is null for children, and that single fact does a lot of work:
+ * Postgres treats each NULL as distinct, so @@unique([coupleId, role]) still
+ * permits exactly one Wife and one Husband while allowing any number of kids.
+ * `email` is nullable for the same reason — children have none, and several
+ * NULLs coexist happily under a unique index.
+ */
 model CoupleUser {
   id        String   @id @default(uuid())
   coupleId  String
   couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
-  role      String   // "Wife" | "Husband"
-  email     String   @unique
-  name      String   // was WIFE_NAME / HUSBAND_NAME
+  role      String?  // "Wife" | "Husband" for partners, null for children
+  kind      String   @default("adult") // "adult" | "child"
+  email     String?  @unique           // children have none
+  name      String
+  title     String?  // what they're called instead of the role: "Partner"
   birthday  String?  // "MM-DD"
   createdAt DateTime @default(now())
 
   @@unique([coupleId, role])
+  @@index([coupleId, kind])
 }
 
 model Invite {

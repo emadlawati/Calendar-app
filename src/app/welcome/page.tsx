@@ -5,21 +5,37 @@ import { useRouter } from "next/navigation";
 import BookGlyph from "@/components/BookGlyph";
 import { useSession } from "@/components/SessionProvider";
 
-interface Member { role: string; name: string; email: string; birthday: string | null }
+interface Member {
+  id: string; role: string | null; kind: string;
+  name: string; email: string | null; title: string | null; birthday: string | null;
+}
+interface Child { key: string; name: string; birthday: string }
+
+const ROLES = [
+  { role: "Wife", title: "Wife" },
+  { role: "Husband", title: "Husband" },
+  { role: "Wife", title: "Partner" },
+] as const;
 
 /**
  * Collected after sign-in, never from the invitation link — the details are
  * only trusted once we know who is filling them in.
+ *
+ * An invitation hands out whichever seat happens to be free, so the first
+ * question is which partner this actually is. Until that is answered the
+ * assignment is a guess.
  */
 export default function WelcomePage() {
   const router = useRouter();
   const { user, refresh } = useSession();
 
   const [members, setMembers] = useState<Member[]>([]);
+  const [choice, setChoice] = useState<number | null>(null);
   const [yourName, setYourName] = useState("");
+  const [yourBirthday, setYourBirthday] = useState("");
   const [partnerName, setPartnerName] = useState("");
   const [startDate, setStartDate] = useState("");
-  const [childName, setChildName] = useState("");
+  const [children, setChildren] = useState<Child[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -31,22 +47,30 @@ export default function WelcomePage() {
         if (!c?.users) return;
         setMembers(c.users);
         const me = c.users.find((u: Member) => u.role === user);
-        const them = c.users.find((u: Member) => u.role !== user);
+        const them = c.users.find((u: Member) => u.kind === "adult" && u.role !== user);
         // Placeholder names ("Wife"/"Husband") shouldn't be shown back as real answers.
         if (me && me.name !== me.role) setYourName(me.name);
+        if (me?.birthday) setYourBirthday(me.birthday);
         if (them && them.name !== them.role) setPartnerName(them.name);
-        if (c.childName) setChildName(c.childName);
-        if (c.displayName && c.displayName !== "A new collection") {
-          // keep whatever they already set
-        }
+        setChildren(
+          c.users
+            .filter((u: Member) => u.kind === "child")
+            .map((u: Member, i: number) => ({ key: `has-${i}`, name: u.name, birthday: u.birthday ?? "" })),
+        );
         setStartDate(new Date(c.startDate).toISOString().slice(0, 10));
       })
       .catch(() => {})
       .finally(() => setLoaded(true));
   }, [user]);
 
-  const partnerRole = user === "Wife" ? "Husband" : "Wife";
-  const partnerExists = members.some((m) => m.role === partnerRole);
+  const adults = members.filter((m) => m.kind === "adult");
+  const partnerExists = adults.length > 1;
+  // Only offer the swap while the other seat is empty; once a partner has
+  // joined, their side is theirs.
+  const canChooseRole = !partnerExists;
+
+  const setChild = (key: string, patch: Partial<Child>) =>
+    setChildren((cs) => cs.map((c) => (c.key === key ? { ...c, ...patch } : c)));
 
   const save = async () => {
     if (!yourName.trim()) { setError("Your name, at least."); return; }
@@ -55,13 +79,18 @@ export default function WelcomePage() {
 
     const you = yourName.trim();
     const them = partnerName.trim();
-    const displayName = them ? `${you} & ${them}` : you;
+    const picked = choice !== null ? ROLES[choice] : null;
+    const myRole = picked?.role ?? user;
+    const partnerRole = myRole === "Wife" ? "Husband" : "Wife";
 
     const payload: Record<string, unknown> = {
-      displayName,
-      childName: childName.trim() || null,
+      displayName: them ? `${you} & ${them}` : you,
       startDate: startDate || undefined,
-      members: [{ role: user, name: you }],
+      claimRole: canChooseRole && picked ? picked.role : undefined,
+      members: [{ role: myRole, name: you, title: picked?.title, birthday: yourBirthday }],
+      children: children
+        .filter((c) => c.name.trim())
+        .map((c) => ({ name: c.name.trim(), birthday: c.birthday })),
     };
     // Only name the partner if their seat already exists.
     if (them && partnerExists) {
@@ -102,10 +131,38 @@ export default function WelcomePage() {
           <p className="rr-italic mt-8" style={{ fontSize: 17, color: "var(--ghost)" }}>just a moment…</p>
         ) : (
           <>
-            <section className="mt-8">
+            {canChooseRole && (
+              <section className="mt-8">
+                <p className="rr-label">You are</p>
+                <div className="flex flex-wrap gap-2.5 mt-2.5">
+                  {ROLES.map((r, i) => (
+                    <button
+                      key={r.title}
+                      onClick={() => setChoice(i)}
+                      className="rr-btn-quiet"
+                      style={
+                        choice === i
+                          ? { background: "var(--terracotta)", color: "var(--paper)", borderColor: "var(--terracotta)" }
+                          : undefined
+                      }
+                    >
+                      {r.title}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="mt-7">
               <p className="rr-label">Your name</p>
               <input value={yourName} onChange={(e) => setYourName(e.target.value)}
                 className="rr-display mt-2" style={{ fontSize: 22 }} placeholder="what they call you" />
+            </section>
+
+            <section className="mt-7">
+              <p className="rr-label">Your birthday (MM-DD)</p>
+              <input value={yourBirthday} onChange={(e) => setYourBirthday(e.target.value)}
+                className="rr-display mt-2" style={{ fontSize: 20 }} placeholder="04-09" />
             </section>
 
             <section className="mt-7">
@@ -121,9 +178,25 @@ export default function WelcomePage() {
             </section>
 
             <section className="mt-7">
-              <p className="rr-label">A child, if there is one</p>
-              <input value={childName} onChange={(e) => setChildName(e.target.value)}
-                className="rr-display mt-2" style={{ fontSize: 20 }} placeholder="leave blank if not" />
+              <p className="rr-label">Children, if there are any</p>
+              {children.map((c) => (
+                <div key={c.key} className="mt-3 flex items-end gap-4">
+                  <input value={c.name} onChange={(e) => setChild(c.key, { name: e.target.value })}
+                    className="rr-display flex-1" style={{ fontSize: 20 }} placeholder="name" />
+                  <input value={c.birthday} onChange={(e) => setChild(c.key, { birthday: e.target.value })}
+                    style={{ fontSize: 15, width: 110 }} placeholder="MM-DD" />
+                  <button className="rr-action" style={{ flex: "none", paddingBottom: 6 }}
+                    onClick={() => setChildren((cs) => cs.filter((x) => x.key !== c.key))}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                className="rr-btn-quiet mt-4"
+                onClick={() => setChildren((cs) => [...cs, { key: `new-${cs.length}-${Date.now()}`, name: "", birthday: "" }])}
+              >
+                Add a child
+              </button>
             </section>
 
             {error && <p className="rr-italic mt-5" style={{ fontSize: 15, color: "var(--terracotta)" }}>{error}</p>}

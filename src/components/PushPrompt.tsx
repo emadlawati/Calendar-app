@@ -2,144 +2,96 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { BellIcon, XIcon } from "@/components/icons";
+import { XIcon } from "@/components/icons";
+import { enablePush, pushSupported } from "@/lib/push-client";
 
-type State = "unsupported" | "pending" | "loading" | "denied" | "local" | "subscribed";
+const DISMISSED_KEY = "push-prompt-dismissed";
 
+/**
+ * A quiet nudge on the home page for anyone who hasn't registered a device.
+ *
+ * It no longer claims success it hasn't verified: enabling goes through the
+ * same path as the settings panel, and a failure says what actually failed
+ * instead of blaming the VAPID keys.
+ */
 export default function PushPrompt() {
-  const [state, setState] = useState<State>("loading");
-  const [dismissed, setDismissed] = useState(false);
+  const [show, setShow] = useState(false);
+  const [problem, setProblem] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) { setState("unsupported"); return; }
-    if (!("PushManager" in window)) { setState("unsupported"); return; }
-    if (!("Notification" in window)) { setState("unsupported"); return; }
+    if (!pushSupported()) return;
+    try {
+      if (localStorage.getItem(DISMISSED_KEY)) return;
+    } catch { /* private mode */ }
 
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then((reg) =>
-        reg.pushManager.getSubscription().then((sub) => {
-          // Only show "subscribed" if they have a remote push subscription (has endpoint)
-          if (sub && sub.endpoint && sub.endpoint !== "https://fcm.googleapis.com/") {
-            setState("subscribed");
-          } else {
-            setState("pending");
-          }
-        })
-      )
-      .catch(() => setState("unsupported"));
+    // Only ask people who have no device registered *on the server* — the
+    // browser having a subscription is not the same as us being able to use it.
+    (async () => {
+      try {
+        const reg = await navigator.serviceWorker.register("/sw.js");
+        const local = await reg.pushManager.getSubscription();
+        const res = await fetch("/api/push/test");
+        if (!res.ok) return;
+        const { devices } = await res.json();
+        const mine = (devices ?? []).filter((d: { mine: boolean }) => d.mine);
+        if (!local || mine.length === 0) setShow(true);
+      } catch { /* leave it alone */ }
+    })();
   }, []);
 
-  if (state === "subscribed" || state === "loading" || state === "unsupported" || dismissed) return null;
+  const dismiss = () => {
+    setShow(false);
+    try { localStorage.setItem(DISMISSED_KEY, "1"); } catch { /* private mode */ }
+  };
 
   const handleSubscribe = async () => {
-    const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-
-    // Step 1: Permission
-    const perm = await Notification.requestPermission();
-    if (perm !== "granted") { setState("denied"); return; }
-
-    // Step 2: Try remote push subscription (works when VAPID key is available)
-    const reg = await navigator.serviceWorker.ready;
-
-    if (key) {
-      try {
-        const sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          applicationServerKey: b64ToU8(key) as any,
-        });
-        // Save subscription to database
-        const raw = sub.toJSON();
-        await fetch("/api/push/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "same-origin",
-          body: JSON.stringify({ endpoint: raw.endpoint, keys: raw.keys }),
-        });
-        // Show confirmation
-        reg.showNotification("🎉 All set!", {
-          body: "Notifications will arrive even when the app is closed.",
-          icon: "/icons/icon-192.png",
-          tag: "purrfect-remote",
-        });
-        setState("subscribed");
-        return;
-      } catch {
-        // Fall through to local-only
-      }
+    setBusy(true);
+    setProblem("");
+    const result = await enablePush();
+    setBusy(false);
+    if (result.ok) {
+      setShow(false);
+      return;
     }
-
-    // Step 3: Local-only notification (app needs to be open)
-    reg.showNotification("🔔 Almost there!", {
-      body: key
-        ? "Remote push failed. Add VAPID keys to Vercel for background delivery."
-        : "Add the VAPID keys to Vercel so notifications arrive when the app is closed.",
-      icon: "/icons/icon-192.png",
-      tag: "purrfect-local",
-    });
-    setState("local");
+    setProblem(result.reason);
   };
+
+  if (!show) return null;
 
   return (
     <AnimatePresence>
-      {!dismissed && (
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 30 }}
-          className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-8 sm:w-80 z-[90] note-card p-4"
-        >
-          <div className="flex items-start gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-            >
-              <BellIcon size={18} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-                  {state === "denied" ? "Notifications blocked" :
-                   state === "local" ? "Only while app is open" :
-                   "Get notified in the app!"}
-                </p>
-                <button onClick={() => setDismissed(true)} aria-label="Dismiss" style={{ color: "var(--text-soft)", opacity: 0.5 }}>
-                  <XIcon size={14} />
-                </button>
-              </div>
-              <p className="text-[11px] mt-0.5 mb-2" style={{ color: "var(--text-soft)" }}>
-                {state === "denied" ? "Re-enable in browser settings → Site Settings → Notifications." :
-                 state === "local" ? "For notifications when the phone is locked, add the VAPID keys to Vercel." :
-                 "New plans, nudges, and highlights — even when the phone is locked."}
-              </p>
-              {state !== "denied" && (
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  onClick={handleSubscribe}
-                  className="chip-pill text-xs font-semibold"
-                  style={{
-                    background: "var(--accent)",
-                    color: "var(--on-accent)",
-                    borderColor: "var(--accent)",
-                  }}
-                >
-                  {state === "local" ? "Retry setup" : "Enable notifications"}
-                </motion.button>
-              )}
-            </div>
-          </div>
-        </motion.div>
-      )}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-8 sm:w-80 z-[90] rr-card p-4"
+        style={{ background: "var(--card)", border: "1px solid var(--rule-strong)" }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <p className="rr-label">Notifications</p>
+          <button onClick={dismiss} aria-label="Dismiss" style={{ color: "var(--faint)" }}>
+            <XIcon size={14} />
+          </button>
+        </div>
+
+        <p className="rr-italic mt-1.5" style={{ fontSize: 15, color: "var(--muted)" }}>
+          {problem
+            ? "This device couldn't be registered."
+            : "This device isn't set up to receive anything yet."}
+        </p>
+
+        {problem && (
+          <p className="mt-2" style={{ fontSize: 12.5, color: "var(--terracotta)" }}>{problem}</p>
+        )}
+
+        <div className="flex items-center gap-3 mt-3">
+          <button className="rr-btn-quiet" onClick={handleSubscribe} disabled={busy}>
+            {busy ? "Working…" : problem ? "Try again" : "Turn them on"}
+          </button>
+          <a href="/shelf" className="rr-action" style={{ fontSize: 12 }}>Settings</a>
+        </div>
+      </motion.div>
     </AnimatePresence>
   );
-}
-
-function b64ToU8(b64: string): Uint8Array {
-  const padding = "=".repeat((4 - (b64.length % 4)) % 4);
-  const s = (b64 + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(s);
-  const out = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-  return out;
 }

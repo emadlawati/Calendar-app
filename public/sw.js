@@ -1,4 +1,4 @@
-const CACHE_NAME = "purrfect-plans-v2";
+const CACHE_NAME = "purrfect-plans-v3";
 const urlsToCache = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -30,7 +30,9 @@ self.addEventListener("push", (event) => {
       body: data.body || "",
       icon: data.icon || "/icons/icon-192.png",
       badge: "/icons/icon-192-maskable.png",
-      data: { url: data.url || "/" },
+      // The url arrives at the top level; older payloads nested it under
+      // data, and reading only the nested one sent every click to the home page.
+      data: { url: data.url || (data.data && data.data.url) || "/" },
       // Only group when the server explicitly asks for it — otherwise each
       // notification (new plan, note, highlight…) stacks as its own entry.
       tag: data.tag || undefined,

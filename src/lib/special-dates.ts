@@ -69,8 +69,8 @@ export async function getUpcomingSpecialDates(): Promise<UpcomingSpecial[]> {
  */
 export async function seedSpecialDates(couple: {
   startDate: Date;
-  childName: string | null;
-  members: { role: string; name: string; birthday: string | null }[];
+  /** Everyone — partners and children alike; anyone with a birthday gets one. */
+  members: { role: string | null; name: string; birthday: string | null }[];
 }): Promise<void> {
   const existing = await prisma.specialDate.count();
   if (existing > 0) return;
@@ -94,7 +94,8 @@ export async function seedSpecialDates(couple: {
       type: "annual",
       kind: "birthday",
       emoji: "\u{1F382}",
-      createdBy: member.role,
+      // A child has no role, so their birthday is filed under the family.
+      createdBy: member.role ?? "Wife",
     });
   }
 

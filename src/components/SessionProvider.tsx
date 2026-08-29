@@ -9,10 +9,12 @@ export interface CoupleInfo {
   id: string;
   displayName: string;
   startDate: string;
-  childName: string | null;
   timezone: string;
+  canInviteFamilies: boolean;
   /** role -> display name, e.g. { Wife: "Budoor", Husband: "Emad" } */
   members: Record<string, string>;
+  /** Children have no role to key on, so they arrive as a list. */
+  children: { id: string; name: string; birthday: string | null }[];
 }
 
 interface SessionState {
@@ -100,33 +102,37 @@ export function useNames(): (role: string) => string {
   );
 }
 
+/** The roster in the shape lib/people expects. */
+function rosterOf(couple: CoupleInfo | null) {
+  return {
+    wife: couple?.members?.Wife,
+    husband: couple?.members?.Husband,
+    children: couple?.children ?? [],
+  };
+}
+
 /**
- * The person tags (Family / Couples / <Wife> / <Emad> / <child>), labelled
- * for the signed-in couple.
+ * The person tags — Family, Couples, each partner, and one per child,
+ * labelled for the signed-in family.
  */
 export function usePeople() {
   const { couple } = useContext(SessionContext);
-  return useMemo(
-    () => resolvePeople({
-      wife: couple?.members?.Wife,
-      husband: couple?.members?.Husband,
-      child: couple?.childName ?? null,
-    }),
+  return useMemo(() => resolvePeople(rosterOf(couple)), [couple]);
+}
+
+/** Look up a single person tag, labelled for this family. */
+export function usePerson(): (id: string | null | undefined) => PersonTag | null {
+  const { couple } = useContext(SessionContext);
+  return useCallback(
+    (id: string | null | undefined) => getPersonById(id, rosterOf(couple)),
     [couple],
   );
 }
 
-/** Look up a single person tag, labelled for this couple. */
-export function usePerson(): (id: string | null | undefined) => PersonTag | null {
+/** The family's children, for settings and onboarding. */
+export function useChildren() {
   const { couple } = useContext(SessionContext);
-  return useCallback(
-    (id: string | null | undefined) => getPersonById(id, {
-      wife: couple?.members?.Wife,
-      husband: couple?.members?.Husband,
-      child: couple?.childName ?? null,
-    }),
-    [couple],
-  );
+  return couple?.children ?? [];
 }
 
 /** The other person's display name. */
