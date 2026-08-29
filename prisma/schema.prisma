@@ -112,6 +112,9 @@ model FeedToken {
   couple     Couple    @relation(fields: [coupleId], references: [id], onDelete: Cascade)
   userId     String    // role within the family
   token      String    @unique
+  // What the home-screen widget shows, chosen by its owner. Null until they
+  // change something, so the defaults live in one place in code.
+  widgetConfig Json?
   lastUsedAt DateTime?
   createdAt  DateTime  @default(now())
 

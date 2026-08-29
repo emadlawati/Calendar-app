@@ -11,6 +11,7 @@ const PUBLIC_PREFIXES = [
   // Calendar clients subscribe with no session and cannot send headers, so
   // the feed authenticates on the token in its own path.
   "/api/feed/",
+  "/api/widget/",
   "/api/auth",
   "/api/cron",
   "/birthday",

@@ -26,7 +26,19 @@ const READ_OPS = new Set([
 const WHERE_WRITE_OPS = new Set(['updateMany', 'deleteMany'])
 const UNIQUE_OPS = new Set(['findUnique', 'findUniqueOrThrow', 'update', 'delete'])
 
-const store = new AsyncLocalStorage<{ coupleId: string }>()
+/**
+ * Cached alongside the clients, and for the same reason. The extension below
+ * closes over this store; if a reload re-evaluates this module while the
+ * client survives on globalThis, the two end up looking at different stores
+ * and every scoped query fails with "tenant scope missing". Keeping the store
+ * on globalThis keeps them the same object.
+ */
+declare global {
+  var __coupleStore: undefined | AsyncLocalStorage<{ coupleId: string }>
+}
+const store =
+  globalThis.__coupleStore ?? new AsyncLocalStorage<{ coupleId: string }>()
+if (process.env.NODE_ENV !== 'production') globalThis.__coupleStore = store
 
 /** Run `fn` with every query scoped to this couple. */
 export function withCouple<T>(coupleId: string, fn: () => Promise<T>): Promise<T> {

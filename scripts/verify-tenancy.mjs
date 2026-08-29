@@ -196,6 +196,14 @@ section("Calendar feeds cannot cross families");
   check("A's own feed link is not B's", aFeed.body?.url !== made.body?.url);
   const bogus = await fetch(`${BASE}/api/feed/not-a-real-token.ics`);
   check("an unknown feed token is a flat 404", bogus.status === 404, `HTTP ${bogus.status}`);
+
+  // The widget image rides on the same token, so it is the same surface.
+  const png = await fetch(`${BASE}/api/widget/${token}.png?size=small`);
+  const type = png.headers.get("content-type") ?? "";
+  check("B's widget renders from B's token",
+    png.status === 200 && type.startsWith("image/png"), `HTTP ${png.status} ${type}`);
+  const badPng = await fetch(`${BASE}/api/widget/not-a-real-token.png`);
+  check("an unknown widget token is a flat 404", badPng.status === 404, `HTTP ${badPng.status}`);
 }
 
 section("Settings cannot cross tenants");

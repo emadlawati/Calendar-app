@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import WidgetSettings from "./WidgetSettings";
+import { parseWidgetConfig, type WidgetConfig } from "@/lib/widget-config";
 
 interface Feed {
   exists: boolean;
   url?: string;
+  widgetUrl?: string;
+  widget?: WidgetConfig;
   lastUsedAt?: string | null;
   createdAt?: string;
 }
@@ -140,6 +144,14 @@ export default function CalendarFeed() {
               here.
             </p>
           </div>
+
+          {feed.widgetUrl && (
+            <WidgetSettings
+              widgetUrl={feed.widgetUrl}
+              config={parseWidgetConfig(feed.widget)}
+              onSaved={(widget) => setFeed((f) => (f ? { ...f, widget } : f))}
+            />
+          )}
 
           {feed.lastUsedAt && (
             <p className="rr-meta mt-4" style={{ fontSize: 10, color: "var(--faint)" }}>
