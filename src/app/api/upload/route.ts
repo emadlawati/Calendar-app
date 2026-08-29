@@ -4,7 +4,12 @@ import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB
+// Vercel rejects any request body over 4.5 MB at the edge, before this route
+// runs — so the old 8 MB limit could never fire and large photos failed with
+// an opaque FUNCTION_PAYLOAD_TOO_LARGE. The browser now resizes first; this
+// is the backstop, set below the platform ceiling so the message comes from
+// here and says something useful.
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +31,7 @@ export async function POST(request: Request) {
     }
     if (file.size > MAX_UPLOAD_BYTES) {
       return NextResponse.json(
-        { error: "Image is too large — please keep it under 8 MB" },
+        { error: "Image is too large — it should have been resized before sending" },
         { status: 413 },
       );
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { uploadPhotos } from "@/lib/image-compress";
 import Modal from "@/components/Modal";
 import { XIcon, PlusIcon } from "@/components/icons";
 
@@ -57,21 +58,18 @@ export default function SaveMemoryModal({ isOpen, onClose, onSuccess, pending, e
     if (files.length === 0) return;
     setError("");
 
-    const uploads: Promise<string>[] = files.map(async (file) => {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: form, credentials: "same-origin" });
-      if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json();
-      return data.url as string;
-    });
-
-    try {
-      const urls = await Promise.all(uploads);
-      setPhotos((prev) => [...prev, ...urls]);
-    } catch {
-      setError("Failed to upload photo. Please try again.");
+    // Each photo is resized in the browser first and uploaded on its own, so
+    // one that cannot be sent no longer discards the others.
+    const { urls, failures } = await uploadPhotos(files);
+    if (urls.length) setPhotos((prev) => [...prev, ...urls]);
+    if (failures.length) {
+      setError(
+        failures.length === files.length
+          ? `Could not add ${failures.length === 1 ? "that photo" : "those photos"}: ${failures[0].reason}.`
+          : `Added ${urls.length} of ${files.length}. ${failures.map((f) => f.name).join(", ")}: ${failures[0].reason}.`,
+      );
     }
+    e.target.value = "";
   };
 
   const removePhoto = (index: number) => {

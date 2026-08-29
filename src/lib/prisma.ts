@@ -88,8 +88,21 @@ async function requireCouple(model: string, operation: string): Promise<string> 
 
 const basePrisma = () => new PrismaClient()
 
+/**
+ * The database role the scoped client works as.
+ *
+ * Prisma Postgres connects us as `prisma_migration`, a superuser — and
+ * superusers bypass row-level security unconditionally, even with FORCE. The
+ * platform refuses CREATE ROLE and GRANT, but it already ships this role:
+ * not a superuser, no BYPASSRLS, and already holding the privileges these
+ * tables need. Dropping into it for the length of each transaction is what
+ * makes the policies apply at all.
+ */
+const RLS_ROLE = 'prisma_application'
+
 function scopedClient() {
-  return basePrisma().$extends({
+  const base = basePrisma()
+  return base.$extends({
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
@@ -97,10 +110,24 @@ function scopedClient() {
 
           const coupleId = await requireCouple(model, operation)
           const a = (args ?? {}) as Record<string, unknown>
-          // Prisma's per-operation arg types are far narrower than this
-          // generic handler can express, so the shape is rebuilt loosely and
-          // handed back through a single cast.
-          const run = (next: Record<string, unknown>) => query(next as typeof args)
+
+          /**
+           * Every scoped query runs inside one transaction that first drops
+           * superuser rights and states which family it is for. Both settings
+           * are transaction-local, so a pooled connection cannot carry either
+           * of them into the next request — which is exactly the leak that
+           * makes session-level settings unsafe here.
+           *
+           * The injected `where` above and the policy below now say the same
+           * thing in two independent places. The application forgetting one is
+           * no longer enough to expose a row.
+           */
+          const run = (next: Record<string, unknown>) =>
+            base.$transaction([
+              base.$executeRawUnsafe(`SET LOCAL ROLE ${RLS_ROLE}`),
+              base.$executeRaw`SELECT set_config('app.couple_id', ${coupleId}, TRUE)`,
+              query(next as typeof args),
+            ]).then((r) => r[2])
           const scopedWhere = () => ({ ...(a.where as object), coupleId })
 
           if (READ_OPS.has(operation) || WHERE_WRITE_OPS.has(operation)) {
