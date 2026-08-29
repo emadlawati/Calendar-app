@@ -47,8 +47,11 @@ if (!A) { console.error("No couple exists — run scripts/backfill-tenancy.mjs f
 
 // Couple A keeps a highlight on the shared date, so the collision is real.
 let aHl = await p.dailyHighlight.findFirst({ where: { coupleId: A.id, date: SHARED_DATE, createdBy: "Husband" } });
-const aHlExisted = !!aHl;
-const aHlOriginal = aHl?.note ?? null;
+// A row that already reads A-ORIGINAL is this script's own fixture, left by a
+// run that died before cleanup. Adopt it for deletion — otherwise the next run
+// mistakes it for real data and preserves it in the couple's history forever.
+const aHlExisted = !!aHl && aHl.note !== "A-ORIGINAL";
+const aHlOriginal = aHlExisted ? aHl.note : null;
 if (!aHl) {
   aHl = await p.dailyHighlight.create({ data: { coupleId: A.id, date: SHARED_DATE, createdBy: "Husband", note: "A-ORIGINAL" } });
 } else {
