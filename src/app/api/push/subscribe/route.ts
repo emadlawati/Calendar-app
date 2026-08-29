@@ -35,8 +35,27 @@ export async function POST(request: Request) {
       create: { userId: user, endpoint, keys: JSON.stringify(keys) },
     });
 
-    console.log(`[push] registered ${platformOf(endpoint)} for ${user}`);
-    return NextResponse.json({ success: true, platform: platformOf(endpoint) });
+    // One device, one subscription. A browser that re-subscribes gets a brand
+    // new endpoint rather than reusing the old one, so without this the rows
+    // pile up — one phone here had accumulated three over a summer, and every
+    // notification went to all of them. Dropping the stale ones is safe: if
+    // one were somehow still live, that device simply re-registers next time
+    // the app is opened.
+    const platform = platformOf(endpoint);
+    const mine = await prisma.pushSubscription.findMany({
+      where: { userId: user },
+      orderBy: { createdAt: "desc" },
+    });
+    const stale = mine
+      .filter((s) => s.endpoint !== endpoint && platformOf(s.endpoint) === platform)
+      .map((s) => s.id);
+    if (stale.length > 0) {
+      await prisma.pushSubscription.deleteMany({ where: { id: { in: stale } } });
+      console.log(`[push] replaced ${stale.length} stale ${platform} subscription(s) for ${user}`);
+    }
+
+    console.log(`[push] registered ${platform} for ${user}`);
+    return NextResponse.json({ success: true, platform });
   } catch (error) {
     console.error("[push] subscribe failed:", error);
     return NextResponse.json({ error: "Failed to subscribe" }, { status: 500 });

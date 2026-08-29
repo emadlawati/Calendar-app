@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import prisma, { systemPrisma, withCouple } from "@/lib/prisma";
 import resend from "@/lib/resend";
 import { getCategoryById } from "@/lib/categories";
-import { sendPushToUser } from "@/lib/webpush";
+import { pushAndReport } from "@/lib/notify";
 import { getEventNotificationRecipients } from "@/lib/people";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
@@ -62,7 +62,10 @@ export async function GET(request: Request) {
       const users = getEventNotificationRecipients(personTag);
       return {
         users,
-        emails: users.map((u) => emailByRole.get(u)).filter(Boolean) as string[],
+        // Resolved after the push, so only the people it failed to reach
+        // are emailed.
+        emailsFor: (roles: string[]) =>
+          roles.map((r) => emailByRole.get(r)).filter(Boolean) as string[],
       };
     }
 
@@ -73,7 +76,10 @@ export async function GET(request: Request) {
 }
 
 async function sendForCouple(
-  recipientsFor: (personTag: string | null) => { users: ("Wife" | "Husband")[]; emails: string[] },
+  recipientsFor: (personTag: string | null) => {
+    users: ("Wife" | "Husband")[];
+    emailsFor: (roles: string[]) => string[];
+  },
   results: string[],
   noEmail: boolean,
 ) {
@@ -103,7 +109,7 @@ async function sendForCouple(
   // ── A. Today's reminders ──
   for (const evt of todayEvents) {
     const cat = getCategoryById(evt.category);
-    const { users, emails } = recipientsFor(evt.personTag);
+    const { users, emailsFor } = recipientsFor(evt.personTag);
     if (users.length === 0) continue;
     const html = `
       <div style="${EMAIL_STYLE}">
@@ -117,20 +123,19 @@ async function sendForCouple(
         ${openBtn("Open Calendar 🐾")}
         <p style="margin-top:30px;font-size:12px;opacity:0.6;">Sent with love from your shared calendar app.</p>
       </div>`;
-    if (!noEmail && emails.length > 0) {
+    const delivery = await pushAndReport(users, {
+      title: `${cat.emoji} Today: ${evt.title}!`,
+      body: evt.allDay ? "All day today" : `Today @ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`,
+      url: `${BASE_URL}/`,
+    });
+    const fallback = emailsFor(delivery.needEmail);
+    if (!noEmail && fallback.length > 0) {
       await resend.emails.send({
         from: "Calendar 🐾 <noreply@yaminami.uk>",
-        to: emails,
+        to: fallback,
         subject: `${cat.emoji} Today: ${evt.title}! ☕`,
         html,
       }).catch((e: unknown) => console.error("Today reminder email failed:", e));
-    }
-    for (const u of users) {
-      await sendPushToUser(u, {
-        title: `${cat.emoji} Today: ${evt.title}!`,
-        body: evt.allDay ? "All day today" : `Today @ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`,
-        url: `${BASE_URL}/`,
-      }).catch((e: unknown) => console.error("Today reminder push failed:", e));
     }
     results.push(`today:${evt.title}`);
   }
@@ -138,7 +143,7 @@ async function sendForCouple(
   // ── B. Tomorrow's reminders ──
   for (const evt of tomorrowEvents) {
     const cat = getCategoryById(evt.category);
-    const { users, emails } = recipientsFor(evt.personTag);
+    const { users, emailsFor } = recipientsFor(evt.personTag);
     if (users.length === 0) continue;
     const html = `
       <div style="${EMAIL_STYLE}">
@@ -152,20 +157,19 @@ async function sendForCouple(
         ${openBtn("Open Calendar 🐾")}
         <p style="margin-top:30px;font-size:12px;opacity:0.6;">Sent with love from your shared calendar app.</p>
       </div>`;
-    if (!noEmail && emails.length > 0) {
+    const delivery = await pushAndReport(users, {
+      title: `${cat.emoji} Tomorrow: ${evt.title}`,
+      body: evt.allDay ? "All day tomorrow" : `Tomorrow @ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`,
+      url: `${BASE_URL}/`,
+    });
+    const fallback = emailsFor(delivery.needEmail);
+    if (!noEmail && fallback.length > 0) {
       await resend.emails.send({
         from: "Calendar 🐾 <noreply@yaminami.uk>",
-        to: emails,
+        to: fallback,
         subject: `${cat.emoji} Tomorrow: ${evt.title} 🗓️`,
         html,
       }).catch((e: unknown) => console.error("Tomorrow reminder email failed:", e));
-    }
-    for (const u of users) {
-      await sendPushToUser(u, {
-        title: `${cat.emoji} Tomorrow: ${evt.title}`,
-        body: evt.allDay ? "All day tomorrow" : `Tomorrow @ ${evt.time}${evt.endTime ? ` – ${evt.endTime}` : ""}`,
-        url: `${BASE_URL}/`,
-      }).catch((e: unknown) => console.error("Tomorrow reminder push failed:", e));
     }
     results.push(`tomorrow:${evt.title}`);
   }

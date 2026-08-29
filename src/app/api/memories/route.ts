@@ -4,7 +4,7 @@ import { getRequestUser, getCurrentUser } from "@/lib/auth";
 import resend from "@/lib/resend";
 import { getCoupleContext } from "@/lib/couple-context";
 import { getCategoryById } from "@/lib/categories";
-import { sendPushToUser } from "@/lib/webpush";
+import { pushAndReport, emailConfigured } from "@/lib/notify";
 import type { User } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -68,7 +68,15 @@ export async function POST(request: Request) {
       const partnerEmail = couple?.email(user === "Wife" ? "Husband" : "Wife") ?? null;
       const cat = getCategoryById(memory.event.category);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-      if (partnerEmail && process.env.RESEND_API_KEY !== "re_...") {
+      // Push first, so the email can be skipped when it lands.
+      const partner = (user === "Wife" ? "Husband" : "Wife") as User;
+      const delivery = await pushAndReport([partner], {
+        title: `📸 New Memory!`,
+        body: `${(couple?.name(user) ?? user)} saved a memory for ${memory.event.title}`,
+        url: `${baseUrl}/memories`,
+      });
+
+      if (partnerEmail && emailConfigured() && delivery.needEmail.length > 0) {
         resend.emails.send({
           from: "Calendar 🐾 <noreply@yaminami.uk>",
           to: partnerEmail,
@@ -89,13 +97,6 @@ export async function POST(request: Request) {
         }).catch((e: unknown) => console.error("Memory notification failed:", e));
       }
 
-      // Push notification to partner
-      const partner = user === "Wife" ? "Husband" as User : "Wife" as User;
-      await sendPushToUser(partner, {
-        title: `📸 New Memory!`,
-        body: `${(couple?.name(user) ?? user)} saved a memory for ${memory.event.title}`,
-        url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/memories`,
-      }).catch(() => {});
     }
 
     return NextResponse.json(memory, { status: 201 });

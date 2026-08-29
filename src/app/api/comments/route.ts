@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, getRequestUser } from "@/lib/auth";
 import { getCoupleContext, type CoupleContext } from "@/lib/couple-context";
-import { sendPushToUser } from "@/lib/webpush";
+import { pushAndReport, emailConfigured } from "@/lib/notify";
 import { getTargetOwner } from "@/lib/content-target";
 import resend from "@/lib/resend";
 import type { CommentTarget, User } from "@/lib/types";
@@ -103,14 +103,16 @@ async function notifyPartner(
   } catch { /* ignore — fall back to generic label */ }
 
   // Push notification
-  await sendPushToUser(partner, {
+  const delivery = await pushAndReport([partner], {
     title: "💬 New Comment!",
     body: `${displayName} commented on ${label}: "${preview}"`,
     url: `${baseUrl}/memories`,
-  }).catch(() => {});
+  });
 
   // Email notification
-  if (partnerEmail && process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== "re_...") {
+  // Email only if push didn't reach them — otherwise it's the same
+  // notification twice. See lib/notify.ts.
+  if (partnerEmail && emailConfigured() && delivery.needEmail.length > 0) {
     resend.emails.send({
       from: "Calendar 🐾 <noreply@yaminami.uk>",
       to: partnerEmail,

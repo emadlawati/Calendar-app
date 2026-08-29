@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import resend from "@/lib/resend";
 import { getCurrentUser } from "@/lib/auth";
 import { getCoupleContext } from "@/lib/couple-context";
-import { sendPushToUser } from "@/lib/webpush";
+import { pushAndReport } from "@/lib/notify";
 
 export async function POST() {
   try {
@@ -23,12 +23,18 @@ export async function POST() {
     const displayName = couple?.name(user) ?? user;
     const partnerDisplayName = couple?.name(partner) ?? partner;
 
-    // Push notification to partner
-    sendPushToUser(partner, {
+    // Push first; the email is only a fallback for a partner whose device
+    // didn't take it. Also: this was fire-and-forget, so a push failure was
+    // invisible even in the logs.
+    const delivery = await pushAndReport([partner], {
       title: `💕 ${displayName} is thinking of you!`,
       body: "Just a little reminder that you're loved 🐾",
       url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/`,
     });
+
+    if (delivery.reached.length > 0) {
+      return NextResponse.json({ success: true, via: "push" });
+    }
 
     await resend.emails.send({
       from: "Calendar 🐾 <noreply@yaminami.uk>",

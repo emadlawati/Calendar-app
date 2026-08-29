@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getCoupleContext, type CoupleContext } from "@/lib/couple-context";
-import { sendPushToUser } from "@/lib/webpush";
+import { pushAndReport, emailConfigured } from "@/lib/notify";
 import resend from "@/lib/resend";
 import type { User, NoteKind } from "@/lib/types";
 
@@ -78,13 +78,15 @@ async function notifyPartner(cpl: CoupleContext | null, user: User, kind: NoteKi
   const emoji = isGratitude ? "💛" : "💌";
   const label = isGratitude ? "appreciates you" : "sent you a note";
 
-  await sendPushToUser(partner, {
+  const delivery = await pushAndReport([partner], {
     title: `${emoji} ${isGratitude ? "New Appreciation!" : "New Note!"}`,
     body: `${displayName}: "${preview}"`,
     url: `${baseUrl}/notes`,
-  }).catch(() => {});
+  });
 
-  if (partnerEmail && process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== "re_...") {
+  // Email only if push didn't reach them — otherwise it's the same
+  // notification twice. See lib/notify.ts.
+  if (partnerEmail && emailConfigured() && delivery.needEmail.length > 0) {
     resend.emails.send({
       from: "Calendar 🐾 <noreply@yaminami.uk>",
       to: partnerEmail,

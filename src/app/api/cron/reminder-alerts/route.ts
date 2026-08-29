@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import prisma, { systemPrisma, withCouple } from "@/lib/prisma";
 import resend from "@/lib/resend";
 import { reminderDateTime } from "@/lib/reminder-utils";
-import { sendPushToBoth } from "@/lib/webpush";
+import { pushAndReport } from "@/lib/notify";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -63,20 +63,27 @@ export async function GET(request: Request) {
   // No session here, so fan out over couples explicitly and run each one's
   // reminders inside its own scope.
   const couples = await systemPrisma.couple.findMany({
-    select: { id: true, users: { select: { email: true } } },
+    select: { id: true, users: { select: { role: true, kind: true, email: true } } },
   });
 
   let checked = 0;
   for (const couple of couples) {
-    const recipients = couple.users.map((u) => u.email).filter(Boolean) as string[];
-    checked += await withCouple(couple.id, () => runForCouple(recipients, noEmail, now, results));
+    // Partners only — children have no address and no devices.
+    const adults = couple.users.filter((u) => u.kind === "adult" && u.role);
+    const roles = adults.map((u) => u.role as string);
+    const byRole = new Map(adults.map((u) => [u.role as string, u.email]));
+    const emailsFor = (rs: string[]) =>
+      rs.map((r) => byRole.get(r)).filter(Boolean) as string[];
+    checked += await withCouple(couple.id, () =>
+      runForCouple(roles, emailsFor, noEmail, now, results));
   }
 
   return NextResponse.json({ ok: true, couples: couples.length, checked, sent: results });
 }
 
 async function runForCouple(
-  recipients: string[],
+  roles: string[],
+  emailsFor: (roles: string[]) => string[],
   noEmail: boolean,
   now: number,
   results: string[],
@@ -110,22 +117,23 @@ async function runForCouple(
           <p style="margin-top:30px;font-size:12px;opacity:0.6;">Sent with love from your shared calendar app.</p>
         </div>`;
 
-      if (!noEmail && recipients.length > 0) {
+      const delivery = await pushAndReport(roles, {
+        title: `🔔 Reminder tomorrow: ${reminder.title}`,
+        body: `Tomorrow at ${reminder.time}${reminder.endTime ? ` – ${reminder.endTime}` : ""}`,
+        url: `${BASE_URL}/`,
+      });
+
+      const fallback = emailsFor(delivery.needEmail);
+      if (!noEmail && fallback.length > 0) {
         await resend.emails.send({
           from: "Calendar 🐾 <noreply@yaminami.uk>",
-          to: recipients,
+          to: fallback,
           subject: `🔔 Reminder tomorrow: ${reminder.title} at ${reminder.time}`,
           html,
         }).catch((e: unknown) => console.error("24h reminder email failed:", e));
       }
 
       await sendWhatsApp(`🔔 Reminder tomorrow: ${reminder.title} at ${reminder.time}`);
-
-      await sendPushToBoth({
-        title: `🔔 Reminder tomorrow: ${reminder.title}`,
-        body: `Tomorrow at ${reminder.time}${reminder.endTime ? ` – ${reminder.endTime}` : ""}`,
-        url: `${BASE_URL}/`,
-      }).catch((e: unknown) => console.error("24h reminder push failed:", e));
 
       await prisma.reminder.update({ where: { id: reminder.id }, data: { sent24h: true } });
       results.push(`24h:${reminder.title}`);
@@ -151,22 +159,23 @@ async function runForCouple(
           <p style="margin-top:30px;font-size:12px;opacity:0.6;">Sent with love from your shared calendar app.</p>
         </div>`;
 
-      if (!noEmail && recipients.length > 0) {
+      const soonDelivery = await pushAndReport(roles, {
+        title: `🔔 ${soon}: ${reminder.title}`,
+        body: `Starting at ${reminder.time}${reminder.endTime ? ` – ${reminder.endTime}` : ""}`,
+        url: `${BASE_URL}/`,
+      });
+
+      const soonFallback = emailsFor(soonDelivery.needEmail);
+      if (!noEmail && soonFallback.length > 0) {
         await resend.emails.send({
           from: "Calendar 🐾 <noreply@yaminami.uk>",
-          to: recipients,
+          to: soonFallback,
           subject: `🔔 ${soon}: ${reminder.title}! ☕`,
           html,
         }).catch((e: unknown) => console.error("1h reminder email failed:", e));
       }
 
       await sendWhatsApp(`🔔 ${soon}: ${reminder.title} at ${reminder.time} ☕`);
-
-      await sendPushToBoth({
-        title: `🔔 ${soon}: ${reminder.title}`,
-        body: `Starting at ${reminder.time}${reminder.endTime ? ` – ${reminder.endTime}` : ""}`,
-        url: `${BASE_URL}/`,
-      }).catch((e: unknown) => console.error("1h reminder push failed:", e));
 
       await prisma.reminder.update({ where: { id: reminder.id }, data: { sent1h: true } });
       results.push(`1h:${reminder.title}`);

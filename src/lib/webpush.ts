@@ -1,6 +1,5 @@
 import webpush from "web-push";
-import prisma, { currentCoupleId } from "@/lib/prisma";
-import { getCoupleContext, getCoupleContextById } from "@/lib/couple-context";
+import prisma from "@/lib/prisma";
 
 const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY!;
@@ -91,21 +90,4 @@ export async function sendPushToUser(
   }
 
   return results;
-}
-
-/**
- * Everyone in the family who can receive a notification — that is, both
- * partners. Children have no devices and no account.
- */
-export async function sendPushToBoth(payload: { title: string; body: string; icon?: string; url?: string }) {
-  // Cron has no session but does run inside withCouple(), so the scope has to
-  // be read from there rather than from a cookie.
-  const scoped = currentCoupleId();
-  const couple = scoped ? await getCoupleContextById(scoped) : await getCoupleContext();
-  const roles = couple?.adults.length
-    ? couple.adults.map((a) => a.role as string)
-    : ["Wife", "Husband"];
-  for (const role of roles) {
-    await sendPushToUser(role, payload);
-  }
 }
