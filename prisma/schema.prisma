@@ -274,6 +274,10 @@ model Streak {
   userId        String   // role within the couple
   currentStreak Int      @default(0)
   longestStreak Int      @default(0)
+  // Every week they kept something, counted once and never given back. The
+  // consecutive streak above resets the moment a week is missed, which turns
+  // a record of a life into something you can fail at.
+  weeksKept     Int      @default(0)
   lastWeekStart DateTime
   updatedAt     DateTime @updatedAt
 

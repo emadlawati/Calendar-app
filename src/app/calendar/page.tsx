@@ -12,7 +12,7 @@ import Skeleton from "@/components/Skeleton";
 import { WEEKDAY_LETTERS, weekdayIndex } from "@/lib/week";
 import { useHijri } from "@/components/SessionProvider";
 import { getCategoryById } from "@/lib/categories";
-import { toRoman, spellDate, spellTime } from "@/lib/volume";
+import { spellDate, spellTime } from "@/lib/volume";
 import type { CalendarEvent, Reminder, PendingMemory } from "@/lib/types";
 
 const TZ = "+04:00";
@@ -150,7 +150,7 @@ export default function CalendarPage() {
     });
   }, [dayEvents, dayReminders]);
 
-  const monthLabel = `${anchor.toLocaleDateString("en-GB", { month: "long" })} ${toRoman(anchor.getFullYear())}`;
+  const monthLabel = `${anchor.toLocaleDateString("en-GB", { month: "long" })} ${anchor.getFullYear()}`;
 
   return (
     <AppShell active="calendar" fab={<Fab onClick={() => router.push(`/entry/new?date=${selected}`)} />}>
@@ -159,7 +159,7 @@ export default function CalendarPage() {
         <h1 className="rr-display" style={{ fontSize: 26, color: "var(--ink)" }}>
           {anchor.toLocaleDateString("en-GB", { month: "long" })}{" "}
           <span className="rr-italic" style={{ color: "var(--muted)", fontSize: 22 }}>
-            {toRoman(anchor.getFullYear())}
+            {anchor.getFullYear()}
           </span>
         </h1>
         <div className="flex items-center gap-5" style={{ flex: "none" }}>

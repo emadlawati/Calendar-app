@@ -8,15 +8,16 @@ import { getVolumeInfo } from "@/lib/volume";
 import useAppBadge from "@/lib/useAppBadge";
 import type { StreakData } from "@/lib/types";
 
-export type ShelfSection = "calendar" | "story" | "letters" | "ledger" | "shelf" | "reading-list" | null;
+export type ShelfSection = "calendar" | "story" | "letters" | "ledger" | "shelf" | "reading-list" | "settings" | null;
 
-const NAV: { key: Exclude<ShelfSection, null>; numeral: string; name: string; href: string }[] = [
-  { key: "calendar",     numeral: "I",   name: "Calendar",     href: "/calendar" },
-  { key: "story",        numeral: "II",  name: "Our Story",    href: "/story" },
-  { key: "letters",      numeral: "III", name: "Letters",      href: "/notes" },
-  { key: "ledger",       numeral: "IV",  name: "The Ledger",   href: "/ledger" },
-  { key: "shelf",        numeral: "V",   name: "Our Shelf",    href: "/shelf" },
-  { key: "reading-list", numeral: "VI",  name: "Reading list", href: "/reading-list" },
+const NAV: { key: Exclude<ShelfSection, null>; name: string; href: string }[] = [
+  { key: "calendar",     name: "Calendar",     href: "/calendar" },
+  { key: "story",        name: "Our Story",    href: "/story" },
+  { key: "letters",      name: "Letters",      href: "/notes" },
+  { key: "ledger",       name: "The Ledger",   href: "/ledger" },
+  { key: "shelf",        name: "Our Shelf",    href: "/shelf" },
+  { key: "reading-list", name: "Reading list", href: "/reading-list" },
+  { key: "settings",     name: "Settings",     href: "/settings" },
 ];
 
 function HamburgerGlyph() {
@@ -56,7 +57,7 @@ function DrawerPanel({ active, onNavigate }: { active: ShelfSection; onNavigate?
           {couple?.displayName ?? " "}
         </p>
         <p className="rr-italic mt-1" style={{ fontSize: 14, color: "var(--sage-pale)" }}>
-          est. {vol.startYear} · Vol. {vol.volumeRoman}
+          est. {vol.startYear}
         </p>
       </Link>
 
@@ -72,12 +73,6 @@ function DrawerPanel({ active, onNavigate }: { active: ShelfSection; onNavigate?
               className="flex items-center gap-4 px-6 py-[18px]"
               style={{ borderBottom: "1px solid rgba(247,245,236,.12)" }}
             >
-              <span
-                className="rr-display"
-                style={{ width: 22, fontSize: 13, color: "var(--sage-pale)", letterSpacing: ".08em" }}
-              >
-                {item.numeral}
-              </span>
               <span
                 className="rr-display flex-1"
                 style={{ fontSize: 21, color: "var(--paper)", fontWeight: isActive ? 600 : 500 }}

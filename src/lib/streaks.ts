@@ -5,6 +5,9 @@ import { weekdayIndex } from "./week";
 export interface StreakResult {
   currentStreak: number;
   longestStreak: number;
+  /** Weeks with something kept, counted once each and never given back. */
+  weeksKept: number;
+  /** Always empty now; badges were retired. Kept so callers still compile. */
   newUnlocks: Badge[];
 }
 
@@ -76,6 +79,12 @@ export async function recalculateStreaks(): Promise<StreakResult> {
     expectNext = previousWeek(sortedWeeks[i]);
   }
 
+  // The headline figure: every week they kept something, counted once and
+  // never taken back. A consecutive streak resets on a single missed week,
+  // which turns a record of a life into something you can fail at — and this
+  // app is meant to be opened because you want to, not to protect a number.
+  const weeksKept = weekStarts.size;
+
   const bestEver = Math.max(longestStreak, currentStreak);
   const lastWeekStart = new Date(`${thisWeekStart}T00:00:00.000Z`);
 
@@ -85,43 +94,40 @@ export async function recalculateStreaks(): Promise<StreakResult> {
   if (existingStreak) {
     await prisma.streak.update({
       where: { id: existingStreak.id },
-      data: { currentStreak, longestStreak: bestEver, lastWeekStart },
+      data: { currentStreak, longestStreak: bestEver, weeksKept, lastWeekStart },
     });
   } else {
     await prisma.streak.create({
-      data: { userId: "couple", currentStreak, longestStreak: bestEver, lastWeekStart },
+      data: { userId: "couple", currentStreak, longestStreak: bestEver, weeksKept, lastWeekStart },
     });
   }
 
-  // Check for newly unlocked achievements. Badges unlock on the best-ever
-  // streak — a couple whose 24-week run broke long ago has still earned it.
-  const newUnlocks: Badge[] = [];
-  for (const badge of BADGES) {
-    if (bestEver >= badge.weeksRequired) {
-      const existing = await prisma.achievement.findFirst({
-        where: { userId: "couple", badgeId: badge.id },
-      });
-      if (!existing) {
-        await prisma.achievement.create({
-          data: { userId: "couple", badgeId: badge.id },
-        });
-        newUnlocks.push(badge);
-      }
-    }
-  }
-
-  return { currentStreak, longestStreak: bestEver, newUnlocks };
+  // Badges are gone. They were named for a coffee theme two redesigns ago —
+  // "Latte Legend" for a 24-week run — and nothing displays them now. The
+  // loop that wrote them ran one query per badge on every read of the stats.
+  return { currentStreak, longestStreak: bestEver, weeksKept, newUnlocks: [] as Badge[] };
 }
 
 export async function getStreakData(): Promise<{
   currentStreak: number;
   longestStreak: number;
+  weeksKept: number;
   achievements: { badgeId: string; unlockedAt: Date }[];
 }> {
-  // Always recompute — reads used to return stale rows whenever no accept
-  // had triggered a recalculation (e.g. weeks with no new activity).
-  await recalculateStreaks();
-  const streak = await prisma.streak.findFirst({ where: { userId: "couple" } });
+  // Recompute only when the stored row is from an earlier week. Reads used
+  // to recalculate unconditionally, which was correct but cost a dozen
+  // sequential queries every time the shelf was opened — and under RLS each
+  // one is its own transaction. Within the same week the stored answer cannot
+  // have gone stale on its own; an accept recalculates it directly.
+  let streak = await prisma.streak.findFirst({ where: { userId: "couple" } });
+  const thisWeek = weekStartOf(muscatDateStr(new Date()));
+  const storedWeek = streak?.lastWeekStart
+    ? streak.lastWeekStart.toISOString().split("T")[0]
+    : null;
+  if (!streak || storedWeek !== thisWeek) {
+    await recalculateStreaks();
+    streak = await prisma.streak.findFirst({ where: { userId: "couple" } });
+  }
 
   const achievements = await prisma.achievement.findMany({
     where: { userId: "couple" },
@@ -131,6 +137,7 @@ export async function getStreakData(): Promise<{
   return {
     currentStreak: streak?.currentStreak ?? 0,
     longestStreak: streak?.longestStreak ?? 0,
+    weeksKept: streak?.weeksKept ?? 0,
     achievements: achievements.map((a) => ({
       badgeId: a.badgeId,
       unlockedAt: a.unlockedAt,

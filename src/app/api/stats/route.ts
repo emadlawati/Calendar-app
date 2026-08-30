@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
 import { getStreakData } from "@/lib/streaks";
-import { computeScore, computeLevel } from "@/lib/level";
+import { computeMilestones } from "@/lib/milestones";
+import { getCoupleContext } from "@/lib/couple-context";
 import { getCategoryById } from "@/lib/categories";
 
 export async function GET() {
@@ -11,17 +12,21 @@ export async function GET() {
       prisma.calendarEvent.findMany({
         where: { status: "accepted", archived: false },
         orderBy: { date: "asc" },
-        select: { id: true, date: true, category: true },
+        select: { id: true, date: true, category: true, title: true, createdAt: true },
       }),
       prisma.memory.findMany({
-        select: { photos: true, event: { select: { category: true } } },
+        select: { photos: true, createdAt: true, event: { select: { category: true } } },
       }),
-      prisma.bucketItem.findMany({ select: { completed: true } }),
+      prisma.bucketItem.findMany({ select: { completed: true, createdAt: true } }),
       getStreakData(),
-      prisma.dailyHighlight.count(),
+      prisma.dailyHighlight.findMany({ select: { createdAt: true } }),
       prisma.comment.count(),
-      prisma.note.count(),
+      prisma.note.findMany({ select: { createdAt: true } }),
     ]);
+
+    // These two arrive as rows now, because the milestones need their dates.
+    const totalHighlightsCount = totalHighlights.length;
+    const totalNotesCount = totalNotes.length;
 
     // Counts
     const totalEvents = events.length;
@@ -73,23 +78,42 @@ export async function GET() {
     // First event date
     const firstEventDate = events[0]?.date?.toISOString().split("T")[0] ?? null;
 
-    // Level
-    const score = computeScore(totalEvents, totalMemories, completedBucketItems, totalHighlights, totalComments, totalNotes);
-    const levelResult = computeLevel(score);
+    // The busiest month, for the record rather than as a target.
+    const busiest = [...eventsByMonth].sort((a, b) => b.count - a.count)[0] ?? null;
 
+    const couple = await getCoupleContext();
+    const milestones = computeMilestones({
+      // Ordered by when each was written down, not when it happens. Sorting
+      // by event date counted entries scheduled months ahead, which produced
+      // a "50th entry" dated in December — a milestone that had not happened.
+      events: [...events]
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        .map((e) => ({ date: e.createdAt, title: e.title })),
+      memories,
+      notes: totalNotes,
+      highlights: totalHighlights,
+      bucketDone: bucketItems.filter((b) => b.completed),
+      startDate: couple?.startDate ?? new Date(),
+    });
+
+    // No score and no level. The page said "no points, no levels" while this
+    // endpoint was quietly computing both.
     return NextResponse.json({
       totalEvents,
       totalMemories,
       totalPhotos,
-      totalNotes,
+      totalNotes: totalNotesCount,
+      totalHighlights: totalHighlightsCount,
+      totalComments,
       completedBucketItems,
       totalBucketItems,
       favoriteCategory,
       categoryBreakdown,
       eventsByMonth,
+      busiestMonth: busiest && busiest.count > 0 ? busiest : null,
       firstEventDate,
       streakData,
-      ...levelResult,
+      milestones,
     });
   } catch (err) {
     console.error("Stats fetch error:", err);

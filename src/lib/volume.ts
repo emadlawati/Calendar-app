@@ -1,32 +1,13 @@
 /**
- * The library conceit, expressed in numbers.
+ * How long they have been together, in the terms the app says it out loud.
  *
- * A "page" is a day the two of them have been together; a "volume" covers
- * two years of pages and is bound when it fills. The design brief's headline
- * figures (VOL. V / PAGE 3,495) fall out of exactly this model, so the app
- * derives them from the real relationship start date rather than hardcoding.
+ * This used to be a library conceit — "VOL. V / PAGE 3,495", a page per day
+ * and a volume every two years, with the volume in Roman numerals. It needed
+ * explaining every time, and the Roman numerals collided with a serif face
+ * whose figures already read as letters. Years and days need no decoding.
  */
 
-const DAYS_PER_VOLUME = 730; // two years to a volume
-
-const ROMAN: [number, string][] = [
-  [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"],
-  [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
-  [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
-];
-
-export function toRoman(n: number): string {
-  if (!Number.isFinite(n) || n <= 0) return "I";
-  let rest = Math.floor(n);
-  let out = "";
-  for (const [value, numeral] of ROMAN) {
-    while (rest >= value) {
-      out += numeral;
-      rest -= value;
-    }
-  }
-  return out;
-}
+const DAYS_PER_VOLUME = 730; // kept for the shelf's one-spine-per-year drawing
 
 /**
  * Fallback only. Every caller that knows its couple should pass
@@ -40,9 +21,14 @@ export function relationshipStart(): Date {
 export interface VolumeInfo {
   /** Days together — the page number of the book. */
   page: number;
-  /** 1-based volume number. */
+  /** 1-based volume number. Retained for the shelf drawing only. */
   volume: number;
-  volumeRoman: string;
+  /** Whole years together. */
+  years: number;
+  /** Days since the last whole year — the remainder people actually quote. */
+  daysIntoYear: number;
+  /** "9 years, 211 days" — or "211 days" in the first year. */
+  together: string;
   /** Pages written into the volume currently being bound. */
   pagesInVolume: number;
   /** Pages left before this volume closes. */
@@ -60,10 +46,35 @@ export function getVolumeInfo(
   const page = Math.max(0, Math.floor((now - start.getTime()) / 86_400_000));
   const volume = Math.max(1, Math.ceil(page / DAYS_PER_VOLUME));
   const pagesInVolume = page - (volume - 1) * DAYS_PER_VOLUME;
+
+  // Counted on the calendar rather than by dividing days, so leap years and
+  // month lengths land where a person would expect them to.
+  const at = new Date(now);
+  let years = at.getFullYear() - start.getFullYear();
+  const anniversaryThisYear = new Date(start);
+  anniversaryThisYear.setFullYear(start.getFullYear() + years);
+  if (anniversaryThisYear.getTime() > now) {
+    years -= 1;
+    anniversaryThisYear.setFullYear(anniversaryThisYear.getFullYear() - 1);
+  }
+  years = Math.max(0, years);
+  const daysIntoYear = Math.max(
+    0,
+    Math.floor((now - anniversaryThisYear.getTime()) / 86_400_000),
+  );
+
+  const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
+  const together =
+    years === 0
+      ? plural(daysIntoYear, "day")
+      : `${plural(years, "year")}, ${plural(daysIntoYear, "day")}`;
+
   return {
     page,
     volume,
-    volumeRoman: toRoman(volume),
+    years,
+    daysIntoYear,
+    together,
     pagesInVolume,
     pagesRemaining: Math.max(0, DAYS_PER_VOLUME - pagesInVolume),
     volumesBound: Math.max(0, volume - 1),

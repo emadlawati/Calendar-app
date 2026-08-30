@@ -192,7 +192,7 @@ export default function Home() {
           {spellDate(today)}
         </h1>
         <p className="rr-meta mt-2">
-          Vol. {vol.volumeRoman} · Page {vol.page.toLocaleString()}
+          {vol.together} together
           {hijri && <span style={{ color: "var(--faint)" }}> · {hijri}</span>}
         </p>
       </header>

@@ -9,7 +9,6 @@ import { getRequestUser } from '@/lib/auth';
 import { getCoupleContext } from "@/lib/couple-context";
 import { getCategoryById } from '@/lib/categories';
 import { recalculateStreaks } from '@/lib/streaks';
-import { getBadgeById } from '@/lib/achievements';
 import { sendPushToUser } from '@/lib/webpush';
 import { getEventNotificationRecipients } from '@/lib/people';
 
@@ -134,7 +133,6 @@ export async function POST(request: Request) {
 
       // Recalculate streaks after accepting
       const streakResult = await recalculateStreaks();
-      const newBadges = streakResult.newUnlocks.map((b) => ({ id: b.id, label: b.label, emoji: b.emoji }));
 
       // Push notification to creator
       if (acceptedEvent) {
@@ -188,7 +186,6 @@ export async function POST(request: Request) {
         success: true,
         message: isSeries ? `Accepted all ${acceptedCount} occurrences` : "Event accepted",
         acceptedCount,
-        newBadges: newBadges.length > 0 ? newBadges : undefined,
       });
     }
 

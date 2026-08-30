@@ -110,7 +110,7 @@ export async function getWidgetData(
         weekday: "long", day: "numeric", month: "long", timeZone: TZ,
       }),
       hijri: formatHijri(now, { offset: couple.hijriOffset, timeZone: couple.timezone }),
-      volume: vol.volumeRoman,
+      volume: vol.together,
       page: vol.page.toLocaleString(),
       today,
       upcoming,
