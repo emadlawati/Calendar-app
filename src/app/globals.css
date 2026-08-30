@@ -193,6 +193,11 @@ body {
   font-family: var(--font-display), Georgia, serif;
   font-weight: 600;
   letter-spacing: 0.002em;
+  /* Cormorant defaults to old-style figures, where 1 is drawn almost exactly
+     like a capital I and 0 like an O. Beautiful in running prose, unreadable
+     in a calendar — "10 11" came out as "IO II". Lining figures throughout,
+     since this face is used for dates and counts, not paragraphs. */
+  font-variant-numeric: lining-nums;
 }
 
 .rr-italic {
