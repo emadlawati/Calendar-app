@@ -12,6 +12,7 @@ export interface CoupleInfo {
   startDate: string;
   timezone: string;
   hijriOffset: number;
+  theme: string;
   canInviteFamilies: boolean;
   /** role -> display name, e.g. { Wife: "Budoor", Husband: "Emad" } */
   members: Record<string, string>;

@@ -195,7 +195,7 @@ export default function LedgerPage() {
                   onClick={() => setPersonTag(personTag === p.id ? null : p.id)}
                   style={
                     personTag === p.id
-                      ? { background: "var(--terracotta)", color: "var(--paper)", borderColor: "var(--terracotta)" }
+                      ? { background: "var(--terracotta)", color: "var(--on-dark)", borderColor: "var(--terracotta)" }
                       : undefined
                   }
                 >

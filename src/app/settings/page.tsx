@@ -1,7 +1,7 @@
 "use client";
 
 import AppShell from "@/components/AppShell";
-import ThemeToggle from "@/components/ThemeToggle";
+import ThemePicker from "@/components/ThemePicker";
 import CoupleSettings from "@/components/CoupleSettings";
 import NotificationSettings from "@/components/NotificationSettings";
 import CalendarFeed from "@/components/CalendarFeed";
@@ -26,10 +26,9 @@ export default function SettingsPage() {
         </p>
       </header>
 
-      <section className="mt-8 flex items-center justify-between gap-4">
-        <span className="rr-label">Reading light</span>
-        <ThemeToggle />
-      </section>
+      {/* Three themes, one of them dark — so this replaces the old light/dark
+          toggle rather than sitting beside it. */}
+      <ThemePicker />
 
       <CoupleSettings />
       <NotificationSettings />

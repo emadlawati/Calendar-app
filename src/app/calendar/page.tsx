@@ -11,6 +11,7 @@ import { usePeople } from "@/components/SessionProvider";
 import Skeleton from "@/components/Skeleton";
 import { WEEKDAY_LETTERS, weekdayIndex } from "@/lib/week";
 import { useHijri } from "@/components/SessionProvider";
+import { useTheme } from "@/components/ThemeProvider";
 import { getCategoryById } from "@/lib/categories";
 import { spellDate, spellTime } from "@/lib/volume";
 import type { CalendarEvent, Reminder, PendingMemory } from "@/lib/types";
@@ -115,6 +116,7 @@ export default function CalendarPage() {
 
   const selectedDate = useMemo(() => dayStart(selected), [selected]);
   const hijriOf = useHijri();
+  const { definition } = useTheme();
   const selectedHijri = hijriOf(selectedDate);
   const dayEvents = byDay.get(selected) ?? [];
   const dayReminders = useMemo(
@@ -267,7 +269,7 @@ export default function CalendarPage() {
 
         {agenda.length === 0 ? (
           <p className="rr-italic text-center mt-10" style={{ fontSize: 19, color: "var(--ghost)" }}>
-            the rest of the page is blank
+            {definition.words.emptyDay}
           </p>
         ) : (
           <div className="mt-3">

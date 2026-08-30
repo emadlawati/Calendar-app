@@ -104,7 +104,7 @@ export default function LettersPage() {
               return (
                 <div key={n.id} className="flex flex-col items-end">
                   <div style={{ background: "var(--green-deep)", padding: "16px 18px", maxWidth: "88%" }}>
-                    <p className="rr-italic" style={{ fontSize: 20, lineHeight: 1.4, color: "var(--paper)" }}>
+                    <p className="rr-italic" style={{ fontSize: 20, lineHeight: 1.4, color: "var(--on-dark)" }}>
                       {n.content}
                     </p>
                   </div>

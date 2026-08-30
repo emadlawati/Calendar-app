@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { systemPrisma } from "@/lib/prisma";
 import { getSession, createSession } from "@/lib/session";
+import { isThemeId } from "@/lib/themes";
 
 /**
  * The family's own record — everything that used to be environment
@@ -56,6 +57,7 @@ export async function PATCH(request: Request) {
   if (typeof body.timezone === "string" && body.timezone.trim()) {
     data.timezone = body.timezone.trim();
   }
+  if (isThemeId(body.theme)) data.theme = body.theme;
   // A day either side is all a sighting ever differs by.
   if (Number.isInteger(body.hijriOffset) && Math.abs(body.hijriOffset) <= 1) {
     data.hijriOffset = body.hijriOffset;

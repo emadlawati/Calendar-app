@@ -181,7 +181,7 @@ export default function CoupleSettings() {
                 onClick={() => setCouple({ ...couple, hijriOffset: o })}
                 style={
                   (couple.hijriOffset ?? 0) === o
-                    ? { background: "var(--terracotta)", color: "var(--paper)", borderColor: "var(--terracotta)" }
+                    ? { background: "var(--terracotta)", color: "var(--on-dark)", borderColor: "var(--terracotta)" }
                     : undefined
                 }
               >

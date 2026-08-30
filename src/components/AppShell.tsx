@@ -5,20 +5,28 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "./SessionProvider";
 import { getVolumeInfo } from "@/lib/volume";
+import { useTheme } from "./ThemeProvider";
+import type { ThemeWords } from "@/lib/themes";
 import useAppBadge from "@/lib/useAppBadge";
 import type { StreakData } from "@/lib/types";
 
 export type ShelfSection = "calendar" | "story" | "letters" | "ledger" | "shelf" | "reading-list" | "settings" | null;
 
-const NAV: { key: Exclude<ShelfSection, null>; name: string; href: string }[] = [
-  { key: "calendar",     name: "Calendar",     href: "/calendar" },
-  { key: "story",        name: "Our Story",    href: "/story" },
-  { key: "letters",      name: "Letters",      href: "/notes" },
-  { key: "ledger",       name: "The Ledger",   href: "/ledger" },
-  { key: "shelf",        name: "Our Shelf",    href: "/shelf" },
-  { key: "reading-list", name: "Reading list", href: "/reading-list" },
-  { key: "settings",     name: "Settings",     href: "/settings" },
-];
+/**
+ * Two of these are named by the theme — the stats page and the wish list —
+ * so the drawer reads in the chosen voice rather than always as a library.
+ */
+function navFor(words: ThemeWords): { key: Exclude<ShelfSection, null>; name: string; href: string }[] {
+  return [
+    { key: "calendar",     name: "Calendar",       href: "/calendar" },
+    { key: "story",        name: "Our Story",      href: "/story" },
+    { key: "letters",      name: "Letters",        href: "/notes" },
+    { key: "ledger",       name: "The Ledger",     href: "/ledger" },
+    { key: "shelf",        name: words.shelf,      href: "/shelf" },
+    { key: "reading-list", name: words.wishlist,   href: "/reading-list" },
+    { key: "settings",     name: "Settings",       href: "/settings" },
+  ];
+}
 
 function HamburgerGlyph() {
   return (
@@ -30,6 +38,8 @@ function HamburgerGlyph() {
 
 function DrawerPanel({ active, onNavigate }: { active: ShelfSection; onNavigate?: () => void }) {
   const { logout, couple } = useSession();
+  const { definition } = useTheme();
+  const NAV = navFor(definition.words);
   const [streak, setStreak] = useState<StreakData | null>(null);
   // Derived from the couple, so a second couple sees their own volume.
   const vol = getVolumeInfo(couple?.startDate);
@@ -53,7 +63,7 @@ function DrawerPanel({ active, onNavigate }: { active: ShelfSection; onNavigate?
         style={{ borderBottom: "1px solid rgba(247,245,236,.12)" }}
       >
         <p className="rr-label" style={{ color: "var(--sage-pale)" }}>The collection of</p>
-        <p className="rr-display mt-2" style={{ fontSize: 27, color: "var(--paper)", lineHeight: 1.1 }}>
+        <p className="rr-display mt-2" style={{ fontSize: 27, color: "var(--on-dark)", lineHeight: 1.1 }}>
           {couple?.displayName ?? " "}
         </p>
         <p className="rr-italic mt-1" style={{ fontSize: 14, color: "var(--sage-pale)" }}>
@@ -75,7 +85,7 @@ function DrawerPanel({ active, onNavigate }: { active: ShelfSection; onNavigate?
             >
               <span
                 className="rr-display flex-1"
-                style={{ fontSize: 21, color: "var(--paper)", fontWeight: isActive ? 600 : 500 }}
+                style={{ fontSize: 21, color: "var(--on-dark)", fontWeight: isActive ? 600 : 500 }}
               >
                 {item.name}
               </span>

@@ -143,7 +143,7 @@ export default function WidgetSettings({
             onClick={() => setSize(sz)}
             style={
               size === sz
-                ? { background: "var(--terracotta)", color: "var(--paper)", borderColor: "var(--terracotta)" }
+                ? { background: "var(--terracotta)", color: "var(--on-dark)", borderColor: "var(--terracotta)" }
                 : undefined
             }
           >
@@ -213,7 +213,7 @@ export default function WidgetSettings({
             onClick={() => setDraft((d) => ({ ...d, theme: t.id }))}
             style={
               draft.theme === t.id
-                ? { background: "var(--terracotta)", color: "var(--paper)", borderColor: "var(--terracotta)" }
+                ? { background: "var(--terracotta)", color: "var(--on-dark)", borderColor: "var(--terracotta)" }
                 : undefined
             }
           >

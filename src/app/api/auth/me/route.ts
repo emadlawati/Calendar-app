@@ -38,6 +38,7 @@ export async function GET() {
       startDate: couple.startDate.toISOString(),
       timezone: couple.timezone,
       hijriOffset: couple.hijriOffset,
+      theme: couple.theme,
       canInviteFamilies: couple.canInviteFamilies,
       // Keyed by role, for the many callers that ask "what is the Wife called".
       members: Object.fromEntries(adults.map((u) => [u.role as string, u.name])),

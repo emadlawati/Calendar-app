@@ -5,6 +5,8 @@ import AppShell from "@/components/AppShell";
 import Skeleton from "@/components/Skeleton";
 import { useSession } from "@/components/SessionProvider";
 import { getVolumeInfo, spellDate } from "@/lib/volume";
+import { useTheme } from "@/components/ThemeProvider";
+import ThemeHero from "@/components/ThemeHero";
 
 interface Milestone { id: string; label: string; detail?: string; date: string }
 interface StatsData {
@@ -22,9 +24,6 @@ interface StatsData {
   streakData: { currentStreak: number; longestStreak: number; weeksKept: number };
 }
 
-/** Spine colours cycle; heights vary so the shelf reads as real books. */
-const SPINE_COLOURS = ["var(--sage-light)", "var(--terracotta)", "var(--gold)", "var(--sage-light)", "var(--sage)"];
-const SPINE_HEIGHTS = [96, 84, 92, 78, 88, 82, 94, 86, 90, 80, 93, 85];
 
 const monthName = (key: string) => {
   const [y, m] = key.split("-").map(Number);
@@ -36,6 +35,8 @@ export default function ShelfPage() {
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
   const { couple } = useSession();
+  const { definition } = useTheme();
+  const w = definition.words;
   const vol = getVolumeInfo(couple?.startDate);
 
   useEffect(() => {
@@ -51,9 +52,6 @@ export default function ShelfPage() {
   const milestones = stats?.milestones ?? [];
   const shown = showAll ? milestones : milestones.slice(0, 5);
 
-  // One spine per year together — a count that only ever goes up, and never
-  // depends on how often anyone opened the app.
-  const spines = Math.max(1, Math.min(vol.years + 1, SPINE_HEIGHTS.length));
 
   const record: { value: string; label: string }[] = [
     { value: String(stats?.totalEvents ?? 0), label: "entries" },
@@ -67,9 +65,9 @@ export default function ShelfPage() {
   return (
     <AppShell active="shelf">
       <header className="pt-5">
-        <h1 className="rr-display" style={{ fontSize: 26, color: "var(--ink)" }}>Our Shelf</h1>
+        <h1 className="rr-display" style={{ fontSize: 26, color: "var(--ink)" }}>{w.shelf}</h1>
         <p className="rr-italic mt-1" style={{ fontSize: 15, color: "var(--muted)" }}>
-          {vol.together} together
+          {vol.together} {w.shelfSubtitle}
         </p>
       </header>
 
@@ -80,31 +78,13 @@ export default function ShelfPage() {
         </div>
       ) : (
         <>
-          {/* ── 1. A spine for every year ── */}
-          <section className="mt-7" style={{ background: "var(--green-deep)", padding: "22px 20px 0" }}>
-            <p className="rr-label" style={{ color: "var(--sage-pale)" }}>Since {vol.startYear}</p>
-            <p className="rr-display mt-1.5" style={{ fontSize: 26, color: "var(--paper)" }}>
-              {vol.years === 0 ? "The first year" : vol.years === 1 ? "One year" : `${vol.years} years`}
-            </p>
-            <p style={{ fontSize: 12.5, color: "var(--sage-pale)", marginTop: 6 }}>
-              {vol.daysIntoYear.toLocaleString()} days into the next
-            </p>
-
-            <div className="flex items-end gap-1.5 mt-6" style={{ height: 96 }}>
-              {Array.from({ length: spines }).map((_, i) => (
-                <div
-                  key={i}
-                  className="flex-1"
-                  style={{
-                    height: SPINE_HEIGHTS[i % SPINE_HEIGHTS.length],
-                    background: SPINE_COLOURS[i % SPINE_COLOURS.length],
-                    borderTop: "4px solid var(--gold)",
-                  }}
-                />
-              ))}
-            </div>
-            <div style={{ height: 7, background: "var(--gold)", margin: "0 -20px" }} />
-          </section>
+          {/* ── 1. The theme's own object ── */}
+          <ThemeHero
+            years={vol.years}
+            daysIntoYear={vol.daysIntoYear}
+            startYear={vol.startYear}
+            weeksKept={weeksKept}
+          />
 
           {/* ── 2. The record ── */}
           <section className="mt-7">
@@ -157,14 +137,14 @@ export default function ShelfPage() {
 
           {/* ── 3. Weeks kept ── */}
           <section className="mt-9 rr-card p-5">
-            <p className="rr-label">Weeks kept</p>
+            <p className="rr-label">{w.weeksKeptLabel}</p>
             <p className="rr-display mt-2" style={{ fontSize: 40, lineHeight: 1, color: "var(--ink)" }}>
               {weeksKept}
             </p>
             <p className="rr-italic mt-2" style={{ fontSize: 15, color: "var(--muted)" }}>
               {weeksKept === 0
                 ? "nothing kept yet — there is no wrong week to start"
-                : "weeks with something written down. This only ever goes up."}
+                : w.weeksKeptLine}
             </p>
             {longest > 1 && (
               <p className="mt-3" style={{ fontSize: 13, color: "var(--faint)" }}>
@@ -212,7 +192,7 @@ export default function ShelfPage() {
           </section>
 
           <p className="rr-italic text-center mt-10" style={{ fontSize: 15, color: "var(--ghost)" }}>
-            a record of what happened, not a score
+            {w.closing}
           </p>
           <div style={{ height: 32 }} />
         </>

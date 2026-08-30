@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/components/ThemeProvider";
 import AppShell from "@/components/AppShell";
 import Skeleton from "@/components/Skeleton";
 import { useSession } from "@/components/SessionProvider";
 import type { BucketItem } from "@/lib/types";
 
 export default function ReadingListPage() {
+  const { definition } = useTheme();
+  const words = definition.words;
   const router = useRouter();
   const { user } = useSession();
   const [items, setItems] = useState<BucketItem[]>([]);
@@ -63,7 +66,7 @@ export default function ReadingListPage() {
   return (
     <AppShell active="reading-list">
       <header className="pt-5">
-        <h1 className="rr-display" style={{ fontSize: 26, color: "var(--ink)" }}>Reading list</h1>
+        <h1 className="rr-display" style={{ fontSize: 26, color: "var(--ink)" }}>{words.wishlist}</h1>
         <p className="rr-italic mt-1" style={{ fontSize: 15, color: "var(--muted)" }}>
           things to do together, not yet dated
         </p>

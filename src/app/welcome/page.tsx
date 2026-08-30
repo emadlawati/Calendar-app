@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BookGlyph from "@/components/BookGlyph";
 import { useSession } from "@/components/SessionProvider";
+import ThemePicker from "@/components/ThemePicker";
 
 interface Member {
   id: string; role: string | null; kind: string;
@@ -131,6 +132,14 @@ export default function WelcomePage() {
           <p className="rr-italic mt-8" style={{ fontSize: 17, color: "var(--ghost)" }}>just a moment…</p>
         ) : (
           <>
+            <section className="mt-8">
+              <p className="rr-label">How it should look</p>
+              <p className="rr-italic mt-1" style={{ fontSize: 15, color: "var(--muted)" }}>
+                Pick one and the rest of this page changes with it. You can swap later.
+              </p>
+              <ThemePicker compact />
+            </section>
+
             {canChooseRole && (
               <section className="mt-8">
                 <p className="rr-label">You are</p>
@@ -142,7 +151,7 @@ export default function WelcomePage() {
                       className="rr-btn-quiet"
                       style={
                         choice === i
-                          ? { background: "var(--terracotta)", color: "var(--paper)", borderColor: "var(--terracotta)" }
+                          ? { background: "var(--terracotta)", color: "var(--on-dark)", borderColor: "var(--terracotta)" }
                           : undefined
                       }
                     >

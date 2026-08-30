@@ -21,18 +21,34 @@
   --green-darkest:#2A3626;
   --sage:         #6E7F5C;
   --sage-light:   #8FA97A;
-  --sage-pale:    #A9BC96;
+  --sage-pale:    #AFC29C;
   --sage-paler:   #C2CCB2;
 
-  --terracotta:   #B4614A;
+  /* The brief says terracotta #B4614A "passes AA for body text" on paper. It
+     measures 4.05:1, which does not. These are the nearest values that do. */
+  --terracotta:   #A8553E;
   --gold:         #C9A227;
 
-  --muted:        #6F7A64;
-  --faint:        #8A9179;
+  --muted:        #636E58;
+  --faint:        #848B73;
   --ghost:        #A8AE97;
   --ghost-light:  #C2C7B0;
 
   --sheet-shadow: 0 18px 44px -20px rgba(30, 40, 26, 0.34);
+
+  /* Text that sits on a dark surface — the drawer, the primary button, the
+     shelf panel. Under the light themes this is the page colour; under a dark
+     theme the page is already dark, so it has to be something else entirely.
+     Every "white text on the dark green" use must read this, not --paper. */
+  --on-dark:      var(--paper);
+
+  /* Shape is part of a theme, not a constant. Reading Room is square. */
+  --radius-hero:  0px;
+  --radius-card:  0px;
+  --radius-control: 0px;
+  --radius-chip:  0px;
+  --font-aside:   var(--font-display);
+  --aside-style:  italic;
 
   /* ---- Category identity: used ONLY as a 4px dot ---- */
   --cat-betime-dot:       var(--terracotta);
@@ -41,6 +57,9 @@
   --cat-social-dot:       var(--terracotta);
   --cat-errands-dot:      var(--sage);
   --cat-appointments-dot: var(--faint);
+  --cat-child-dot:        var(--sage-light);
+  --cat-faith-dot:        var(--green-deep);
+  --cat-travel-dot:       var(--sage);
   --cat-other-dot:        var(--ghost);
 
   /* Category "bg"/"text" are kept for legacy consumers, but resolve to
@@ -51,6 +70,12 @@
   --cat-social-bg: var(--tint);       --cat-social-text: var(--ink);
   --cat-errands-bg: var(--tint);      --cat-errands-text: var(--ink);
   --cat-appointments-bg: var(--tint); --cat-appointments-text: var(--ink);
+  --cat-child-bg:         var(--tint);
+  --cat-child-text:       var(--ink);
+  --cat-faith-bg:         var(--tint);
+  --cat-faith-text:       var(--ink);
+  --cat-travel-bg:        var(--tint);
+  --cat-travel-text:      var(--ink);
   --cat-other-bg: var(--tint);        --cat-other-text: var(--ink);
 
   /* ---- Person tags ---- */
@@ -114,45 +139,121 @@
   color-scheme: light;
 }
 
-/* Dark reading room — same structure, lamplight instead of daylight.
-   The spec is a light design; this keeps the existing theme toggle usable
-   rather than leaving dark mode broken. */
-.dark {
-  --paper:        #1B1F19;
-  --card:         #232820;
-  --wash:         #272D23;
-  --tint:         #2F3629;
+/* ─────────────────────────────────────────────────────────────
+   Three themes.
 
-  --rule-light:   #333A2D;
-  --rule:         #3C4435;
-  --rule-strong:  #4E5843;
+   Only the ~20 core tokens below are redefined per theme; every other token
+   in :root derives from them, so a theme is a palette swap rather than a
+   parallel stylesheet. The names stay Reading Room's (green-deep, sage,
+   terracotta, gold) because they are used semantically — green-deep is "the
+   primary dark surface", terracotta is "accent one, warm", gold is "accent
+   two, bright" — and renaming them would touch every component for nothing.
 
-  --ink:          #E7E9DC;
-  --green-deep:   #7E9469;
-  --green-darkest:#141811;
-  --sage:         #8FA97A;
-  --sage-light:   #A9BC96;
-  --sage-pale:    #C2CCB2;
-  --sage-paler:   #D6DDC9;
+   This replaces the old light/dark toggle: Observatory is the dark theme.
+   ───────────────────────────────────────────────────────────── */
 
-  --terracotta:   #D0836A;
-  --gold:         #D8B44A;
+/* ── Coffee & Matcha — a small café the two of them run ── */
+[data-theme="coffee"] {
+  --paper:        #F7F0E4;
+  --card:         #FFFCF5;
+  --wash:         #E9EFDC; /* foam */
+  --tint:         #EFE3D0; /* tan */
 
-  --muted:        #A7AF9B;
-  --faint:        #8D9681;
-  --ghost:        #6C7461;
-  --ghost-light:  #565D4D;
+  --rule-light:   #EADFCC;
+  --rule:         #E0D3BF;
+  --rule-strong:  #CDBBA2;
 
-  --sheet-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.72);
+  --ink:          #382312; /* espresso */
+  --green-deep:   #382312; /* dark surfaces: drawer, today marker */
+  --green-darkest:#241509;
+  --sage:         #6B4632; /* coffee */
+  --sage-light:   #C98F5A; /* crema, as a fill */
+  --sage-pale:    #E9DDCB;
+  --sage-paler:   #C4D4A8;
 
-  --card-shadow: none;
-  --on-accent:   var(--green-darkest);
-  --today-text:  var(--green-darkest);
-  --danger-text: var(--green-darkest);
-  --hero-text:   var(--paper);
-  --pop-text:    var(--paper);
+  /* The spec's accent one is crema #C98F5A, but its own accessibility note
+     says crema is for mono text on espresso and never on paper. This is a
+     darker roast of it that holds up as text on cream. */
+  --terracotta:   #9A5B2A;
+  --gold:         #7A9E52; /* matcha, as a fill */
 
+  --muted:        #756250;
+  --faint:        #99846E;
+  --ghost:        #CDBBA2;
+  --ghost-light:  #DCCDB6;
+
+  --sheet-shadow: 0 18px 44px -20px rgba(56, 35, 18, 0.30);
+
+  /* Primary buttons are matcha — but matcha is a fill colour, so light text
+     on it needs the deep variant to pass. */
+  --accent:       #40602F;
+  --on-accent:    #FFFCF5;
+  --on-dark:      #FFFCF5;
+
+  /* Bricolage has no italic, so asides fall back to the mono face rather
+     than being synthesised into a slant the family never had. */
+  --font-display: var(--font-coffee-display);
+  --font-ui:      var(--font-coffee-ui);
+  --font-aside:   var(--font-coffee-ui);
+  --aside-style:  normal;
+
+  /* Very round — deliberately the opposite of Reading Room. */
+  --radius-hero:  20px;
+  --radius-card:  16px;
+  --radius-control: 12px;
+  --radius-chip:  999px;
+}
+
+/* ── Observatory — an observing log. The dark theme. ── */
+[data-theme="observatory"] {
   color-scheme: dark;
+
+  --paper:        #0C1330; /* night */
+  --card:         #141B3E; /* panel */
+  --wash:         #171F45; /* panel-hi */
+  --tint:         #1E2650; /* panel-2 */
+
+  --rule-light:   #232B54; /* slate */
+  --rule:         #2E3766; /* line */
+  --rule-strong:  #3A4374; /* line-hi */
+
+  --ink:          #EFEDFF;
+  --green-deep:   #1E2650; /* the raised surface, not a green */
+  --green-darkest:#070B20; /* void */
+  --sage:         #AFB6E0; /* silver */
+  --sage-light:   #7B83B4;
+  --sage-pale:    #D6D5F0;
+  --sage-paler:   #AFB6E0;
+
+  --terracotta:   #C98BC0; /* mauve */
+  --gold:         #F0C271;
+
+  /* silver is the body colour here; ink at full strength is for headings. */
+  --muted:        #AFB6E0;
+  --faint:        #7B83B4;
+  --ghost:        #5F6795;
+  --ghost-light:  #454D7C;
+
+  --sheet-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.75);
+  --card-shadow:  none;
+
+  --on-dark:      #EFEDFF;
+  --on-accent:    #EFEDFF;
+  --hero-text:    #EFEDFF;
+  --pop-text:     #EFEDFF;
+  --today-bg:     #EFEDFF;
+  --today-text:   #0C1330;
+  --danger-text:  #0C1330;
+
+  --font-display: var(--font-sky-display);
+  --font-ui:      var(--font-sky-ui);
+  --font-aside:   var(--font-sky-ui);
+  --aside-style:  normal;
+
+  --radius-hero:  20px;
+  --radius-card:  16px;
+  --radius-control: 999px;
+  --radius-chip:  999px;
 }
 
 /* ==========================================================================
@@ -201,8 +302,11 @@ body {
 }
 
 .rr-italic {
-  font-family: var(--font-display), Georgia, serif;
-  font-style: italic;
+  /* Asides are italic in Reading Room and Observatory. Bricolage ships no
+     italic at all, so Coffee points this at its mono face rather than letting
+     the browser synthesise a slant the family never had. */
+  font-family: var(--font-aside), Georgia, serif;
+  font-style: var(--aside-style, italic);
   font-weight: 400;
 }
 
@@ -231,6 +335,7 @@ body {
 .rr-card {
   background: var(--card);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-card, 0);
 }
 
 /* The title page: outer strong rule, 6px breath, inner rule. */
@@ -313,7 +418,7 @@ body {
 
 .rr-btn {
   background: var(--green-deep);
-  color: var(--paper);
+  color: var(--on-dark);
   border: none;
   font-family: var(--font-ui), sans-serif;
   font-size: 12.5px;
@@ -324,6 +429,7 @@ body {
   cursor: pointer;
   transition: background .15s;
   min-height: 44px;
+  border-radius: var(--radius-chip, 0);
 }
 .rr-btn:hover { background: var(--green-darkest); }
 .rr-btn:disabled { background: var(--ghost); cursor: default; }
@@ -338,6 +444,7 @@ body {
   padding: 12px 18px;
   cursor: pointer;
   min-height: 44px;
+  border-radius: var(--radius-chip, 0);
 }
 .rr-btn-quiet:hover { background: var(--tint); }
 
@@ -357,7 +464,7 @@ body {
 .rr-chip[data-selected="true"] {
   background: var(--green-deep);
   border-color: var(--green-deep);
-  color: var(--paper);
+  color: var(--on-dark);
 }
 
 /* Text filters (no pills) — active is ink/bold with a terracotta underline */
@@ -411,7 +518,7 @@ body {
   height: 56px;
   border-radius: 999px;
   background: var(--green-deep);
-  color: var(--paper);
+  color: var(--on-dark);
   border: none;
   display: flex;
   align-items: center;
@@ -525,7 +632,7 @@ select:focus {
 .btn-accent,
 .btn-send {
   background: var(--green-deep);
-  color: var(--paper);
+  color: var(--on-dark);
   border: none;
   padding: 13px 20px;
   font-family: var(--font-ui), sans-serif;

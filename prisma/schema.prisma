@@ -31,6 +31,10 @@ model Couple {
   // (Umm al-Qura) date can be a day out. -1, 0 or +1 to match what was
   // actually announced.
   hijriOffset Int      @default(0)
+  // Which skin the family chose: "reading-room" | "coffee" | "observatory".
+  // Chosen once on the welcome screen, changeable in settings. Family-level
+  // rather than per-person, because it is the app's identity, not a preference.
+  theme       String   @default("reading-room")
   // Who may hand out invitations to whole new families. This was inferred
   // from "the oldest couple", which quietly moves if a family is ever
   // deleted and recreated — a bad thing to hang a permission on.
