@@ -7,6 +7,7 @@ import { useSession } from "./SessionProvider";
 import { getVolumeInfo } from "@/lib/volume";
 import { useTheme } from "./ThemeProvider";
 import type { ThemeWords } from "@/lib/themes";
+import { SPARK } from "./ThemeGlyph";
 import useAppBadge from "@/lib/useAppBadge";
 import type { StreakData } from "@/lib/types";
 
@@ -18,7 +19,7 @@ export type ShelfSection = "calendar" | "story" | "letters" | "ledger" | "shelf"
  */
 function navFor(words: ThemeWords): { key: Exclude<ShelfSection, null>; name: string; href: string }[] {
   return [
-    { key: "calendar",     name: "Calendar",       href: "/calendar" },
+    { key: "calendar",     name: words.calendar,   href: "/calendar" },
     { key: "story",        name: "Our Story",      href: "/story" },
     { key: "letters",      name: "Letters",        href: "/notes" },
     { key: "ledger",       name: "The Ledger",     href: "/ledger" },
@@ -36,10 +37,40 @@ function HamburgerGlyph() {
   );
 }
 
+/**
+ * The drawer's marker column (§3.8: "marker (14–22px column) + name").
+ *
+ * Each theme marks its rows its own way — Coffee with a 7px dot, Observatory
+ * with ✦, Reading Room with a short rule. The brief numbers Reading Room's
+ * rows in roman numerals; those were dropped on request, and a rule keeps the
+ * marker column without bringing them back.
+ */
+function Marker({ active }: { active: boolean }) {
+  const { theme } = useTheme();
+  const on = active ? "var(--gold)" : "rgba(247,245,236,.3)";
+
+  if (theme === "coffee") {
+    return <span aria-hidden style={{
+      width: 7, height: 7, borderRadius: "999px", flex: "none", background: on,
+    }} />;
+  }
+  if (theme === "observatory") {
+    return <span aria-hidden style={{
+      width: 14, flex: "none", fontSize: 12, lineHeight: 1, textAlign: "center",
+      color: active ? "var(--gold)" : "var(--ghost)",
+    }}>{SPARK}</span>;
+  }
+  return <span aria-hidden style={{
+    width: 14, height: 1, flex: "none",
+    background: active ? "var(--gold)" : "rgba(247,245,236,.3)",
+  }} />;
+}
+
 function DrawerPanel({ active, onNavigate }: { active: ShelfSection; onNavigate?: () => void }) {
   const { logout, couple } = useSession();
-  const { definition } = useTheme();
+  const { theme, definition } = useTheme();
   const NAV = navFor(definition.words);
+  const dw = definition.words;
   const [streak, setStreak] = useState<StreakData | null>(null);
   // Derived from the couple, so a second couple sees their own volume.
   const vol = getVolumeInfo(couple?.startDate);
@@ -81,33 +112,50 @@ function DrawerPanel({ active, onNavigate }: { active: ShelfSection; onNavigate?
               href={item.href}
               onClick={onNavigate}
               className="flex items-center gap-4 px-6 py-[18px]"
-              style={{ borderBottom: "1px solid rgba(247,245,236,.12)" }}
+              style={{
+                // Coffee's rows are rounded blocks that fill when active;
+                // the other two are ruled rows.
+                borderBottom: theme === "coffee" ? "none" : "1px solid rgba(247,245,236,.12)",
+                borderRadius: theme === "coffee" ? 12 : 0,
+                margin: theme === "coffee" ? "2px 10px" : undefined,
+                padding: theme === "coffee" ? "14px 16px" : undefined,
+                background: theme === "coffee" && isActive
+                  ? "color-mix(in srgb, var(--gold) 22%, transparent)"
+                  : "transparent",
+              }}
             >
+              <Marker active={isActive} />
               <span
                 className="rr-display flex-1"
                 style={{ fontSize: 21, color: "var(--on-dark)", fontWeight: isActive ? 600 : 500 }}
               >
                 {item.name}
               </span>
-              {isActive && (
-                <span style={{ width: 6, height: 6, background: "var(--gold)", flex: "none" }} />
+              {isActive && theme !== "coffee" && (
+                <span style={{
+                  width: 6, height: 6, background: "var(--gold)", flex: "none",
+                  borderRadius: theme === "observatory" ? "999px" : 0,
+                }} />
               )}
             </Link>
           );
         })}
       </nav>
 
-      {/* Borrower's card footnote — held blank until the streak is known, so
+      {/* The streak, in the theme's words — held blank until the streak is known, so
           the zero state never flashes over a real one. */}
       <div className="px-6 pb-7 pt-6">
-        <div style={{ border: "1px solid rgba(247,245,236,.22)", padding: "14px 16px", minHeight: 62 }}>
+        <div style={{
+          border: "1px solid rgba(247,245,236,.22)", padding: "14px 16px", minHeight: 62,
+          borderRadius: "var(--radius-card, 0)",
+        }}>
           {streak !== null && (
             <>
               <p className="rr-italic" style={{ fontSize: 16, color: "var(--gold)" }}>
-                {weeks > 0 ? `${weeks} ${weeks === 1 ? "week" : "weeks"}, unbroken` : "the card is unstamped"}
+                {weeks > 0 ? dw.drawerOn(weeks) : dw.drawerOff}
               </p>
               <p className="rr-italic mt-1" style={{ fontSize: 13, color: "var(--sage-pale)" }}>
-                {weeks > 0 ? "the card is stamped again" : "plan something and it begins"}
+                {weeks > 0 ? dw.drawerOnSub : dw.drawerOffSub}
               </p>
             </>
           )}
@@ -178,7 +226,7 @@ export default function AppShell({
               transition={{ duration: 0.18 }}
               onClick={() => setOpen(false)}
               className="fixed inset-0 z-40 lg:hidden"
-              style={{ background: "rgba(20,26,18,.55)" }}
+              style={{ background: "color-mix(in srgb, var(--green-darkest) 55%, transparent)" }}
             />
             <motion.div
               initial={{ x: -298 }}

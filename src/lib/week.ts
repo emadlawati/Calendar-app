@@ -2,8 +2,8 @@
  * Where a week begins.
  *
  * One definition, used by both the calendar grid and the streak buckets. If
- * these ever disagreed, "this week" on the borrower's card would mean a
- * different span of days from the row the calendar draws — which is the sort
+ * these ever disagreed, "this week" in the streak would mean a different
+ * span of days from the row the calendar draws — which is the sort
  * of thing nobody notices until a streak breaks for no visible reason.
  *
  * Sunday, as the working week runs in Oman.

@@ -8,6 +8,7 @@ import DailyHighlightModal from "@/components/DailyHighlightModal";
 import Skeleton from "@/components/Skeleton";
 import { getCategoryById } from "@/lib/categories";
 import { spellDate } from "@/lib/volume";
+import { useTheme } from "@/components/ThemeProvider";
 import type { DailyHighlight, User } from "@/lib/types";
 
 const TZ = "+04:00";
@@ -51,6 +52,7 @@ function firstPhoto(json: string | null): string | null {
 
 export default function StoryPage() {
   const [tab, setTab] = useState<"memories" | "timeline">("memories");
+  const w = useTheme().definition.words;
 
   const [memories, setMemories] = useState<Memory[]>([]);
   const [highlights, setHighlights] = useState<DailyHighlight[]>([]);
@@ -125,12 +127,12 @@ export default function StoryPage() {
   return (
     <AppShell
       active="story"
-      fab={<Fab label="A written entry" onClick={() => { setEditingHighlight(null); setComposeOpen(true); }} />}
+      fab={<Fab label={w.writtenFab} onClick={() => { setEditingHighlight(null); setComposeOpen(true); }} />}
     >
       <header className="pt-5">
         <h1 className="rr-display" style={{ fontSize: 26, color: "var(--ink)" }}>Our Story</h1>
         <p className="rr-italic mt-1" style={{ fontSize: 15, color: "var(--muted)" }}>
-          {spelled} {boundThisYear === 1 ? "entry" : "entries"} bound this year
+          {spelled} {boundThisYear === 1 ? "entry" : "entries"} {w.storyVerb} this year
         </p>
       </header>
 
@@ -153,7 +155,7 @@ export default function StoryPage() {
         /* ── Memories: one mixed feed ── */
         feed.length === 0 ? (
           <p className="rr-italic text-center mt-16" style={{ fontSize: 19, color: "var(--ghost)" }}>
-            nothing bound yet — the rest of the page is blank
+            {w.storyEmpty}
           </p>
         ) : (
           <div className="mt-7 flex flex-col gap-9">
@@ -268,7 +270,7 @@ export default function StoryPage() {
         /* ── Timeline: a ledger ── */
         months.length === 0 ? (
           <p className="rr-italic text-center mt-16" style={{ fontSize: 19, color: "var(--ghost)" }}>
-            the ledger is empty
+            {w.ledgerEmpty}
           </p>
         ) : (
           <div className="mt-7">

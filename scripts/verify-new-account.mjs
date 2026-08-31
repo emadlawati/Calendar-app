@@ -415,6 +415,36 @@ try {
   check("their widget renders", png.status === 200 &&
     (png.headers.get("content-type") ?? "").startsWith("image/png"), `HTTP ${png.status}`);
 
+  section("Photos are not visible across families");
+  // The founding family's real photos, exactly as the app now stores them.
+  const anyPhoto = await p.memory.findFirst({
+    where: { coupleId: founder.id, photos: { contains: "/api/photos/" } },
+    select: { photos: true },
+  });
+  if (!anyPhoto) {
+    check("a founding-family photo exists to test against", false, "none found — skipped");
+  } else {
+    const path = JSON.parse(anyPhoto.photos).find((u) => u.startsWith("/api/photos/"));
+    const foundingCookie = await cookieFor("Husband", founder.id, "emadlawati97@gmail.com");
+    const mine = await fetch(BASE + path, { headers: { Cookie: foundingCookie }, redirect: "manual" });
+    check("the family that owns a photo can see it", mine.status === 200, `HTTP ${mine.status}`);
+    const theirs = await fetch(BASE + path, { headers: { Cookie: newCookie }, redirect: "manual" });
+    check("another family gets 404, not the image", theirs.status === 404, `HTTP ${theirs.status}`);
+    const anon = await fetch(BASE + path, { redirect: "manual" });
+    check("a stranger with the link gets nothing", anon.status !== 200, `HTTP ${anon.status}`);
+  }
+
+  section("Reminders reach nobody outside the family");
+  // WhatsApp was removed rather than fixed: it read one pair of numbers from
+  // the environment while running once per family, so every family's reminders
+  // were delivered to the founding couple's phones. Push and email are
+  // per-family and stay.
+  const alerts = readFileSync(new URL("../src/app/api/cron/reminder-alerts/route.ts", import.meta.url), "utf8");
+  check("no phone numbers anywhere in the reminder cron",
+    !/phone|whatsapp|twilio/i.test(alerts));
+  check("recipients come from the family being processed",
+    /emailsFor\(/.test(alerts) && !/process\.env\.(WIFE|HUSBAND)_/.test(alerts));
+
   section("Sessions cannot be pointed at another family");
   // A valid signature over someone else's coupleId is the obvious attack.
   const forged = await cookieFor("Husband", newCoupleId, "emadlawati97@gmail.com");

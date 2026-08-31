@@ -4,7 +4,10 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AppShell, { Fab } from "@/components/AppShell";
-import BookGlyph from "@/components/BookGlyph";
+import LiveCard, { Leader } from "@/components/LiveCard";
+import ThemeGlyph from "@/components/ThemeGlyph";
+import StarField from "@/components/StarField";
+import { useTheme } from "@/components/ThemeProvider";
 import EntrySheet from "@/components/EntrySheet";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
 import PushPrompt from "@/components/PushPrompt";
@@ -67,9 +70,50 @@ function daysBetween(from: Date, to: Date) {
   return Math.round((to.getTime() - from.getTime()) / 86_400_000);
 }
 
+/**
+ * Nothing on today. Reading Room keeps its title page; the other two use the
+ * same frame their live card does, so the empty state is not a different
+ * object from the full one.
+ */
+function EmptyLive() {
+  const { theme, definition } = useTheme();
+  const w = definition.words;
+  const body = (
+    <>
+      <div className="flex items-center gap-2">
+        {theme === "observatory"
+          ? <ThemeGlyph name="star" size={13} style={{ color: "var(--gold)" }} />
+          : theme === "coffee"
+            ? <ThemeGlyph name="cup" size={16} style={{ color: "var(--terracotta)" }} />
+            : <ThemeGlyph name="book" size={18} style={{ color: "var(--sage)" }} />}
+        <span className="rr-label" style={{ color: theme === "observatory" ? "var(--gold)" : "var(--terracotta)" }}>
+          {w.liveNow}
+        </span>
+      </div>
+      <p className="rr-italic mt-4" style={{ fontSize: 20, color: "var(--ghost)" }}>
+        {w.liveEmpty}
+      </p>
+    </>
+  );
+
+  if (theme === "reading-room") return <div className="rr-double"><div>{body}</div></div>;
+  return (
+    <div style={{
+      position: "relative", overflow: "hidden",
+      borderRadius: "var(--radius-hero)", border: "1px solid var(--rule)",
+      background: "var(--card)", padding: 20,
+    }}>
+      <StarField />
+      <div style={{ position: "relative" }}>{body}</div>
+    </div>
+  );
+}
+
 export default function Home() {
   const router = useRouter();
   const { isLoading: sessionLoading, couple } = useSession();
+  const { theme, definition } = useTheme();
+  const w = definition.words;
   const hijriOf = useHijri();
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -204,96 +248,69 @@ export default function Home() {
         </div>
       ) : (
         <>
-          {/* ── 2. Open on the desk ── */}
+          {/* ── 2. The live event ── */}
           <section className="mt-7">
             {desk && deskCat && deskSpan ? (
-              <div className="rr-double">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <BookGlyph size={18} />
-                    <span className="rr-label" style={{ color: "var(--terracotta)" }}>
-                      {deskIsNow ? "Open on the desk" : "Next in the volume"}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => setSheetEvent(desk)}
-                    className="block text-left w-full mt-3"
-                  >
-                    <h2 className="rr-display" style={{ fontSize: 34, lineHeight: 1.08, color: "var(--ink)" }}>
-                      {desk.title}
-                    </h2>
-                  </button>
-
-                  <p className="rr-italic mt-2" style={{ fontSize: 15, color: "var(--muted)" }}>
-                    {spanDays > 1
-                      ? `${spellDate(deskSpan.start, { weekday: false })} — ${spellDate(deskSpan.end, { weekday: false })}`
-                      : spellDate(deskSpan.start)}
-                    {" · "}{deskCat.label}
-                  </p>
-
-                  <p className="rr-meta mt-4">
-                    Cat. no. {catalogueNumber(deskSpan.start)}
-                    {spanDays > 1 && ` — ${dayOfSpan} of ${spanDays} days`}
-                  </p>
-
-                  <div className="rr-hairline mt-5 pt-4 flex items-center gap-5">
-                    <button className="rr-action" onClick={() => setSheetEvent(desk)}>
-                      Margin notes
-                    </button>
-                    <button
-                      className="rr-action"
-                      onClick={() => setBindTarget({
-                        event: { id: desk.id, title: desk.title, category: desk.category ?? null },
-                        daysAgo: Math.max(0, daysBetween(deskSpan.start, today)),
-                      })}
-                    >
-                      Photograph
-                    </button>
-                    <button
-                      className="rr-action rr-action-danger ml-auto"
-                      onClick={() => setBindTarget({
-                        event: { id: desk.id, title: desk.title, category: desk.category ?? null },
-                        daysAgo: Math.max(0, daysBetween(deskSpan.start, today)),
-                      })}
-                    >
-                      Bind it
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <LiveCard
+                label={deskIsNow ? w.liveNow : w.liveNext}
+                title={desk.title}
+                dateLine={spanDays > 1
+                  ? `${spellDate(deskSpan.start, { weekday: false })} — ${spellDate(deskSpan.end, { weekday: false })}`
+                  : spellDate(deskSpan.start)}
+                category={deskCat.label}
+                reference={catalogueNumber(deskSpan.start)}
+                span={spanDays > 1 ? { day: dayOfSpan, of: spanDays } : null}
+                onOpen={() => setSheetEvent(desk)}
+                onNote={() => setSheetEvent(desk)}
+                onPhoto={() => setBindTarget({
+                  event: { id: desk.id, title: desk.title, category: desk.category ?? null },
+                  daysAgo: Math.max(0, daysBetween(deskSpan.start, today)),
+                })}
+                onKeep={() => setBindTarget({
+                  event: { id: desk.id, title: desk.title, category: desk.category ?? null },
+                  daysAgo: Math.max(0, daysBetween(deskSpan.start, today)),
+                })}
+              />
             ) : (
-              <div className="rr-double">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <BookGlyph size={18} />
-                    <span className="rr-label" style={{ color: "var(--terracotta)" }}>Open on the desk</span>
-                  </div>
-                  <p className="rr-italic mt-4" style={{ fontSize: 20, color: "var(--ghost)" }}>
-                    nothing is open — the rest of the page is blank
-                  </p>
-                </div>
-              </div>
+              <EmptyLive />
             )}
           </section>
 
           {/* ── 3. Later in the volume ── */}
           {later.length > 0 && (
             <section className="mt-9">
-              <p className="rr-label">Later in the volume</p>
+              <p className="rr-label">{w.laterLabel}</p>
               <div className="mt-3">
                 {later.map((row) => (
-                  <Link
-                    key={row.id}
-                    href={row.href}
-                    className="rr-dotted flex items-baseline justify-between gap-4 py-4"
+                  <Link key={row.id} href={row.href}
+                    className={theme === "coffee" ? "block py-1" : "rr-dotted flex items-baseline justify-between gap-4 py-4"}
                   >
-                    <span className="rr-display" style={{ fontSize: 20, color: "var(--ink)" }}>
-                      {row.title}
-                    </span>
-                    <span style={{ fontSize: 12.5, color: "var(--muted)", flex: "none" }}>
-                      {row.days === 0 ? "today" : row.days === 1 ? "1 day" : `${row.days} days`}
-                    </span>
+                    {theme === "coffee" ? (
+                      // The signature leader, as the brief asks for on both
+                      // countdown rows.
+                      <Leader
+                        left={row.title}
+                        right={row.days === 0 ? "today" : row.days === 1 ? "1 day" : `${row.days} days`}
+                      />
+                    ) : (
+                      <>
+                        <span className="rr-display" style={{ fontSize: 20, color: "var(--ink)" }}>
+                          {row.title}
+                        </span>
+                        <span className="flex items-center gap-2" style={{ fontSize: 12.5, color: "var(--muted)", flex: "none" }}>
+                          {/* Observatory: proximity is magnitude — the nearest
+                              row leads with a larger, brighter dot. */}
+                          {theme === "observatory" && (
+                            <span aria-hidden style={{
+                              width: row.days <= 7 ? 7 : 4, height: row.days <= 7 ? 7 : 4,
+                              borderRadius: "999px", flex: "none",
+                              background: row.days <= 7 ? "var(--terracotta)" : "var(--faint)",
+                            }} />
+                          )}
+                          {row.days === 0 ? "today" : row.days === 1 ? "1 day" : `${row.days} days`}
+                        </span>
+                      </>
+                    )}
                   </Link>
                 ))}
               </div>
@@ -303,7 +320,7 @@ export default function Home() {
           {/* ── 4. Reopened today — a different page each morning ── */}
           {shelfEntry && (
             <section className="mt-9">
-              <p className="rr-label">Reopened today</p>
+              <p className="rr-label">{w.lastMemory}</p>
               <Link href="/story" className="block mt-3 rr-frame">
                 {shelfEntry.photo ? (
                   <img src={shelfEntry.photo} alt="" style={{ aspectRatio: "4 / 3" }} />

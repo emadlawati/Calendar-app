@@ -12,7 +12,7 @@ export const WIDGET_BLOCKS = [
   { id: "today",    label: "Today's entries", hint: "what's on, in order" },
   { id: "upcoming", label: "Coming up",       hint: "the next few days" },
   { id: "special",  label: "Next occasion",   hint: "birthday or anniversary, counted down" },
-  { id: "streak",   label: "Weeks kept",      hint: "the borrower's card count" },
+  { id: "streak",   label: "Weeks kept",      hint: "weeks you have both kept" },
 ] as const;
 
 export type WidgetBlock = (typeof WIDGET_BLOCKS)[number]["id"];

@@ -20,31 +20,6 @@ function openBtn(label = "Open Calendar 🐾") {
   return `<a href="${BASE_URL}" style="background-color:#fce4ec;color:#5d4037;padding:12px 24px;border-radius:20px;text-decoration:none;font-weight:bold;display:inline-block;margin-top:20px;">${label}</a>`;
 }
 
-async function sendWhatsApp(body: string) {
-  const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, WIFE_PHONE, HUSBAND_PHONE } = process.env;
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_WHATSAPP_FROM) return;
-
-  const phones = [WIFE_PHONE, HUSBAND_PHONE].filter(Boolean) as string[];
-  if (phones.length === 0) return;
-
-  try {
-    // Dynamic import so the server bundle doesn't fail if twilio isn't installed
-    const twilio = (await import("twilio")).default;
-    const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-    for (const phone of phones) {
-      await client.messages
-        .create({
-          from: `whatsapp:${TWILIO_WHATSAPP_FROM}`,
-          to: `whatsapp:${phone}`,
-          body,
-        })
-        .catch((e: unknown) => console.error("WhatsApp send failed:", e));
-    }
-  } catch (e) {
-    console.error("Twilio import/send error:", e);
-  }
-}
-
 export async function GET(request: Request) {
   // Security: same CRON_SECRET used by the daily cron
   const cronSecret = process.env.CRON_SECRET;
@@ -133,8 +108,6 @@ async function runForCouple(
         }).catch((e: unknown) => console.error("24h reminder email failed:", e));
       }
 
-      await sendWhatsApp(`🔔 Reminder tomorrow: ${reminder.title} at ${reminder.time}`);
-
       await prisma.reminder.update({ where: { id: reminder.id }, data: { sent24h: true } });
       results.push(`24h:${reminder.title}`);
     }
@@ -174,8 +147,6 @@ async function runForCouple(
           html,
         }).catch((e: unknown) => console.error("1h reminder email failed:", e));
       }
-
-      await sendWhatsApp(`🔔 ${soon}: ${reminder.title} at ${reminder.time} ☕`);
 
       await prisma.reminder.update({ where: { id: reminder.id }, data: { sent1h: true } });
       results.push(`1h:${reminder.title}`);

@@ -6,6 +6,57 @@ import { useSearchParams } from "next/navigation";
 import { CoffeeIcon, PawIcon } from "@/components/icons";
 import { CalendarSkeleton } from "@/components/Skeleton";
 
+/**
+ * Every way sign-in can fail, said plainly.
+ *
+ * redeemInvite() can return six different errors and the callback redirects
+ * here with each of them; this page used to render two. So an invitation that
+ * failed for any reason dropped the guest on an ordinary login screen with no
+ * explanation — on the one flow that only ever happens to someone new.
+ */
+const ERRORS: Record<string, { title: string; body: string; next?: string }> = {
+  unauthorized: {
+    title: "Not on this calendar",
+    body: "That Google account isn't linked to any family here.",
+    next: "This calendar is invite-only. Ask whoever invited you for a link, and sign in with the address they sent it to.",
+  },
+  no_email: {
+    title: "Google didn't share an address",
+    body: "We couldn't read an email address from that account.",
+    next: "Try again, and allow access to your email when Google asks.",
+  },
+  invite_unknown: {
+    title: "That link isn't recognised",
+    body: "The invitation doesn't exist — it may have been replaced.",
+    next: "Ask for a fresh link.",
+  },
+  invite_used: {
+    title: "That link has been used",
+    body: "Invitations work once, so nobody can join twice on the same link.",
+    next: "If it wasn't you who used it, ask for a new one.",
+  },
+  invite_expired: {
+    title: "That link has expired",
+    body: "Invitations last two weeks.",
+    next: "Ask for a fresh link.",
+  },
+  invite_wrong_email: {
+    title: "That link was for a different address",
+    body: "This invitation is tied to one email address, and it isn't the one you signed in with.",
+    next: "Sign in with the address the invitation was sent to.",
+  },
+  already_member: {
+    title: "You're already here",
+    body: "That address already belongs to a family on this calendar.",
+    next: "Sign in normally instead of using the invitation.",
+  },
+  seat_taken: {
+    title: "That place is already filled",
+    body: "Someone has already joined as the partner this invitation was for.",
+    next: "Check with them, or ask for a new invitation.",
+  },
+};
+
 function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
@@ -44,23 +95,26 @@ function LoginContent() {
           a private record of your days together
         </p>
 
-        {error === "unauthorized" && (
+        {error && ERRORS[error] && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="rounded-2xl p-4 mb-6 text-left text-sm border"
-            style={{ background: "color-mix(in srgb, var(--danger) 6%, transparent)", borderColor: "color-mix(in srgb, var(--danger) 20%, transparent)", color: "var(--danger)" }}
+            style={{
+              background: "color-mix(in srgb, var(--danger) 6%, transparent)",
+              borderColor: "color-mix(in srgb, var(--danger) 20%, transparent)",
+              color: "var(--danger)",
+            }}
           >
-            <p className="font-semibold mb-1 flex items-center gap-1"><PawIcon size={12} /> Not registered!</p>
-            <p className="mb-2">The Google account{attemptedEmail ? ` (${attemptedEmail})` : ""} you tried isn&apos;t linked to this calendar.</p>
-            <p className="text-xs opacity-70">Make sure WIFE_EMAIL and HUSBAND_EMAIL in Vercel environment variables match your actual Google emails.</p>
-          </motion.div>
-        )}
-
-        {error === "no_email" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="rounded-2xl p-3 mb-6 text-sm border"
-            style={{ background: "color-mix(in srgb, var(--danger) 6%, transparent)", borderColor: "color-mix(in srgb, var(--danger) 20%, transparent)", color: "var(--danger)" }}>
-            Could not retrieve your email. Please try again.
+            <p className="font-semibold mb-1 flex items-center gap-1">
+              <PawIcon size={12} /> {ERRORS[error].title}
+            </p>
+            <p className="mb-2">
+              {ERRORS[error].body}
+              {error === "unauthorized" && attemptedEmail ? ` (${attemptedEmail})` : ""}
+            </p>
+            {ERRORS[error].next && (
+              <p className="text-xs opacity-80">{ERRORS[error].next}</p>
+            )}
           </motion.div>
         )}
 

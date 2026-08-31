@@ -65,11 +65,11 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
                 <h1 className="rr-display mt-4" style={{ fontSize: 30, lineHeight: 1.1, color: "var(--ink)" }}>
                   {info.kind === "partner"
                     ? `Join ${info.couple ?? "your partner"}`
-                    : "Start a library of your own"}
+                    : "Start a place of your own"}
                 </h1>
                 <p className="rr-italic mt-3" style={{ fontSize: 17, lineHeight: 1.45, color: "var(--muted)" }}>
                   {info.kind === "partner"
-                    ? "Your partner has kept a shelf and would like you on the borrower's card."
+                    ? "Your partner keeps your days here, and would like you in it too."
                     : "A quiet place to keep the days you spend together — no points, no levels."}
                 </p>
 

@@ -75,7 +75,10 @@ export default function CoupleSettings() {
           hijriOffset: couple.hijriOffset ?? 0,
           members: couple.users
             .filter((u) => u.kind === "adult")
-            .map((u) => ({ role: u.role, name: u.name, title: u.title ?? "", birthday: u.birthday || "" })),
+            .map((u) => ({
+              role: u.role, name: u.name, title: u.title ?? "",
+              birthday: u.birthday || "",
+            })),
           // Sent whole, so removing one here removes it there.
           children: couple.users
             .filter((u) => u.kind === "child" && u.name.trim())

@@ -37,6 +37,45 @@ function todayKeyParts(): [number, number] {
   return [y, m - 1];
 }
 
+/**
+ * Observatory's grid overlay.
+ *
+ * The brief removes the row separators from this theme's calendar entirely —
+ * "the sky has no rules" — and puts the structure back as a polyline drawn
+ * through the month's event days, so the shape of a busy month is the shape of
+ * a constellation. Everything else about the grid is unchanged.
+ */
+function Constellation({
+  cells,
+  byDay,
+}: {
+  cells: { key: string; inMonth: boolean }[];
+  byDay: Map<string, unknown[]>;
+}) {
+  // Cell centres in a 7 × 6 unit box, matched to the grid by viewBox rather
+  // than by measuring the DOM.
+  // This month's event days only — a line reaching into the trailing days of
+  // the last month would be drawing a constellation the month does not have.
+  const points = cells
+    .map((c, i) => ({ i, has: c.inMonth && (byDay.get(c.key)?.length ?? 0) > 0 }))
+    .filter((c) => c.has)
+    .map(({ i }) => ({ x: (i % 7) + 0.5, y: Math.floor(i / 7) + 0.5 }));
+
+  if (points.length < 2) return null;
+  const d = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 7 6"
+      preserveAspectRatio="none"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+    >
+      <path d={d} fill="none" stroke="var(--gold)" strokeWidth="0.012" opacity="0.45" />
+    </svg>
+  );
+}
+
 export default function CalendarPage() {
   const router = useRouter();
   const people = usePeople();
@@ -116,7 +155,8 @@ export default function CalendarPage() {
 
   const selectedDate = useMemo(() => dayStart(selected), [selected]);
   const hijriOf = useHijri();
-  const { definition } = useTheme();
+  const { theme, definition } = useTheme();
+  const sky = theme === "observatory";
   const selectedHijri = hijriOf(selectedDate);
   const dayEvents = byDay.get(selected) ?? [];
   const dayReminders = useMemo(
@@ -206,7 +246,15 @@ export default function CalendarPage() {
         {loading ? (
           <Skeleton className="h-[300px]" />
         ) : (
-          <div className="grid grid-cols-7" style={{ borderTop: "1px solid var(--rule-light)" }}>
+          <div className="grid grid-cols-7"
+            style={{
+              // "Grid has no row separators at all — the sky has no rules."
+              // Observatory gets its structure from the constellation instead.
+              borderTop: sky ? "none" : "1px solid var(--rule-light)",
+              position: "relative",
+            }}
+          >
+            {sky && <Constellation cells={cells} byDay={byDay} />}
             {cells.map((cell) => {
               const isToday = cell.key === todayKey;
               const isSelected = cell.key === selected;
@@ -221,12 +269,16 @@ export default function CalendarPage() {
                   className="flex flex-col items-center justify-center gap-1.5"
                   style={{
                     height: 50,
-                    borderBottom: "1px solid var(--rule-light)",
+                    borderBottom: sky ? "none" : "1px solid var(--rule-light)",
                     background: isToday
-                      ? "var(--green-deep)"
+                      ? "var(--today-bg, var(--green-deep))"
                       : inSpan ? "var(--tint)" : "transparent",
+                    // Today is a filled circle in the round themes, a filled
+                    // square in Reading Room, per each theme's shape rule.
+                    borderRadius: isToday ? "var(--radius-chip, 0)" : 0,
                     outline: isSelected && !isToday ? "1.5px solid var(--rule-strong)" : "none",
                     outlineOffset: -1.5,
+                    position: "relative",
                   }}
                 >
                   <span
@@ -234,7 +286,7 @@ export default function CalendarPage() {
                     style={{
                       fontSize: 18,
                       lineHeight: 1,
-                      color: isToday ? "var(--paper)" : cell.inMonth ? "var(--ink)" : "var(--ghost)",
+                      color: isToday ? "var(--today-text, var(--paper))" : cell.inMonth ? "var(--ink)" : "var(--ghost)",
                     }}
                   >
                     {cell.date.getDate()}

@@ -20,8 +20,8 @@ function muscatDateStr(d: Date): string {
 
 /**
  * Week-start (YYYY-MM-DD) for a YYYY-MM-DD date string, using the same
- * definition as the calendar grid — otherwise "this week" on the borrower's
- * card would span different days from the row the calendar draws.
+ * definition as the calendar grid — otherwise "this week" in the streak
+ * would span different days from the row the calendar draws.
  * All arithmetic stays in UTC so results never depend on server timezone.
  */
 function weekStartOf(dateStr: string): string {

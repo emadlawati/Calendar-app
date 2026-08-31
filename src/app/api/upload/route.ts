@@ -45,7 +45,13 @@ export async function POST(request: Request) {
       contentType: file.type,
     });
 
-    return NextResponse.json({ url: blob.url });
+    // The app-relative path, never the blob URL. /api/photos checks the
+    // session and the owning family before serving the bytes; handing back
+    // blob.url would put a permanent, uncontrolled link into the database and
+    // into every API response that carries a photo.
+    return NextResponse.json({
+      url: `/api/photos/${blob.pathname.split("/").map(encodeURIComponent).join("/")}`,
+    });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });

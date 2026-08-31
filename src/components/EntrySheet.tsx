@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import BookGlyph from "./BookGlyph";
+import ThemeGlyph from "./ThemeGlyph";
+import { useTheme } from "./ThemeProvider";
 import { useSession, useNames, usePerson } from "./SessionProvider";
 import { getCategoryById } from "@/lib/categories";
 import { spellDate, spellTime, catalogueNumber } from "@/lib/volume";
@@ -38,6 +39,8 @@ export default function EntrySheet({
 }) {
   const router = useRouter();
   const { user } = useSession();
+  const { theme, definition } = useTheme();
+  const w = definition.words;
   const displayName = useNames();
   const lookupPerson = usePerson();
   const [busy, setBusy] = useState<string | null>(null);
@@ -79,7 +82,7 @@ export default function EntrySheet({
             transition={{ duration: 0.18 }}
             onClick={onClose}
             className="fixed inset-0 z-40"
-            style={{ background: "rgba(232,234,219,.86)" }}
+            style={{ background: "color-mix(in srgb, var(--green-darkest) 62%, transparent)" }}
           />
           <motion.div
             initial={{ y: "100%" }}
@@ -98,11 +101,12 @@ export default function EntrySheet({
               </div>
 
               <div className="px-[22px] pb-10">
-                {/* Catalogue card */}
-                <div className="rr-double">
-                  <div>
+                {/* The framed card. Reading Room frames it as a title page
+                    with a double rule; the round themes use their own card. */}
+                <div className={theme === "reading-room" ? "rr-double" : "rr-card"}>
+                  <div style={theme === "reading-room" ? undefined : { padding: 20 }}>
                     <div className="flex items-start justify-between gap-3">
-                      <span className="rr-meta">Cat. no. {catalogueNumber(start)}</span>
+                      <span className="rr-meta">{w.refPrefix} {catalogueNumber(start)}</span>
                       <span className="rr-stamp">{stamp}</span>
                     </div>
 
@@ -127,7 +131,7 @@ export default function EntrySheet({
                   </div>
                 </div>
 
-                {/* Marginalia as a gold-ruled quote */}
+                {/* The note, as a pull-quote on the theme's accent rule */}
                 {event.notes && (
                   <blockquote className="rr-quote mt-6" style={{ fontSize: 18, lineHeight: 1.5 }}>
                     {event.notes}
@@ -148,8 +152,13 @@ export default function EntrySheet({
                     className="rr-btn w-full mt-7 justify-center flex items-center gap-3"
                     onClick={() => { onBind?.(event); onClose(); }}
                   >
-                    <BookGlyph size={16} />
-                    Bind as a memory
+                    <ThemeGlyph
+                      name={theme === "observatory" ? "star" : theme === "coffee" ? "cup" : "book"}
+                      size={16}
+                    />
+                    {w.keepAction === "Bind it" ? "Bind as a memory"
+                      : w.keepAction === "Keep it" ? "Keep as a memory"
+                      : "Log as an observation"}
                   </button>
                 )}
 

@@ -202,6 +202,7 @@
   --radius-card:  16px;
   --radius-control: 12px;
   --radius-chip:  999px;
+  --radius-photo: 12px;
 }
 
 /* ── Observatory — an observing log. The dark theme. ── */
@@ -254,6 +255,7 @@
   --radius-card:  16px;
   --radius-control: 999px;
   --radius-chip:  999px;
+  --radius-photo: 12px;
 }
 
 /* ==========================================================================
@@ -366,6 +368,8 @@ body {
   padding: 3px 7px;
   font-weight: 600;
   line-height: 1;
+  /* Square in Reading Room, a pill in the two round themes. */
+  border-radius: var(--radius-chip, 0);
 }
 
 /* Quote: 2px gold left rule + italic Cormorant */
@@ -378,23 +382,32 @@ body {
 }
 
 /* Photo entries: a 12px paper frame, nothing rounded. */
+/* The photo frame. Reading Room's is a square plate; Observatory's brief
+   asks for "a 10px inset frame around a 12px-radius image block", and Coffee
+   rounds everything, so the frame and the image inside it both take the
+   theme's radius. */
 .rr-frame {
   background: var(--card);
   border: 1px solid var(--rule);
   padding: 12px;
+  border-radius: var(--radius-card, 0);
 }
 .rr-frame img {
   display: block;
   width: 100%;
   object-fit: cover;
+  border-radius: var(--radius-photo, 0);
 }
 
 /* Category dot — the only place category colour appears. */
+/* The category dot. Square in Reading Room, round in the two themes whose
+   shape language has no square corners in it. */
 .rr-dot {
   width: 4px;
   height: 4px;
   display: inline-block;
   flex: none;
+  border-radius: var(--radius-chip, 0);
 }
 
 /* ==========================================================================
@@ -459,6 +472,8 @@ body {
   cursor: pointer;
   min-height: 44px;
   transition: background .12s, border-color .12s;
+  /* Square in Reading Room, a 999px pill in Coffee and Observatory. */
+  border-radius: var(--radius-chip, 0);
 }
 .rr-chip:hover { background: var(--tint); }
 .rr-chip[data-selected="true"] {

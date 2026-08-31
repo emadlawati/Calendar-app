@@ -7,6 +7,8 @@ import { useSession } from "@/components/SessionProvider";
 import { getVolumeInfo, spellDate } from "@/lib/volume";
 import { useTheme } from "@/components/ThemeProvider";
 import ThemeHero from "@/components/ThemeHero";
+import ThemeStreak from "@/components/ThemeStreak";
+import ThemeMarks from "@/components/ThemeMarks";
 
 interface Milestone { id: string; label: string; detail?: string; date: string }
 interface StatsData {
@@ -25,6 +27,26 @@ interface StatsData {
 }
 
 
+/** A figure in a bordered box — the brief's block 2. */
+function Figure({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="rr-card" style={{ padding: "18px 16px" }}>
+      <p className="rr-display" style={{ fontSize: 38, lineHeight: 1, color: "var(--ink)" }}>{value}</p>
+      <p className="mt-1.5" style={{ fontSize: 12.5, color: "var(--muted)" }}>{label}</p>
+    </div>
+  );
+}
+
+function Row({ left, right }: { left: string; right: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-2.5"
+      style={{ borderTop: "1px solid var(--rule-light)" }}>
+      <span className="rr-italic" style={{ fontSize: 15, color: "var(--muted)" }}>{left}</span>
+      <span className="rr-italic" style={{ fontSize: 15, color: "var(--ink)", flex: "none" }}>{right}</span>
+    </div>
+  );
+}
+
 const monthName = (key: string) => {
   const [y, m] = key.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -33,7 +55,6 @@ const monthName = (key: string) => {
 export default function ShelfPage() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showAll, setShowAll] = useState(false);
   const { couple } = useSession();
   const { definition } = useTheme();
   const w = definition.words;
@@ -50,16 +71,18 @@ export default function ShelfPage() {
   const weeksKept = stats?.streakData.weeksKept ?? 0;
   const longest = stats?.streakData.longestStreak ?? 0;
   const milestones = stats?.milestones ?? [];
-  const shown = showAll ? milestones : milestones.slice(0, 5);
 
 
-  const record: { value: string; label: string }[] = [
-    { value: String(stats?.totalEvents ?? 0), label: "entries" },
-    { value: String(stats?.totalMemories ?? 0), label: "memories kept" },
-    { value: String(stats?.totalPhotos ?? 0), label: "photographs" },
-    { value: String(stats?.totalNotes ?? 0), label: "letters" },
-    { value: String(stats?.totalHighlights ?? 0), label: "days marked" },
-    { value: String(stats?.completedBucketItems ?? 0), label: "wishes crossed off" },
+  // Whether anything has been written since this week began. The current
+  // week's mark is the one the streak objects leave open.
+  const keptThisWeek = (stats?.streakData.currentStreak ?? 0) > 0;
+
+  const rest: { value: string; label: string }[] = [
+    { label: "Memories kept", value: String(stats?.totalMemories ?? 0) },
+    { label: "Photographs", value: String(stats?.totalPhotos ?? 0) },
+    { label: "Letters", value: String(stats?.totalNotes ?? 0) },
+    { label: "Days marked", value: String(stats?.totalHighlights ?? 0) },
+    { label: "Wishes crossed off", value: String(stats?.completedBucketItems ?? 0) },
   ];
 
   return (
@@ -86,110 +109,40 @@ export default function ShelfPage() {
             weeksKept={weeksKept}
           />
 
-          {/* ── 2. The record ── */}
+          {/* ── 2. Two figures ── */}
+          {/* The brief asks for exactly two, as large numerals in bordered
+              boxes. The rest of the record follows as ruled rows inside the
+              same block rather than as a sixth one — the page is five blocks
+              and the brief says never more. */}
           <section className="mt-7">
             <p className="rr-label">The record</p>
-            <div className="grid grid-cols-3 gap-x-4 gap-y-6 mt-4">
-              {record.map((r) => (
-                <div key={r.label}>
-                  <p className="rr-display" style={{ fontSize: 28, lineHeight: 1, color: "var(--ink)" }}>
-                    {r.value}
-                  </p>
-                  <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, lineHeight: 1.3 }}>
-                    {r.label}
-                  </p>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <Figure value={vol.years} label={w.figurePeriod} />
+              <Figure value={stats?.totalEvents ?? 0} label={w.figureLifetime} />
             </div>
 
-            <div className="mt-6">
+            <div className="mt-5">
+              {rest.map((r) => (
+                <Row key={r.label} left={r.label} right={r.value} />
+              ))}
               {stats?.favoriteCategory && (
-                <div className="flex items-baseline justify-between gap-4 py-3"
-                  style={{ borderTop: "1px solid var(--rule-light)" }}>
-                  <span className="rr-italic" style={{ fontSize: 15.5, color: "var(--muted)" }}>
-                    Most often
-                  </span>
-                  <span className="rr-italic" style={{ fontSize: 15.5, color: "var(--ink)" }}>
-                    {stats.favoriteCategory.label} · {stats.favoriteCategory.count}
-                  </span>
-                </div>
+                <Row left="Most often" right={`${stats.favoriteCategory.label} · ${stats.favoriteCategory.count}`} />
               )}
               {stats?.busiestMonth && (
-                <div className="flex items-baseline justify-between gap-4 py-3"
-                  style={{ borderTop: "1px solid var(--rule-light)" }}>
-                  <span className="rr-italic" style={{ fontSize: 15.5, color: "var(--muted)" }}>Fullest month</span>
-                  <span className="rr-italic" style={{ fontSize: 15.5, color: "var(--ink)" }}>
-                    {monthName(stats.busiestMonth.month)} · {stats.busiestMonth.count}
-                  </span>
-                </div>
+                <Row left="Fullest month" right={`${monthName(stats.busiestMonth.month)} · ${stats.busiestMonth.count}`} />
               )}
               {stats?.firstEventDate && (
-                <div className="flex items-baseline justify-between gap-4 py-3"
-                  style={{ borderTop: "1px solid var(--rule-light)" }}>
-                  <span className="rr-italic" style={{ fontSize: 15.5, color: "var(--muted)" }}>Earliest entry</span>
-                  <span className="rr-italic" style={{ fontSize: 15.5, color: "var(--ink)" }}>
-                    {spellDate(new Date(stats.firstEventDate), { weekday: false, year: true })}
-                  </span>
-                </div>
+                <Row left="Earliest entry"
+                  right={spellDate(new Date(stats.firstEventDate), { weekday: false, year: true })} />
               )}
             </div>
           </section>
 
-          {/* ── 3. Weeks kept ── */}
-          <section className="mt-9 rr-card p-5">
-            <p className="rr-label">{w.weeksKeptLabel}</p>
-            <p className="rr-display mt-2" style={{ fontSize: 40, lineHeight: 1, color: "var(--ink)" }}>
-              {weeksKept}
-            </p>
-            <p className="rr-italic mt-2" style={{ fontSize: 15, color: "var(--muted)" }}>
-              {weeksKept === 0
-                ? "nothing kept yet — there is no wrong week to start"
-                : w.weeksKeptLine}
-            </p>
-            {longest > 1 && (
-              <p className="mt-3" style={{ fontSize: 13, color: "var(--faint)" }}>
-                Longest run so far, {longest} weeks in a row — kept as a record, not a thing to defend.
-              </p>
-            )}
-          </section>
+          {/* ── 3. The streak, as this theme's object ── */}
+          <ThemeStreak weeksKept={weeksKept} longest={longest} keptThisWeek={keptThisWeek} />
 
-          {/* ── 4. Milestones ── */}
-          <section className="mt-9">
-            <p className="rr-label">Milestones</p>
-            {milestones.length === 0 ? (
-              <p className="rr-italic mt-3" style={{ fontSize: 15, color: "var(--ghost)" }}>
-                the first entry will be the first one
-              </p>
-            ) : (
-              <>
-                <div className="mt-3">
-                  {shown.map((m) => (
-                    <div key={m.id} className="flex items-baseline justify-between gap-4 py-3"
-                      style={{ borderTop: "1px solid var(--rule-light)" }}>
-                      <span className="min-w-0">
-                        <span className="rr-italic block" style={{ fontSize: 16, color: "var(--ink)" }}>
-                          {m.label}
-                        </span>
-                        {m.detail && (
-                          <span className="block" style={{ fontSize: 13, color: "var(--muted)" }}>{m.detail}</span>
-                        )}
-                      </span>
-                      <span className="rr-meta" style={{ flex: "none", fontSize: 10, color: "var(--faint)" }}>
-                        {new Date(m.date).toLocaleDateString("en-GB", {
-                          day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
-                        })}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                {milestones.length > 5 && (
-                  <button className="rr-action mt-3" style={{ fontSize: 12 }} onClick={() => setShowAll((v) => !v)}>
-                    {showAll ? "Show fewer" : `All ${milestones.length}`}
-                  </button>
-                )}
-              </>
-            )}
-          </section>
+          {/* ── 4. The 4-up grid ── */}
+          <ThemeMarks milestones={milestones} />
 
           <p className="rr-italic text-center mt-10" style={{ fontSize: 15, color: "var(--ghost)" }}>
             {w.closing}

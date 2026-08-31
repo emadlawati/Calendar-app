@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession, useNames, usePartnerName, usePeople } from "@/components/SessionProvider";
 import { EVENT_CATEGORIES } from "@/lib/categories";
+import { useTheme } from "@/components/ThemeProvider";
 import { specialDateLabel, linkableSpecialDates } from "@/lib/special-date-display";
 import type { BucketItem, CalendarEvent, SpecialDateWithCountdown } from "@/lib/types";
 
@@ -32,6 +33,7 @@ function NewEntryForm() {
   const displayName = useNames();
   const partnerName = usePartnerName();
   const people = usePeople();
+  const w = useTheme().definition.words;
 
   const editId = params.get("id");
   const isEdit = !!editId;
@@ -176,7 +178,7 @@ function NewEntryForm() {
           >
             <button className="rr-action" onClick={() => router.back()}>Discard</button>
             <span className="rr-display" style={{ fontSize: 17, color: "var(--ink)" }}>
-              {isEdit ? "An amendment" : "A new entry"}
+              {isEdit ? "An amendment" : w.newEntryTitle}
             </span>
             <button
               className="rr-action"
@@ -184,7 +186,7 @@ function NewEntryForm() {
               onClick={file}
               disabled={saving}
             >
-              {saving ? "Filing…" : "File"}
+              {saving ? "…" : w.fileAction}
             </button>
           </div>
 
@@ -204,13 +206,13 @@ function NewEntryForm() {
                   style={{ fontSize: 15, color: "var(--terracotta)" }}
                   onClick={openReadingList}
                 >
-                  or take one from the reading list →
+                  or take one from the {w.wishlist.toLowerCase()} →
                 </button>
                 {readingOpen && (
                   <div className="mt-3 rr-card">
                     {bucket.length === 0 ? (
                       <p className="rr-italic p-4" style={{ fontSize: 15, color: "var(--ghost)" }}>
-                        the reading list is empty
+                        the {w.wishlist.toLowerCase()} is empty
                       </p>
                     ) : bucket.slice(0, 8).map((item, i) => (
                       <button
@@ -373,6 +375,7 @@ function NewEntryForm() {
                       color: "var(--ink)",
                       background: on ? "var(--tint)" : "transparent",
                       border: on ? "1.5px solid var(--green-deep)" : "1px solid var(--rule-strong)",
+                      borderRadius: "var(--radius-chip, 0)",
                     }}
                   >
                     {p.label}
@@ -382,8 +385,8 @@ function NewEntryForm() {
             </div>
           </Section>
 
-          {/* Marginalia */}
-          <Section label="Marginalia">
+          {/* Note */}
+          <Section label="Note">
             <div className="rr-field">
               <textarea
                 value={notes}
@@ -407,7 +410,7 @@ function NewEntryForm() {
                 : `${partnerName} will be told`}
             </span>
             <button className="rr-btn" onClick={file} disabled={saving} style={{ flex: "none" }}>
-              {saving ? "Filing…" : isEdit ? "Save it" : "File it"}
+              {saving ? "…" : isEdit ? "Save it" : w.fileAction}
             </button>
           </div>
         </div>
