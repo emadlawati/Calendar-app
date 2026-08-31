@@ -11,13 +11,29 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { title, date, time, endTime, notes, category, allDay, createdBy, frequency } = body;
+    // Optional: the day the series stops. The column and the generator have
+    // always supported this; nothing was passing it, so every series ran on
+    // forever and filled the timeline a year ahead.
+    const until = typeof body.until === "string" && body.until.trim()
+      ? new Date(`${body.until.slice(0, 10)}T00:00:00.000Z`)
+      : null;
+    if (until && Number.isNaN(until.getTime())) {
+      return NextResponse.json({ error: "That end date isn't a date" }, { status: 400 });
+    }
 
     if (!frequency || frequency === "once") {
       return NextResponse.json({ error: "Frequency is required for recurring events" }, { status: 400 });
     }
 
-    const startDate = new Date(date);
-    startDate.setHours(0, 0, 0, 0);
+    // Midnight UTC, not midnight wherever the server happens to be. Using
+    // local time here shifted a Monday series back to Sunday when run from
+    // UTC+4 — the same fault that once filed a birthday on the wrong day.
+    // Vercel runs in UTC so production was unaffected, which is exactly why
+    // it could sit here unnoticed.
+    const startDate = new Date(`${String(date).slice(0, 10)}T00:00:00.000Z`);
+    if (Number.isNaN(startDate.getTime())) {
+      return NextResponse.json({ error: "That start date isn't a date" }, { status: 400 });
+    }
 
     const series = await prisma.recurringSeries.create({
       data: {
@@ -30,6 +46,7 @@ export async function POST(request: Request) {
         createdBy,
         frequency,
         startDate,
+        endDate: until,
         generatedUntil: startDate,
         status: "active",
       },
@@ -46,6 +63,7 @@ export async function POST(request: Request) {
       allDay || false,
       createdBy,
       frequency,
+      until,
     );
 
     // Sync first instance to creator's Google Calendar

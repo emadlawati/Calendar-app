@@ -96,11 +96,13 @@ export default function StoryPage() {
     return feed.filter((f) => f.at.getFullYear() === y).length;
   }, [feed]);
 
-  /** Timeline grouped into months, newest first. */
+  /** Timeline grouped into months, earliest first — it is a record, read
+   *  forwards. Newest-first opened on August 2027, because a weekly series
+   *  generates a year ahead and those future instances sorted to the top. */
   const months = useMemo(() => {
     const groups = new Map<string, TimelineRow[]>();
     [...timeline]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .forEach((row) => {
         const d = dayStart(row.date);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;

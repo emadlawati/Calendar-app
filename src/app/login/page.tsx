@@ -41,7 +41,7 @@ function LoginContent() {
           Our Calendar
         </h1>
         <p className="text-sm mt-1.5 mb-8" style={{ color: "var(--text-soft)" }}>
-          brewing memories together
+          a private record of your days together
         </p>
 
         {error === "unauthorized" && (

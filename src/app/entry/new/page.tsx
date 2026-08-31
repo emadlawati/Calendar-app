@@ -44,6 +44,8 @@ function NewEntryForm() {
   const [endTime, setEndTime] = useState("");
   const [allDay, setAllDay] = useState(false);
   const [repeat, setRepeat] = useState<Repeat>("once");
+  /** When a repeating entry stops. Blank means it keeps going. */
+  const [until, setUntil] = useState("");
   const [personTag, setPersonTag] = useState<string | null>(null);
   const [specialDateId, setSpecialDateId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -98,6 +100,7 @@ function NewEntryForm() {
   const file = async () => {
     if (!title.trim()) { setError("An entry needs a title."); return; }
     if (endDate && endDate < date) { setError("The closing date falls before the opening one."); return; }
+    if (until && until < date) { setError("The repeat stops before it starts."); return; }
     setSaving(true);
     setError("");
 
@@ -143,7 +146,9 @@ function NewEntryForm() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin",
-          body: JSON.stringify(repeat === "once" ? payload : { ...payload, frequency: repeat }),
+          body: JSON.stringify(
+            repeat === "once" ? payload : { ...payload, frequency: repeat, until: until || undefined },
+          ),
         });
       }
       if (!res.ok) {
@@ -301,11 +306,29 @@ function NewEntryForm() {
                   All day
                 </label>
 
-                {repeat === "once" && (
+                {repeat === "once" ? (
                   <div className="flex gap-5">
                     <div className="flex-1">
                       <p className="rr-label" style={{ fontSize: 9.5 }}>Closes</p>
                       <input type="date" value={endDate} min={date} onChange={(e) => setEndDate(e.target.value)} />
+                    </div>
+                    {!allDay && (
+                      <div style={{ width: 120 }}>
+                        <p className="rr-label" style={{ fontSize: 9.5 }}>Until</p>
+                        <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex gap-5">
+                    {/* A repeat with no end runs for a year and fills the
+                        story with entries nobody has lived yet. */}
+                    <div className="flex-1">
+                      <p className="rr-label" style={{ fontSize: 9.5 }}>Stops after (optional)</p>
+                      <input type="date" value={until} min={date} onChange={(e) => setUntil(e.target.value)} />
+                      <p className="rr-italic mt-1" style={{ fontSize: 12.5, color: "var(--faint)" }}>
+                        {until ? "the last one falls on or before this day" : "leave blank to keep going"}
+                      </p>
                     </div>
                     {!allDay && (
                       <div style={{ width: 120 }}>
