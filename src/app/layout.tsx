@@ -7,6 +7,7 @@ import {
 import "./globals.css";
 import { SessionProvider } from "@/components/SessionProvider";
 import ThemeProvider from "@/components/ThemeProvider";
+import LedgerDueProvider from "@/components/LedgerDueProvider";
 
 // Display / content nouns — titles, entries, quotes.
 const cormorant = Cormorant_Garamond({
@@ -101,7 +102,10 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <SessionProvider>
-            {children}
+            {/* Inside the session, so the count is never fetched signed-out. */}
+            <LedgerDueProvider>
+              {children}
+            </LedgerDueProvider>
           </SessionProvider>
         </ThemeProvider>
       </body>

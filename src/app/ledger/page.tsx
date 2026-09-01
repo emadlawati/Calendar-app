@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import AppShell, { Fab } from "@/components/AppShell";
 import Skeleton from "@/components/Skeleton";
 import { usePeople, usePerson, useSession, useNames } from "@/components/SessionProvider";
+import { ledgerChanged } from "@/components/LedgerDueProvider";
+import { clearLedgerNotification } from "@/lib/badge";
 import { FREQUENCIES, FREQUENCY_LABELS, bucketFor, type Frequency } from "@/lib/tasks";
 import { WEEKDAY_NAMES } from "@/lib/week";
 
@@ -78,6 +80,10 @@ export default function LedgerPage() {
       .then((d) => {
         if (Array.isArray(d?.tasks)) setTasks(d.tasks);
         if (Array.isArray(d?.series)) setSeries(d.series);
+        // The badge and the drawer count follow every change here, so ticking
+        // something off updates the icon before you have put the phone down.
+        ledgerChanged();
+        clearLedgerNotification();
       })
       .catch(() => setError("Could not load the ledger."))
       .finally(() => setLoading(false));

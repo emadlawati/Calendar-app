@@ -27,6 +27,15 @@ export interface DeliveryPayload {
   body: string;
   url?: string;
   icon?: string;
+  /** Group key — a new notification with the same tag replaces the old one. */
+  tag?: string;
+  /** Stay in the shade until it is acted on, rather than fading away. */
+  sticky?: boolean;
+  /** Replacing a tagged notification is silent unless this says otherwise. */
+  renotify?: boolean;
+  silent?: boolean;
+  /** The number to put on the app icon. Omit to leave the badge alone. */
+  badgeCount?: number;
 }
 
 export interface Delivery {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "purrfect-plans-v3";
+const CACHE_NAME = "purrfect-plans-v4";
 const urlsToCache = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -25,7 +25,18 @@ self.addEventListener("push", (event) => {
   } catch {
     data = { title: "Purrfect Plans", body: event.data.text() };
   }
-  event.waitUntil(
+  // A count on the app icon, kept right even while the app is closed. Only
+  // when the server sends one — an ordinary notification must not clear a
+  // badge that the ledger put there.
+  const badging = typeof data.badgeCount === "number" && self.navigator
+    ? (data.badgeCount > 0
+        ? (self.navigator.setAppBadge ? self.navigator.setAppBadge(data.badgeCount) : Promise.resolve())
+        : (self.navigator.clearAppBadge ? self.navigator.clearAppBadge() : Promise.resolve())
+      ).catch(() => {})
+    : Promise.resolve();
+
+  event.waitUntil(Promise.all([
+    badging,
     self.registration.showNotification(data.title || "Purrfect Plans", {
       body: data.body || "",
       icon: data.icon || "/icons/icon-192.png",
@@ -36,8 +47,13 @@ self.addEventListener("push", (event) => {
       // Only group when the server explicitly asks for it — otherwise each
       // notification (new plan, note, highlight…) stacks as its own entry.
       tag: data.tag || undefined,
-    })
-  );
+      // The ledger's daily summary asks to stay put rather than fading away,
+      // and to replace yesterday's silently instead of buzzing again.
+      requireInteraction: data.sticky === true,
+      renotify: data.tag ? data.renotify === true : undefined,
+      silent: data.silent === true,
+    }),
+  ]));
 });
 
 self.addEventListener("notificationclick", (event) => {

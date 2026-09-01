@@ -36,7 +36,11 @@ export function platformOf(endpoint: string): string {
 
 export async function sendPushToUser(
   userId: string,
-  payload: { title: string; body: string; icon?: string; url?: string }
+  payload: {
+    title: string; body: string; icon?: string; url?: string;
+    tag?: string; sticky?: boolean; renotify?: boolean; silent?: boolean;
+    badgeCount?: number;
+  }
 ): Promise<PushResult[]> {
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
     console.warn("[push] skipped — VAPID keys not configured");
@@ -58,6 +62,13 @@ export async function sendPushToUser(
     url: payload.url || "/",
     // Sent twice, in both shapes: older service workers read data.url.
     data: { url: payload.url || "/" },
+    // Only present when asked for. A service worker that predates these
+    // ignores them, and the notification behaves as it always did.
+    ...(payload.tag ? { tag: payload.tag } : {}),
+    ...(payload.sticky ? { sticky: true } : {}),
+    ...(payload.renotify ? { renotify: true } : {}),
+    ...(payload.silent ? { silent: true } : {}),
+    ...(typeof payload.badgeCount === "number" ? { badgeCount: payload.badgeCount } : {}),
   });
 
   const results: PushResult[] = [];

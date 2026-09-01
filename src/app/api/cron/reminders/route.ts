@@ -174,25 +174,55 @@ async function sendForCouple(
     results.push(`tomorrow:${evt.title}`);
   }
 
-  // ── C. Anything in the ledger due today ──
-  // One nudge per task, ever: notifiedDue is what stops a chore that sits
-  // unfinished for a week from being announced every morning.
-  const due = await prisma.task.findMany({
+  // ── C. What the ledger has on each of you today ──
+  //
+  // One summary per person rather than one notification per task, and it is
+  // sent every day the list is not empty rather than once per task ever.
+  // The old behaviour announced a chore on its due date and then went quiet,
+  // so a task that sat unfinished for a week was never mentioned again — the
+  // opposite of what a reminder is for.
+  //
+  // The notification carries a fixed tag, so today's replaces yesterday's
+  // instead of stacking, and asks to stay in the shade until it is acted on.
+  // It also carries the count for the icon badge, which is what keeps the
+  // number right while the app is closed.
+  const openTasks = await prisma.task.findMany({
     where: {
       completed: false,
-      notifiedDue: false,
-      dueDate: { gte: new Date(`${todayStr}T00:00:00.000Z`), lte: new Date(`${todayStr}T23:59:59.999Z`) },
+      dueDate: { not: null, lte: new Date(`${todayStr}T23:59:59.999Z`) },
     },
+    orderBy: { dueDate: "asc" },
   });
 
-  for (const task of due) {
-    const { users, emailsFor } = recipientsFor(task.personTag);
-    if (users.length === 0) continue;
+  const startOfToday = new Date(`${todayStr}T00:00:00.000Z`);
 
-    const delivery = await pushAndReport(users, {
-      title: `📓 Due today: ${task.title}`,
-      body: task.notes ? task.notes.slice(0, 120) : "From the ledger",
+  for (const role of ["Wife", "Husband"] as const) {
+    const mine = openTasks.filter((t) =>
+      (getEventNotificationRecipients(t.personTag) as string[]).includes(role),
+    );
+    if (mine.length === 0) continue;
+
+    const { emailsFor } = recipientsFor(role === "Wife" ? "wife" : "husband");
+
+    const overdue = mine.filter((t) => t.dueDate! < startOfToday).length;
+    // The detail, not just a count: the first few titles, so the notification
+    // is useful without opening anything.
+    const titles = mine.slice(0, 3).map((t) => t.title).join(" · ");
+    const more = mine.length > 3 ? ` · and ${mine.length - 3} more` : "";
+
+    const title = mine.length === 1
+      ? `📓 Due today: ${mine[0].title}`
+      : `📓 ${mine.length} in the ledger today${overdue > 0 ? ` — ${overdue} overdue` : ""}`;
+
+    const delivery = await pushAndReport([role], {
+      title,
+      body: mine.length === 1
+        ? (mine[0].notes ? mine[0].notes.slice(0, 120) : "From the ledger")
+        : `${titles}${more}`,
       url: `${BASE_URL}/ledger`,
+      tag: "ledger-today",
+      sticky: true,
+      badgeCount: mine.length,
     });
 
     const fallback = emailsFor(delivery.needEmail);
@@ -200,20 +230,29 @@ async function sendForCouple(
       await resend.emails.send({
         from: "Calendar 🐾 <noreply@yaminami.uk>",
         to: fallback,
-        subject: `📓 Due today: ${task.title}`,
+        subject: title.replace(/^📓 /, "📓 "),
         html: `
           <div style="${EMAIL_STYLE}">
-            <h1 style="color:#5d4037;font-size:24px;">📓 Due today</h1>
+            <h1 style="color:#5d4037;font-size:24px;">📓 Today in the ledger</h1>
             <div style="background:#fff;padding:24px;border-radius:24px;margin:20px 0;border:1px solid #ffeedb;">
-              <h2 style="margin:6px 0;color:#5d4037;">${task.title}</h2>
-              ${task.notes ? `<p style="margin:14px 0 0;font-style:italic;">"${task.notes}"</p>` : ""}
+              ${mine.map((t) => `
+                <p style="margin:8px 0;color:#5d4037;">
+                  <strong>${t.title}</strong>${t.dueDate! < startOfToday ? ' <span style="color:#b4614a;">— overdue</span>' : ""}
+                  ${t.notes ? `<br><span style="font-style:italic;opacity:.75;">${t.notes}</span>` : ""}
+                </p>`).join("")}
             </div>
             ${openBtn("Open the ledger 🐾")}
           </div>`,
-      }).catch((e: unknown) => console.error("Task due email failed:", e));
+      }).catch((e: unknown) => console.error("Ledger digest email failed:", e));
     }
 
-    await prisma.task.update({ where: { id: task.id }, data: { notifiedDue: true } });
-    results.push(`task:${task.title}`);
+    results.push(`ledger:${role}:${mine.length}`);
   }
+
+  // Kept accurate so the column still means "this has been announced", even
+  // though the digest no longer gates on it.
+  await prisma.task.updateMany({
+    where: { id: { in: openTasks.map((t) => t.id) }, notifiedDue: false },
+    data: { notifiedDue: true },
+  });
 }

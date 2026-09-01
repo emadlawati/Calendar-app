@@ -8,6 +8,7 @@ import { getVolumeInfo } from "@/lib/volume";
 import { useTheme } from "./ThemeProvider";
 import type { ThemeWords } from "@/lib/themes";
 import { SPARK } from "./ThemeGlyph";
+import { useLedgerDue } from "@/components/LedgerDueProvider";
 import useAppBadge from "@/lib/useAppBadge";
 import type { StreakData } from "@/lib/types";
 
@@ -72,6 +73,7 @@ function DrawerPanel({ active, onNavigate }: { active: ShelfSection; onNavigate?
   const NAV = navFor(definition.words);
   const dw = definition.words;
   const [streak, setStreak] = useState<StreakData | null>(null);
+  const { count: dueCount } = useLedgerDue();
   // Derived from the couple, so a second couple sees their own volume.
   const vol = getVolumeInfo(couple?.startDate);
 
@@ -131,6 +133,21 @@ function DrawerPanel({ active, onNavigate }: { active: ShelfSection; onNavigate?
               >
                 {item.name}
               </span>
+              {item.key === "ledger" && dueCount > 0 && (
+                <span
+                  aria-label={`${dueCount} due today`}
+                  style={{
+                    minWidth: 22, height: 22, padding: "0 6px", flex: "none",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "var(--gold)", color: "var(--green-darkest)",
+                    borderRadius: "var(--radius-chip, 0)",
+                    fontFamily: "var(--font-ui)", fontSize: 11.5, fontWeight: 700,
+                    lineHeight: 1,
+                  }}
+                >
+                  {dueCount}
+                </span>
+              )}
               {isActive && theme !== "coffee" && (
                 <span style={{
                   width: 6, height: 6, background: "var(--gold)", flex: "none",
