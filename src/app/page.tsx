@@ -7,6 +7,7 @@ import AppShell, { Fab } from "@/components/AppShell";
 import LiveCard, { Leader } from "@/components/LiveCard";
 import ThemeGlyph from "@/components/ThemeGlyph";
 import StarField from "@/components/StarField";
+import Walkthrough, { hasSeenWalkthrough, markWalkthroughSeen } from "@/components/Walkthrough";
 import { useTheme } from "@/components/ThemeProvider";
 import EntrySheet from "@/components/EntrySheet";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
@@ -78,6 +79,7 @@ function daysBetween(from: Date, to: Date) {
 function EmptyLive() {
   const { theme, definition } = useTheme();
   const w = definition.words;
+
   const body = (
     <>
       <div className="flex items-center gap-2">
@@ -111,10 +113,23 @@ function EmptyLive() {
 
 export default function Home() {
   const router = useRouter();
-  const { isLoading: sessionLoading, couple } = useSession();
+  const { isLoading: sessionLoading, couple, user } = useSession();
   const { theme, definition } = useTheme();
   const w = definition.words;
   const hijriOf = useHijri();
+
+  // First run. Waits for the session so the tour can use the partner's name,
+  // and so it never flashes over the sign-in redirect.
+  const [tourOpen, setTourOpen] = useState(false);
+  useEffect(() => {
+    if (sessionLoading || !user) return;
+    if (!hasSeenWalkthrough(`${couple?.id ?? "x"}:${user}`)) setTourOpen(true);
+  }, [sessionLoading, user, couple?.id]);
+  const closeTour = () => {
+    setTourOpen(false);
+    if (user) markWalkthroughSeen(`${couple?.id ?? "x"}:${user}`);
+  };
+
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [specialDates, setSpecialDates] = useState<SpecialDateWithCountdown[]>([]);
@@ -373,7 +388,8 @@ export default function Home() {
       />
 
       <Toast message={toast || ""} isVisible={toast !== null} onClose={() => setToast(null)} />
-      <PushPrompt />
+      {!tourOpen && <PushPrompt />}
+      <Walkthrough open={tourOpen} onClose={closeTour} />
     </AppShell>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import BookGlyph from "@/components/BookGlyph";
+import ThemeGlyph from "@/components/ThemeGlyph";
+import { useTheme } from "@/components/ThemeProvider";
 import { useSession } from "@/components/SessionProvider";
 import ThemePicker from "@/components/ThemePicker";
 
@@ -28,6 +29,8 @@ const ROLES = [
  */
 export default function WelcomePage() {
   const router = useRouter();
+  const { theme, definition } = useTheme();
+  const w = definition.words;
   const { user, refresh } = useSession();
 
   const [members, setMembers] = useState<Member[]>([]);
@@ -118,14 +121,18 @@ export default function WelcomePage() {
     <main className="min-h-screen flex items-center justify-center px-[22px] py-10" style={{ background: "var(--paper)" }}>
       <div style={{ maxWidth: 460, width: "100%" }}>
         <div className="flex items-center gap-2">
-          <BookGlyph size={18} />
-          <span className="rr-label" style={{ color: "var(--terracotta)" }}>A new volume</span>
+          <ThemeGlyph
+            name={theme === "observatory" ? "star" : theme === "coffee" ? "cup" : "book"}
+            size={18}
+            style={{ color: "var(--sage)" }}
+          />
+          <span className="rr-label" style={{ color: "var(--terracotta)" }}>{w.welcomeLabel}</span>
         </div>
         <h1 className="rr-display mt-3" style={{ fontSize: 30, lineHeight: 1.1, color: "var(--ink)" }}>
-          Before the first entry
+          {w.welcomeTitle}
         </h1>
         <p className="rr-italic mt-2" style={{ fontSize: 16, color: "var(--muted)" }}>
-          A few details, so the shelf knows whose it is.
+          {w.welcomeLine}
         </p>
 
         {!loaded ? (

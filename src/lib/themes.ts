@@ -79,6 +79,11 @@ export interface ThemeWords {
   /** The new-entry screen's title and its commit button. */
   newEntryTitle: string;
   fileAction: string;
+
+  /** The welcome screen, which promises that picking a theme changes it. */
+  welcomeLabel: string;
+  welcomeTitle: string;
+  welcomeLine: string;
 }
 
 export interface ThemeDefinition {
@@ -136,6 +141,9 @@ export const THEMES: Record<ThemeId, ThemeDefinition> = {
       writtenFab: "A written entry",
       newEntryTitle: "A new entry",
       fileAction: "File",
+      welcomeLabel: "A new volume",
+      welcomeTitle: "Before the first entry",
+      welcomeLine: "A few details, so the shelf knows whose it is.",
     },
   },
   coffee: {
@@ -176,6 +184,9 @@ export const THEMES: Record<ThemeId, ThemeDefinition> = {
       writtenFab: "A note",
       newEntryTitle: "A new order",
       fileAction: "Put it on",
+      welcomeLabel: "A new card",
+      welcomeTitle: "Before the first order",
+      welcomeLine: "A few details, so the café knows whose it is.",
     },
   },
   observatory: {
@@ -216,6 +227,9 @@ export const THEMES: Record<ThemeId, ThemeDefinition> = {
       writtenFab: "An observation",
       newEntryTitle: "A new transit",
       fileAction: "Log it",
+      welcomeLabel: "First light",
+      welcomeTitle: "Before the first observation",
+      welcomeLine: "A few details, so the log knows whose it is.",
     },
   },
 };
