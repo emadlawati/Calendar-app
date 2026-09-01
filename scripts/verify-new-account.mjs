@@ -95,6 +95,18 @@ try {
   check("the join page leaks no family data",
     !JSON.stringify(preview.body ?? {}).match(/Budoor|Emad|Yusr/i));
 
+  // The page a real invited person opens, in a browser, with no session.
+  // The API returning the invitation is not the same as the page surviving:
+  // SessionProvider used to bounce every signed-out visitor to /login, which
+  // meant the link worked in every test here and for nobody in real life.
+  const joinPage = await fetch(`${BASE}/join/${token}`, { redirect: "manual" });
+  check("the invitation page loads without a session",
+    joinPage.status === 200, `HTTP ${joinPage.status}`);
+  const joinHtml = await joinPage.text();
+  check("it serves the invitation, not the sign-in page",
+    joinHtml.includes("An invitation") && !joinHtml.includes("Only registered couples"),
+    "the envelope, not the door");
+
   const redeemed = await api(
     `/api/auth/dev-session?invite=${encodeURIComponent(token)}&email=${encodeURIComponent(NEW_EMAIL)}`,
     null,

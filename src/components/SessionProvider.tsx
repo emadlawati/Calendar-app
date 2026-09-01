@@ -38,6 +38,20 @@ const SessionContext = createContext<SessionState>({
   refresh: async () => {},
 });
 
+/**
+ * Pages a signed-out person is allowed to be on.
+ *
+ * This has to agree with PUBLIC_PREFIXES in the middleware. It did not: the
+ * middleware let /join through and this sent it straight back to /login, so
+ * anyone opening an invitation was bounced to a sign-in page before they could
+ * read it — the whole point of the link. Nothing caught it because the tests
+ * exercise the invite API and the redemption, not the page in a browser.
+ */
+const PUBLIC_PATHS = ["/login", "/join", "/birthday", "/events/adjust", "/api/"];
+
+const isPublicPath = (path: string) =>
+  PUBLIC_PATHS.some((p) => path === p || path.startsWith(p.endsWith("/") ? p : `${p}/`));
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -66,11 +80,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isLoading) return;
-    // Only redirect if we're on the main app page (not login, not adjust, not API)
     const loc = window.location.pathname;
-    if (!user && loc !== "/login" && !loc.startsWith("/events/adjust") && !loc.startsWith("/api/")) {
-      window.location.href = "/login";
-    }
+    if (!user && !isPublicPath(loc)) window.location.href = "/login";
   }, [user, isLoading]);
 
   const logout = async () => {
