@@ -457,6 +457,49 @@ try {
   check("recipients come from the family being processed",
     /emailsFor\(/.test(alerts) && !/process\.env\.(WIFE|HUSBAND)_/.test(alerts));
 
+  section("They can bring their own partner in");
+  // The second half of registration: one partner joins on the couple link and
+  // has to be able to invite the other. Nothing else can do it for them.
+  const partnerInvite = await api("/api/invites", newCookie, {
+    method: "POST",
+    body: JSON.stringify({ kind: "partner", note: MARK }),
+  });
+  check("a new family can mint a partner invitation",
+    partnerInvite.status === 201 && !!partnerInvite.body?.url,
+    partnerInvite.body?.error ?? `HTTP ${partnerInvite.status}`);
+  // Whichever seat they claimed on the way in, the invitation is for the other.
+  const mySeat = welcome.body?.roleChangedTo ?? redeemed.body.role;
+  const otherSeat = mySeat === "Wife" ? "Husband" : "Wife";
+  check("it is for the seat they did not take",
+    partnerInvite.body?.role === otherSeat,
+    `they are ${mySeat}, invitation is for ${partnerInvite.body?.role}`);
+
+  // The bug this guards: the seat was judged by counting every member, so a
+  // family with a child looked full and lost the button entirely.
+  await p.coupleUser.create({
+    data: { coupleId: newCoupleId, kind: "child", name: `${MARK} child`, role: null },
+  });
+  const withChild = await api("/api/couple", newCookie);
+  const members = withChild.body?.users ?? [];
+  const adults = members.filter((u) => u.kind === "adult");
+  // The exact condition that used to hide the button: two or more members,
+  // fewer than two of them adults.
+  check("a child does not fill the partner's seat",
+    adults.length < 2 && members.length >= 2,
+    `${adults.length} adult of ${members.length} members`);
+
+  const stillFree = await api("/api/invites", newCookie, {
+    method: "POST",
+    body: JSON.stringify({ kind: "partner", note: MARK }),
+  });
+  check("the partner can still be invited after a child is added",
+    stillFree.status === 201, `HTTP ${stillFree.status}`);
+
+  check("a new family cannot invite other families",
+    (await api("/api/invites", newCookie, {
+      method: "POST", body: JSON.stringify({ kind: "couple", note: MARK }),
+    })).status === 403, "only the founding family may");
+
   section("Sessions cannot be pointed at another family");
   // A valid signature over someone else's coupleId is the obvious attack.
   const forged = await cookieFor("Husband", newCoupleId, "emadlawati97@gmail.com");

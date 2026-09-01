@@ -118,7 +118,11 @@ export default function CoupleSettings() {
 
   if (!couple) return null;
 
-  const seatFree = couple.users.length < 2;
+  // Adults only. This counted every member, so a family that added a child on
+  // the way in — which the welcome screen asks them to do — reached two rows
+  // with one partner still missing, and the button to invite that partner
+  // vanished. There is no other way to bring them in.
+  const seatFree = couple.users.filter((u) => u.kind === "adult").length < 2;
   const live = invites.filter((i) => !i.used && !i.expired);
 
   return (
