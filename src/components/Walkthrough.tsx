@@ -110,8 +110,23 @@ function stepsFor(w: ThemeWords, theme: string, partner: string): Step[] {
       label: "The Ledger",
       title: "Things that need doing",
       body:
-        `A shared list. Give a task to either of you, add a date if it has one, ` +
-        `and repeat the ones that come round every week.`,
+        `A shared list, sorted for you: Overdue, Today, Coming up, and the ones ` +
+        `with no particular day. Add a task with the + button, put someone's name ` +
+        `on it — either of you, the whole family, or one of the children — and give ` +
+        `it a date if it has one. Tick the box to settle it; SETTLED holds ` +
+        `everything already done.`,
+    },
+    {
+      glyph: g3,
+      label: "The Ledger",
+      title: "How it chases you",
+      body:
+        `Anything due today shows as a number beside The Ledger in this menu — ` +
+        `and on the app icon itself, once you have added it to your home screen. ` +
+        `It stays until the task is done, and overdue still counts as today, so ` +
+        `nothing quietly disappears. Once a day you also get one notification ` +
+        `naming what is outstanding. Chores that come round again can repeat ` +
+        `daily, weekly, fortnightly or monthly, and come back on their own once ticked.`,
     },
     {
       glyph: g,
@@ -194,6 +209,11 @@ export default function Walkthrough({
                 borderRadius: "var(--radius-card, 0)",
                 boxShadow: "var(--sheet-shadow)",
                 padding: 22,
+                // The longest step clears a 360x640 screen by about 20px,
+                // which larger system text would swallow. Scrolling inside
+                // the card is better than a title cropped off the top.
+                maxHeight: "calc(100dvh - 36px)",
+                overflowY: "auto",
               }}
             >
               <div className="flex items-center justify-between gap-3">
