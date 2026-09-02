@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "./ThemeProvider";
-import { usePartnerName } from "./SessionProvider";
+import { usePartnerName, useSession } from "./SessionProvider";
 import ThemeGlyph, { type GlyphName } from "./ThemeGlyph";
 import type { ThemeWords } from "@/lib/themes";
 
@@ -52,6 +52,8 @@ interface Step {
   label: string;
   title: string;
   body: string;
+  /** Renders the partner-invitation panel under the text. */
+  invite?: boolean;
 }
 
 /**
@@ -59,12 +61,27 @@ interface Step {
  * flavour change between themes — the explanations are the same because what
  * the sections *do* is the same.
  */
-function stepsFor(w: ThemeWords, theme: string, partner: string): Step[] {
+function stepsFor(w: ThemeWords, theme: string, partner: string, seatFree: boolean): Step[] {
   const g: GlyphName = theme === "observatory" ? "star" : theme === "coffee" ? "cup" : "book";
   const g2: GlyphName = theme === "observatory" ? "crescent" : theme === "coffee" ? "bean" : "book";
   const g3: GlyphName = theme === "observatory" ? "planet" : theme === "coffee" ? "cup" : "book";
 
   return [
+    // First, and only while the other seat is empty. Bringing your partner in
+    // is the one thing the app cannot do for you and the one thing that makes
+    // the rest of it make sense — a shared calendar with one person in it is
+    // just a calendar. It disappears once they have joined, because by then it
+    // would be telling the second partner to invite someone who is already here.
+    ...(seatFree ? [{
+      glyph: g,
+      label: "First things first",
+      title: `Bring ${partner || "your partner"} in`,
+      body:
+        `Right now this family is just you. Make a link below and send it to them — ` +
+        `they sign in with their own Google account and land here, in this same ` +
+        `calendar. Everything either of you writes, you both see.`,
+      invite: true,
+    }] : []),
     {
       glyph: g,
       label: "Yours only",
@@ -155,6 +172,95 @@ function stepsFor(w: ThemeWords, theme: string, partner: string): Step[] {
   ];
 }
 
+/**
+ * Makes the first step do the thing rather than describe it.
+ *
+ * Telling someone to go to Settings and find a button is how a step gets
+ * skipped; the link is minted here and copied in one tap. Any invitation the
+ * family already has is reused, so tapping twice does not scatter live links
+ * around.
+ */
+function PartnerInvite() {
+  const [url, setUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const make = async () => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      // Reuse a live one before minting another.
+      const existing = await fetch("/api/invites", { credentials: "same-origin" })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      const live = (existing?.invites ?? []).find(
+        (i: { kind: string; used: boolean; expired: boolean; url: string }) =>
+          i.kind === "partner" && !i.used && !i.expired,
+      );
+      const link = live?.url ?? (await fetch("/api/invites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ kind: "partner" }),
+      }).then((r) => (r.ok ? r.json() : null)).then((d) => d?.url));
+
+      if (!link) { setFailed(true); return; }
+      setUrl(link);
+      try {
+        await navigator.clipboard.writeText(link);
+        setCopied(true);
+      } catch {
+        // No clipboard permission — the link is on screen to copy by hand.
+      }
+    } finally { setBusy(false); }
+  };
+
+  if (!url) {
+    return (
+      <div className="mt-4">
+        <button className="rr-btn-quiet" onClick={make} disabled={busy}>
+          {busy ? "Making the link…" : "Make the link"}
+        </button>
+        {failed && (
+          <p className="rr-italic mt-2" style={{ fontSize: 14, color: "var(--terracotta)" }}>
+            That did not work. You can also do it from Settings → Invitations.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4">
+      <p className="rr-meta" style={{ fontSize: 9.5 }}>
+        {copied ? "Copied — send it to them" : "Send them this link"}
+      </p>
+      <p
+        className="mt-1.5"
+        style={{
+          fontSize: 12.5, color: "var(--muted)", wordBreak: "break-all",
+          border: "1px solid var(--rule)", borderRadius: "var(--radius-control, 0)",
+          padding: "9px 11px", background: "var(--wash)",
+        }}
+      >
+        {url}
+      </p>
+      <button
+        className="rr-action mt-2"
+        onClick={async () => {
+          try { await navigator.clipboard.writeText(url); setCopied(true); } catch { /* select it by hand */ }
+        }}
+      >
+        {copied ? "Copy again" : "Copy"}
+      </button>
+      <p className="rr-italic mt-2" style={{ fontSize: 13.5, color: "var(--faint)" }}>
+        It works once and lasts two weeks. You can make another from Settings.
+      </p>
+    </div>
+  );
+}
+
 export default function Walkthrough({
   open,
   onClose,
@@ -163,10 +269,19 @@ export default function Walkthrough({
   onClose: () => void;
 }) {
   const { theme, definition } = useTheme();
-  const partner = usePartnerName();
+  const { couple } = useSession();
+  // usePartnerName() falls back to the role itself, which reads as "Bring
+  // Husband in" before that person exists. Nobody is called Husband.
+  const named = usePartnerName();
+  const partner = named && named !== "Wife" && named !== "Husband" && named !== "your partner"
+    ? named
+    : "";
   const [i, setI] = useState(0);
 
-  const steps = stepsFor(definition.words, theme, partner);
+  // members is keyed by role and holds adults only, so one key means the
+  // other seat is still empty.
+  const seatFree = Object.keys(couple?.members ?? {}).length < 2;
+  const steps = stepsFor(definition.words, theme, partner, seatFree);
   const last = i === steps.length - 1;
 
   const close = useCallback(() => { setI(0); onClose(); }, [onClose]);
@@ -232,6 +347,8 @@ export default function Walkthrough({
               <p className="mt-2.5" style={{ fontSize: 15.5, lineHeight: 1.5, color: "var(--muted)" }}>
                 {step.body}
               </p>
+
+              {step.invite && <PartnerInvite />}
 
               <div className="flex items-center justify-between gap-4 mt-6">
                 {/* Where you are, without a number to count down. */}
