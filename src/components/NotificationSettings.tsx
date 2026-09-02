@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { enablePush, pushSupported } from "@/lib/push-client";
+import { setBadge } from "@/lib/badge";
 
 interface Device {
   id: string;
@@ -144,6 +145,74 @@ export default function NotificationSettings() {
           )}
         </>
       )}
+
+      <BadgeStatus />
     </section>
+  );
+}
+
+/**
+ * Why the number is, or is not, on the app icon.
+ *
+ * The badge failed silently on one phone and worked on the other, and there
+ * was no way to tell which of the several reasons applied — the API is absent
+ * outside an installed app, iOS additionally wants notification permission,
+ * and a count of zero looks identical to a broken one. This says which.
+ */
+function BadgeStatus() {
+  const [state, setState] = useState<{
+    supported: boolean; installed: boolean; permission: string; count: number | null;
+  } | null>(null);
+  const [tested, setTested] = useState(false);
+
+  useEffect(() => {
+    const installed =
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+      // iOS predates display-mode for home-screen apps.
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+    fetch("/api/tasks/due-today", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) =>
+        setState({
+          supported: "setAppBadge" in navigator,
+          installed,
+          permission: typeof Notification !== "undefined" ? Notification.permission : "unsupported",
+          count: typeof d?.count === "number" ? d.count : null,
+        }),
+      )
+      .catch(() => setState({
+        supported: "setAppBadge" in navigator,
+        installed,
+        permission: typeof Notification !== "undefined" ? Notification.permission : "unsupported",
+        count: null,
+      }));
+  }, []);
+
+  if (!state) return null;
+
+  const blocked =
+    !state.supported ? "This browser cannot put a number on the icon."
+    : !state.installed ? "Add the app to your home screen and open it from there — a browser tab has no icon to mark."
+    : state.permission !== "granted" ? "Allow notifications above; iPhone will not show a badge without it."
+    : null;
+
+  return (
+    <div className="mt-7 pt-5" style={{ borderTop: "1px solid var(--rule-light)" }}>
+      <p className="rr-label">The number on the icon</p>
+      <p className="rr-italic mt-1.5" style={{ fontSize: 15, color: blocked ? "var(--terracotta)" : "var(--muted)" }}>
+        {blocked ?? (state.count === 0
+          ? "Working. Nothing is due today, so there is nothing to show."
+          : `Working — ${state.count} due today.`)}
+      </p>
+      {!blocked && (
+        <button
+          className="rr-btn-quiet mt-3"
+          onClick={() => { setBadge(state.count && state.count > 0 ? state.count : 1); setTested(true); }}
+        >
+          {tested ? "Look at your home screen" : "Show it now"}
+        </button>
+      )}
+    </div>
   );
 }

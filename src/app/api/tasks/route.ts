@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getCoupleContext } from "@/lib/couple-context";
 import { pushAndReport, emailConfigured } from "@/lib/notify";
 import { getEventNotificationRecipients } from "@/lib/people";
+import { dueTodayCountFor } from "@/lib/due-count";
 import resend from "@/lib/resend";
 import { isFrequency, nextDueOnOrAfter, dayStart } from "@/lib/tasks";
 import type { User } from "@/lib/types";
@@ -96,11 +97,22 @@ export async function notifyAssignment(
     ? ` — due ${dayStart(task.dueDate).toISOString().slice(0, 10)}`
     : "";
 
-  const delivery = await pushAndReport(recipients as User[], {
-    title: `📓 ${authorName} added something for you`,
-    body: `${task.title}${when}`,
-    url: `${base}/ledger`,
-  });
+  // One push per recipient rather than one payload for both: the badge is a
+  // count of what is on *that* person, so it cannot be shared between them.
+  const needEmail: string[] = [];
+  for (const role of recipients as User[]) {
+    const delivered = await pushAndReport([role], {
+      title: `📓 ${authorName} added something for you`,
+      body: `${task.title}${when}`,
+      url: `${base}/ledger`,
+      // Without this the notification arrived and the icon stayed clean —
+      // the badge only ever caught up at the next morning's digest, or
+      // whenever they happened to open the app.
+      badgeCount: await dueTodayCountFor(role),
+    });
+    needEmail.push(...delivered.needEmail);
+  }
+  const delivery = { needEmail };
 
   const fallback = couple?.emails(delivery.needEmail) ?? [];
   if (!emailConfigured() || fallback.length === 0) return;

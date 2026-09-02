@@ -32,7 +32,7 @@ export async function GET() {
 
   // Assignment is resolved here rather than in the query: personTag holds
   // "wife"/"husband"/"family"/a child's id, and only the first two narrow it
-  // to one person.
+  // to one person. dueTodayCountFor() applies the same rule for the pushes.
   const mine = rows.filter((t) => getEventNotificationRecipients(t.personTag).includes(user));
 
   const startOfToday = new Date(`${today}T00:00:00.000Z`);
