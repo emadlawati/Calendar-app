@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getCoupleContext } from "@/lib/couple-context";
 import { pushAndReport, emailConfigured } from "@/lib/notify";
 import { getEventNotificationRecipients } from "@/lib/people";
-import { dueTodayCountFor } from "@/lib/due-count";
+import { dueTodayCountFor, digestHasRunToday, isDueByToday } from "@/lib/due-count";
 import resend from "@/lib/resend";
 import { isFrequency, nextDueOnOrAfter, dayStart } from "@/lib/tasks";
 import type { User } from "@/lib/types";
@@ -97,18 +97,30 @@ export async function notifyAssignment(
     ? ` — due ${dayStart(task.dueDate).toISOString().slice(0, 10)}`
     : "";
 
+  // Something falling due today, added after the morning summary has already
+  // gone out, has missed its announcement — and tomorrow's would arrive a day
+  // late. So it gets the summary's own treatment now: the same tag, so it
+  // replaces rather than stacks, and the same insistence on staying put.
+  const urgent = isDueByToday(task.dueDate) && digestHasRunToday();
+
   // One push per recipient rather than one payload for both: the badge is a
   // count of what is on *that* person, so it cannot be shared between them.
   const needEmail: string[] = [];
   for (const role of recipients as User[]) {
+    const count = await dueTodayCountFor(role);
     const delivered = await pushAndReport([role], {
-      title: `📓 ${authorName} added something for you`,
-      body: `${task.title}${when}`,
+      title: urgent
+        ? `📓 Due today: ${task.title}`
+        : `📓 ${authorName} added something for you`,
+      body: urgent
+        ? `${authorName} added it${count > 1 ? ` · ${count} in the ledger today` : ""}`
+        : `${task.title}${when}`,
       url: `${base}/ledger`,
       // Without this the notification arrived and the icon stayed clean —
       // the badge only ever caught up at the next morning's digest, or
       // whenever they happened to open the app.
-      badgeCount: await dueTodayCountFor(role),
+      badgeCount: count,
+      ...(urgent ? { tag: "ledger-today", sticky: true } : {}),
     });
     needEmail.push(...delivered.needEmail);
   }
