@@ -4,7 +4,7 @@ import {
   createContext, useContext, useEffect, useState, useCallback, type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
-import { setBadge } from "@/lib/badge";
+import { setBadge, syncLedgerNotification } from "@/lib/badge";
 
 /**
  * How much of the ledger is on you today — one source of truth for the icon
@@ -51,6 +51,10 @@ export default function LedgerDueProvider({ children }: { children: ReactNode })
         if (!d || typeof d.count !== "number") return;
         setState({ count: d.count, overdue: d.overdue ?? 0, items: d.items ?? [] });
         setBadge(d.count);
+        // Re-posted rather than left to the morning push, so a task you set
+        // yourself appears too, and so it survives the day rather than being
+        // swiped away for good.
+        syncLedgerNotification(d.count, d.items ?? []);
       })
       .catch(() => {
         // Offline or signed out. Leave the last known count alone rather than

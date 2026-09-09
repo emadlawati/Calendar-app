@@ -80,14 +80,25 @@ export async function POST(request: Request) {
 }
 
 /**
- * Tell whoever the task is for — unless that is only the person who wrote it,
- * who does not need telling about their own list.
+ * Tell whoever the task is for.
+ *
+ * Including the person who wrote it, when it falls due today. They plainly do
+ * not need announcing to — they just typed it — but the notification is not an
+ * announcement, it is the standing all-day reminder that the ledger is not
+ * empty. Leaving the author out meant a task you set yourself never reached
+ * your own phone at all. Theirs goes out silently, so writing a list does not
+ * buzz you once per line.
  */
 export async function notifyAssignment(
   task: { id: string; title: string; personTag: string | null; dueDate: Date | null },
   author: string,
 ) {
-  const recipients = getEventNotificationRecipients(task.personTag).filter((r) => r !== author);
+  const urgent = isDueByToday(task.dueDate) && digestHasRunToday();
+  const others = getEventNotificationRecipients(task.personTag).filter((r) => r !== author);
+  // The author is included only for something already due — otherwise a task
+  // for next Tuesday would ping the person who just wrote it.
+  const onIt = getEventNotificationRecipients(task.personTag);
+  const recipients = urgent && (onIt as string[]).includes(author) ? onIt : others;
   if (recipients.length === 0) return;
 
   const couple = await getCoupleContext();
@@ -96,12 +107,6 @@ export async function notifyAssignment(
   const when = task.dueDate
     ? ` — due ${dayStart(task.dueDate).toISOString().slice(0, 10)}`
     : "";
-
-  // Something falling due today, added after the morning summary has already
-  // gone out, has missed its announcement — and tomorrow's would arrive a day
-  // late. So it gets the summary's own treatment now: the same tag, so it
-  // replaces rather than stacks, and the same insistence on staying put.
-  const urgent = isDueByToday(task.dueDate) && digestHasRunToday();
 
   // One push per recipient rather than one payload for both: the badge is a
   // count of what is on *that* person, so it cannot be shared between them.
@@ -120,13 +125,17 @@ export async function notifyAssignment(
       // the badge only ever caught up at the next morning's digest, or
       // whenever they happened to open the app.
       badgeCount: count,
-      ...(urgent ? { tag: "ledger-today", sticky: true } : {}),
+      // Something falling due today, added after the morning summary has gone
+      // out, has missed it — and tomorrow's would arrive a day late. So it
+      // takes the summary's own form now: same tag, so it replaces rather than
+      // stacks, and the same insistence on staying put all day.
+      ...(urgent ? { tag: "ledger-today", sticky: true, silent: role === author } : {}),
     });
     needEmail.push(...delivered.needEmail);
   }
   const delivery = { needEmail };
 
-  const fallback = couple?.emails(delivery.needEmail) ?? [];
+  const fallback = couple?.emails(delivery.needEmail.filter((r) => r !== author)) ?? [];
   if (!emailConfigured() || fallback.length === 0) return;
 
   await resend.emails

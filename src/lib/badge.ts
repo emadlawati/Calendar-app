@@ -29,19 +29,53 @@ export function setBadge(count: number) {
 }
 
 /**
- * Take today's ledger summary out of the notification shade.
+ * Keep today's ledger summary in the notification shade, all day, for as long
+ * as anything is still on you.
  *
- * The daily summary is sent with `requireInteraction`, so it sits there until
- * something removes it. Opening the ledger is that something — leaving a
- * notification saying "2 in the ledger today" on screen while you are looking
- * at the ledger is the kind of thing that makes people turn notifications off.
+ * A notification does not have to come from the server. The page can post one
+ * through the service worker registration, and that is what makes this work
+ * for a task you set yourself: there is no push in that case, because there is
+ * nobody to push to — you already know, so the server says nothing. Which
+ * meant your own tasks never appeared at all.
+ *
+ * Posted with the same tag as the morning summary, so the two replace each
+ * other instead of stacking, and silently, so re-posting it every time the app
+ * opens does not buzz. It clears itself the moment nothing is outstanding.
  */
-export async function clearLedgerNotification() {
+export async function syncLedgerNotification(
+  count: number,
+  items: { title: string; overdue: boolean }[],
+) {
   try {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
     const reg = await navigator.serviceWorker?.getRegistration();
-    const notes = await reg?.getNotifications({ tag: "ledger-today" });
-    notes?.forEach((n) => n.close());
+    if (!reg) return;
+
+    if (count === 0) {
+      (await reg.getNotifications({ tag: "ledger-today" })).forEach((n) => n.close());
+      return;
+    }
+
+    const overdue = items.filter((i) => i.overdue).length;
+    const titles = items.slice(0, 3).map((i) => i.title).join(" · ");
+    const more = count > items.length ? ` · and ${count - items.length} more` : "";
+
+    await reg.showNotification(
+      count === 1
+        ? `📓 Due today: ${items[0]?.title ?? "one thing"}`
+        : `📓 ${count} in the ledger today${overdue > 0 ? ` — ${overdue} overdue` : ""}`,
+      {
+        body: count === 1 ? "From the ledger" : `${titles}${more}`,
+        icon: "/icons/icon-192.png",
+        badge: "/icons/icon-192-maskable.png",
+        tag: "ledger-today",
+        requireInteraction: true,
+        silent: true,
+        data: { url: "/ledger" },
+      },
+    );
   } catch {
-    // No service worker, or no permission. Nothing to clean up.
+    // No permission, no service worker, or a browser that will not post from
+    // the page. The badge and the drawer count still carry the same fact.
   }
 }

@@ -6,6 +6,7 @@ import AppShell, { Fab } from "@/components/AppShell";
 import EntrySheet from "@/components/EntrySheet";
 import ReminderModal from "@/components/ReminderModal";
 import SaveMemoryModal from "@/components/SaveMemoryModal";
+import DailyHighlightModal from "@/components/DailyHighlightModal";
 import Toast from "@/components/Toast";
 import { usePeople } from "@/components/SessionProvider";
 import Skeleton from "@/components/Skeleton";
@@ -95,6 +96,7 @@ export default function CalendarPage() {
   const [filterPerson, setFilterPerson] = useState<string | null>(null);
   const [sheetEvent, setSheetEvent] = useState<CalendarEvent | null>(null);
   const [reminderOpen, setReminderOpen] = useState(false);
+  const [keepOpen, setKeepOpen] = useState(false);
   const [bindTarget, setBindTarget] = useState<PendingMemory | null>(null);
 
   const fetchAll = useCallback(async () => {
@@ -314,9 +316,16 @@ export default function CalendarPage() {
               <span style={{ color: "var(--faint)" }}> · {selectedHijri}</span>
             )}
           </p>
-          <button className="rr-action" style={{ fontSize: 11.5 }} onClick={() => setReminderOpen(true)}>
-            Add a reminder
-          </button>
+          <span className="flex items-center gap-4" style={{ flex: "none" }}>
+            {/* A memory does not need an event under it. This is the only way
+                to keep a day that nothing was ever planned for. */}
+            <button className="rr-action" style={{ fontSize: 11.5 }} onClick={() => setKeepOpen(true)}>
+              Keep this day
+            </button>
+            <button className="rr-action" style={{ fontSize: 11.5 }} onClick={() => setReminderOpen(true)}>
+              Add a reminder
+            </button>
+          </span>
         </div>
 
         {agenda.length === 0 ? (
@@ -367,6 +376,13 @@ export default function CalendarPage() {
           event: { id: e.id, title: e.title, category: e.category ?? null },
           daysAgo: 0,
         })}
+      />
+
+      <DailyHighlightModal
+        isOpen={keepOpen}
+        onClose={() => setKeepOpen(false)}
+        onSuccess={fetchAll}
+        initialDate={selected}
       />
 
       <ReminderModal

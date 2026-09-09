@@ -111,8 +111,10 @@ function stepsFor(w: ThemeWords, theme: string, partner: string, seatFree: boole
       label: "Our Story",
       title: "What you decide to keep",
       body:
-        `Anything on the calendar can be kept as a memory, with photographs and a note. ` +
-        `Memories is the picture feed; Timeline is the same thing as a list, oldest first.`,
+        `Anything on the calendar can be kept as a memory, with photographs and a note — ` +
+        `and so can a day that had nothing planned on it at all, from the button here or ` +
+        `"Keep this day" on the calendar. Memories is the picture feed; Timeline is the ` +
+        `same thing as a list, oldest first.`,
     },
     {
       glyph: g2,
