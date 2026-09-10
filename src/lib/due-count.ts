@@ -26,6 +26,30 @@ export function isDueByToday(due: Date | null): boolean {
 }
 
 /**
+ * Whether a task is on you right now.
+ *
+ * A task with no date is on you every day until it is done — it was never
+ * postponed to anything, so there is no day on which it stops mattering. They
+ * used to be excluded from the count outright, which meant the one kind of
+ * task with no deadline to remind you was also the kind nothing reminded you
+ * about.
+ */
+export function isOnYouNow(due: Date | null): boolean {
+  return due === null || isDueByToday(due);
+}
+
+/**
+ * The query for everything outstanding on or before today, undated included.
+ * Shared so the badge endpoint and the counts cannot drift apart.
+ */
+export function outstandingWhere(endOfToday: Date) {
+  return {
+    completed: false,
+    OR: [{ dueDate: { lte: endOfToday } }, { dueDate: null }],
+  };
+}
+
+/**
  * How many open tasks are on one person today.
  *
  * One definition, used by the badge endpoint, the daily digest and the push
@@ -44,7 +68,7 @@ export async function dueTodayCountFor(role: string): Promise<number> {
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Muscat" });
 
   const rows = await prisma.task.findMany({
-    where: { completed: false, dueDate: { not: null, lte: new Date(`${today}T23:59:59.999Z`) } },
+    where: outstandingWhere(new Date(`${today}T23:59:59.999Z`)),
     select: { personTag: true },
   });
 

@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getCoupleContext } from "@/lib/couple-context";
 import { pushAndReport, emailConfigured } from "@/lib/notify";
 import { getEventNotificationRecipients } from "@/lib/people";
-import { dueTodayCountFor, digestHasRunToday, isDueByToday } from "@/lib/due-count";
+import { dueTodayCountFor, digestHasRunToday, isOnYouNow } from "@/lib/due-count";
 import resend from "@/lib/resend";
 import { isFrequency, nextDueOnOrAfter, dayStart } from "@/lib/tasks";
 import type { User } from "@/lib/types";
@@ -93,7 +93,8 @@ export async function notifyAssignment(
   task: { id: string; title: string; personTag: string | null; dueDate: Date | null },
   author: string,
 ) {
-  const urgent = isDueByToday(task.dueDate) && digestHasRunToday();
+  // Undated counts as on you now, so it is announced like anything else due.
+  const urgent = isOnYouNow(task.dueDate) && digestHasRunToday();
   const others = getEventNotificationRecipients(task.personTag).filter((r) => r !== author);
   // The author is included only for something already due — otherwise a task
   // for next Tuesday would ping the person who just wrote it.

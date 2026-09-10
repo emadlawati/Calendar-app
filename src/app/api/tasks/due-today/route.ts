@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getEventNotificationRecipients } from "@/lib/people";
+import { outstandingWhere } from "@/lib/due-count";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +26,11 @@ export async function GET() {
   const endOfToday = new Date(`${today}T23:59:59.999Z`);
 
   const rows = await prisma.task.findMany({
-    where: { completed: false, dueDate: { not: null, lte: endOfToday } },
+    where: outstandingWhere(endOfToday),
     select: { id: true, title: true, dueDate: true, personTag: true },
-    orderBy: { dueDate: "asc" },
+    // Dated first, oldest first; the undated ones follow, since they are not
+    // late so much as permanently present.
+    orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }],
   });
 
   // Assignment is resolved here rather than in the query: personTag holds
@@ -38,11 +41,11 @@ export async function GET() {
   const startOfToday = new Date(`${today}T00:00:00.000Z`);
   return NextResponse.json({
     count: mine.length,
-    overdue: mine.filter((t) => t.dueDate! < startOfToday).length,
+    overdue: mine.filter((t) => t.dueDate !== null && t.dueDate < startOfToday).length,
     items: mine.slice(0, 5).map((t) => ({
       id: t.id,
       title: t.title,
-      overdue: t.dueDate! < startOfToday,
+      overdue: t.dueDate !== null && t.dueDate < startOfToday,
     })),
   });
 }

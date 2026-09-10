@@ -143,7 +143,9 @@ function stepsFor(w: ThemeWords, theme: string, partner: string, seatFree: boole
         `Anything due today shows as a number beside The Ledger in this menu — ` +
         `and on the app icon itself, once you have added it to your home screen. ` +
         `It stays until the task is done, and overdue still counts as today, so ` +
-        `nothing quietly disappears. Once a day you also get one notification ` +
+        `nothing quietly disappears. Anything with no date on it stays there ` +
+        `permanently — there is no day on which it stops mattering. Once a day ` +
+        `you also get one notification ` +
         `naming what is outstanding. Chores that come round again can repeat ` +
         `daily, weekly, fortnightly or monthly, and come back on their own once ticked.`,
     },

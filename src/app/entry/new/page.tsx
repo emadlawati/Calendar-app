@@ -48,6 +48,13 @@ function NewEntryForm() {
   const [repeat, setRepeat] = useState<Repeat>("once");
   /** When a repeating entry stops. Blank means it keeps going. */
   const [until, setUntil] = useState("");
+  // The series behind the occurrence being amended, if it repeats. Null while
+  // still loading or when this entry is a one-off.
+  const [series, setSeries] = useState<{
+    frequency: string; endDate: string | null; occurrences: number;
+  } | null>(null);
+  const [seriesUntil, setSeriesUntil] = useState("");
+  const [seriesNote, setSeriesNote] = useState("");
   const [personTag, setPersonTag] = useState<string | null>(null);
   const [specialDateId, setSpecialDateId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -79,6 +86,22 @@ function NewEntryForm() {
         setSpecialDateId(e.specialDateId ?? null);
         setNotes(e.notes || "");
         if (e.endDate || e.endTime || e.allDay || e.specialDateId) setMoreOpen(true);
+      })
+      .catch(() => {});
+
+    // The run this occurrence belongs to, so its end date can be seen and
+    // moved. Without this the amendment screen offered the one-off "Closes"
+    // field and the series' own end was invisible.
+    fetch(`/api/recurring/series?eventId=${encodeURIComponent(editId)}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.series) return;
+        setSeries({
+          frequency: d.series.frequency,
+          endDate: d.series.endDate,
+          occurrences: d.series.occurrences,
+        });
+        setSeriesUntil(d.series.endDate ?? "");
       })
       .catch(() => {});
   }, [editId]);
@@ -121,6 +144,32 @@ function NewEntryForm() {
     };
 
     try {
+      // The run's end date first, because it is the change that touches every
+      // occurrence — if it fails, saying so is more useful than silently
+      // amending only the one entry they happened to open.
+      if (isEdit && series && (seriesUntil || "") !== (series.endDate ?? "")) {
+        const r = await fetch("/api/recurring/series", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ eventId: editId, until: seriesUntil || null }),
+        });
+        const d = await r.json().catch(() => null);
+        if (!r.ok) {
+          setSeriesNote(d?.error ?? "Could not change when the run stops.");
+          setSaving(false);
+          return;
+        }
+        if (d?.keptWithMemories > 0) {
+          // Said out loud rather than hidden: those days have photographs or
+          // a note on them, and deleting the entry would take those with it.
+          setSeriesNote(
+            `${d.keptWithMemories} later ${d.keptWithMemories === 1 ? "entry" : "entries"} kept — ` +
+            `${d.keptWithMemories === 1 ? "it has" : "they have"} a memory saved against ${d.keptWithMemories === 1 ? "it" : "them"}.`,
+          );
+        }
+      }
+
       let res: Response;
       if (isEdit) {
         res = await fetch("/api/events/action", {
@@ -290,6 +339,50 @@ function NewEntryForm() {
                 </button>
               ))}
             </div>
+
+            {/* The run this belongs to — only when amending a repeat. */}
+            {isEdit && series && (
+              <div className="mt-5 rr-card p-4">
+                <p className="rr-label" style={{ fontSize: 9.5 }}>This one repeats</p>
+                <p className="rr-italic mt-1.5" style={{ fontSize: 15, color: "var(--muted)" }}>
+                  {REPEATS.find((r) => r.value === series.frequency)?.label ?? series.frequency}
+                  {" · "}
+                  {series.occurrences} {series.occurrences === 1 ? "entry" : "entries"} so far
+                </p>
+
+                <div className="mt-4">
+                  <p className="rr-label" style={{ fontSize: 9.5 }}>The run stops after</p>
+                  <input
+                    type="date"
+                    value={seriesUntil}
+                    min={date}
+                    onChange={(e) => setSeriesUntil(e.target.value)}
+                  />
+                  <p className="rr-italic mt-1" style={{ fontSize: 12.5, color: "var(--faint)" }}>
+                    {seriesUntil
+                      ? "Changing this changes every occurrence, not just this one."
+                      : "No end set — it keeps going. Put a date here to stop it."}
+                  </p>
+                  {series.endDate && seriesUntil !== series.endDate && (
+                    <button
+                      className="rr-action mt-2"
+                      onClick={() => setSeriesUntil(series.endDate ?? "")}
+                    >
+                      Back to {series.endDate}
+                    </button>
+                  )}
+                  {seriesUntil && (
+                    <button className="rr-action mt-2 ml-4" onClick={() => setSeriesUntil("")}>
+                      Remove the end date
+                    </button>
+                  )}
+                </div>
+
+                {seriesNote && (
+                  <p className="mt-3" style={{ fontSize: 13, color: "var(--terracotta)" }}>{seriesNote}</p>
+                )}
+              </div>
+            )}
 
             {/* Progressive extras */}
             {!moreOpen ? (

@@ -5,6 +5,7 @@ import resend from "@/lib/resend";
 import { getCategoryById } from "@/lib/categories";
 import { pushAndReport } from "@/lib/notify";
 import { getEventNotificationRecipients } from "@/lib/people";
+import { outstandingWhere } from "@/lib/due-count";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -187,11 +188,8 @@ async function sendForCouple(
   // It also carries the count for the icon badge, which is what keeps the
   // number right while the app is closed.
   const openTasks = await prisma.task.findMany({
-    where: {
-      completed: false,
-      dueDate: { not: null, lte: new Date(`${todayStr}T23:59:59.999Z`) },
-    },
-    orderBy: { dueDate: "asc" },
+    where: outstandingWhere(new Date(`${todayStr}T23:59:59.999Z`)),
+    orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }],
   });
 
   const startOfToday = new Date(`${todayStr}T00:00:00.000Z`);
@@ -204,7 +202,7 @@ async function sendForCouple(
 
     const { emailsFor } = recipientsFor(role === "Wife" ? "wife" : "husband");
 
-    const overdue = mine.filter((t) => t.dueDate! < startOfToday).length;
+    const overdue = mine.filter((t) => t.dueDate !== null && t.dueDate < startOfToday).length;
     // The detail, not just a count: the first few titles, so the notification
     // is useful without opening anything.
     const titles = mine.slice(0, 3).map((t) => t.title).join(" · ");
@@ -237,7 +235,7 @@ async function sendForCouple(
             <div style="background:#fff;padding:24px;border-radius:24px;margin:20px 0;border:1px solid #ffeedb;">
               ${mine.map((t) => `
                 <p style="margin:8px 0;color:#5d4037;">
-                  <strong>${t.title}</strong>${t.dueDate! < startOfToday ? ' <span style="color:#b4614a;">— overdue</span>' : ""}
+                  <strong>${t.title}</strong>${t.dueDate !== null && t.dueDate < startOfToday ? ' <span style="color:#b4614a;">— overdue</span>' : ""}
                   ${t.notes ? `<br><span style="font-style:italic;opacity:.75;">${t.notes}</span>` : ""}
                 </p>`).join("")}
             </div>
