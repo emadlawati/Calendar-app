@@ -66,13 +66,16 @@ export default function LedgerDueProvider({ children }: { children: ReactNode })
 
   useEffect(() => {
     const onFocus = () => refresh();
+    // visibilitychange fires on the way out as well as the way back in;
+    // there is nothing to refresh for on the way out.
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
     window.addEventListener("focus", onFocus);
     window.addEventListener("ledger-changed", onFocus);
-    document.addEventListener("visibilitychange", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("ledger-changed", onFocus);
-      document.removeEventListener("visibilitychange", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [refresh]);
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "purrfect-plans-v4";
+const CACHE_NAME = "purrfect-plans-v5";
 const urlsToCache = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -35,9 +35,17 @@ self.addEventListener("push", (event) => {
       ).catch(() => {})
     : Promise.resolve();
 
+  // iOS does not replace a notification by tag the way Android does, so a
+  // tagged one clears its predecessor by hand before it is shown.
+  const clearPrevious = data.tag
+    ? self.registration.getNotifications({ tag: data.tag })
+        .then((list) => list.forEach((n) => n.close()))
+        .catch(() => {})
+    : Promise.resolve();
+
   event.waitUntil(Promise.all([
     badging,
-    self.registration.showNotification(data.title || "Purrfect Plans", {
+    clearPrevious.then(() => self.registration.showNotification(data.title || "Purrfect Plans", {
       body: data.body || "",
       icon: data.icon || "/icons/icon-192.png",
       badge: "/icons/icon-192-maskable.png",
@@ -52,7 +60,7 @@ self.addEventListener("push", (event) => {
       requireInteraction: data.sticky === true,
       renotify: data.tag ? data.renotify === true : undefined,
       silent: data.silent === true,
-    }),
+    })),
   ]));
 });
 

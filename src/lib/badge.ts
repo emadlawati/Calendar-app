@@ -42,6 +42,25 @@ export function setBadge(count: number) {
  * other instead of stacking, and silently, so re-posting it every time the app
  * opens does not buzz. It clears itself the moment nothing is outstanding.
  */
+/**
+ * What was last posted, so the same thing is not posted again.
+ *
+ * On Android a notification with the same tag replaces the last one, so
+ * re-posting on every app open was invisible. iOS does not do that: every
+ * showNotification is a new notification, and this was called on focus, on
+ * navigation, and on visibilitychange — which fires on leaving *and* on
+ * returning. Six in-and-outs in two minutes put twelve copies in the shade.
+ *
+ * Keyed by day and kept in localStorage so a relaunch does not forget it, and
+ * so tomorrow's summary still goes out fresh.
+ */
+const POSTED_KEY = "ledger-notification-posted";
+
+function signatureOf(count: number, items: { title: string; overdue: boolean }[]): string {
+  const day = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Muscat" });
+  return `${day}|${count}|${items.map((i) => `${i.title}${i.overdue ? "!" : ""}`).join("·")}`;
+}
+
 export async function syncLedgerNotification(
   count: number,
   items: { title: string; overdue: boolean }[],
@@ -53,8 +72,18 @@ export async function syncLedgerNotification(
 
     if (count === 0) {
       (await reg.getNotifications({ tag: "ledger-today" })).forEach((n) => n.close());
+      try { localStorage.removeItem(POSTED_KEY); } catch { /* fine */ }
       return;
     }
+
+    // Nothing has changed since it was last posted: leave the shade alone.
+    const signature = signatureOf(count, items);
+    let already: string | null = null;
+    try { already = localStorage.getItem(POSTED_KEY); } catch { /* fine */ }
+    if (already === signature) return;
+
+    // Where tags do not replace, clear the old one by hand before posting.
+    (await reg.getNotifications({ tag: "ledger-today" })).forEach((n) => n.close());
 
     const overdue = items.filter((i) => i.overdue).length;
     const titles = items.slice(0, 3).map((i) => i.title).join(" · ");
@@ -74,6 +103,7 @@ export async function syncLedgerNotification(
         data: { url: "/ledger" },
       },
     );
+    try { localStorage.setItem(POSTED_KEY, signature); } catch { /* fine */ }
   } catch {
     // No permission, no service worker, or a browser that will not post from
     // the page. The badge and the drawer count still carry the same fact.
